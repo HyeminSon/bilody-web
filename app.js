@@ -5,8 +5,12 @@ import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc } fro
 import { GUIDE } from "./guide.js";
 import { Player } from "./audio.js";
 import { Chat } from "./rt.js";
+import * as story from "./story.js";
+import * as push from "./push.js";
 
 const $ = (sel, root = document) => root.querySelector(sel);
+/** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
+const I = (name, cls = "", o = false) => `<i class="${o ? "mo" : "mi"} ${cls}" aria-hidden="true">${name}</i>`;
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const app = $("#app");
 const player = new Player();
@@ -17,8 +21,9 @@ const pref = {
   set(k, v) { try { localStorage.setItem(`bilody_${api.userId() ?? "anon"}_${k}`, JSON.stringify(v)); } catch { /* */ } },
 };
 
-const S = { stage: "loading", profile: null, progress: null, tab: "chat", chat: null, toast: null, busy: false, error: null,
-  sessions: [], previews: {}, openSession: null, turns: null, memories: [], open: null, dialog: null };
+const S = { stage: "loading", profile: null, progress: null, tab: "chat", chat: null, story: null, toast: null, busy: false, error: null,
+  sessions: [], previews: {}, openSession: null, turns: null, memories: [], open: null, dialog: null,
+  kidsAvailable: false, presetLabel: "", reminder: null };
 
 const CONSENT_ITEMS = [
   ["ai_notice", "bilody 친구의 대답과 목소리는 생성형 AI가 만든 것입니다. 사람이 아닌 AI와 대화한다는 것을 이해했습니다."],
@@ -50,7 +55,12 @@ async function refresh() {
     const consent = await api.hasConsent(CONSENT_VERSION);
     S.profile = await api.loadProfile();
     S.stage = !consent ? "consent" : !S.profile?.my_name ? "names" : "main";
-    if (S.stage === "main") S.progress = await api.myProgress();
+    if (S.stage === "main") {
+      const [pr, ps, rem] = await Promise.all([api.myProgress(), api.presets(), push.load()]);
+      S.progress = pr; S.kidsAvailable = ps.some((x) => x.id === "kids-demo");
+      S.presetLabel = (ps.find((x) => x.id === (S.profile?.preset_id ?? "rt-voice")) ?? ps[0])?.label ?? "";
+      S.reminder = rem ?? { on: false, hour: pref.get("remHour", 20), minute: pref.get("remMinute", 0) };
+    }
   } catch (e) {
     if (e?.code === "session_expired" || e?.code === "not_logged_in") { api.signOut(); S.stage = "auth"; }
     else { S.stage = "auth"; S.error = api.errText(e); }
@@ -71,6 +81,9 @@ function render() {
   if (S.stage === "main" && S.tab === "chat") updateChat();
 }
 
+/** 앱의 OutlinedTextField처럼 이름표가 테두리 위로 올라가는 입력칸. */
+const field = (id, label, attrs = "", value = "") => `<label class="field"><input id="${id}" placeholder=" " value="${esc(value)}" ${attrs}><span>${label}</span></label>`;
+
 function renderAuth() {
   const signup = S.authMode !== "login";
   return `<div class="page center-col">
@@ -81,9 +94,9 @@ function renderAuth() {
         <button data-act="mode" data-v="signup" class="${signup ? "on" : ""}">초대 코드로 가입</button>
         <button data-act="mode" data-v="login" class="${signup ? "" : "on"}">로그인</button>
       </div>
-      ${signup ? `<label>초대 코드<input id="code" autocapitalize="characters" autocomplete="off"></label>` : ""}
-      <label>이메일<input id="email" type="email" autocomplete="email"></label>
-      <label>비밀번호${signup ? "(8자 이상)" : ""}<input id="pw" type="password" autocomplete="${signup ? "new-password" : "current-password"}"></label>
+      ${signup ? field("code", "초대 코드", `autocapitalize="characters" autocomplete="off"`) : ""}
+      ${field("email", "이메일", `type="email" autocomplete="email"`)}
+      ${field("pw", signup ? "비밀번호(8자 이상)" : "비밀번호", `type="password" autocomplete="${signup ? "new-password" : "current-password"}"`)}
       ${S.error ? `<p class="error">${esc(S.error)}</p>` : ""}
       <button class="pill primary" data-act="auth" ${S.busy ? "disabled" : ""}>${S.busy ? "잠시만요…" : signup ? "가입하기" : "로그인"}</button>
     </div>
@@ -115,8 +128,8 @@ function renderNames() {
     <p class="muted center-text">${esc(byId(d.character).intro)}</p>
     ${charPicker(d.character)}
     <div class="form">
-      <label>친구 이름<input id="friend" maxlength="8" value="${esc(d.friend)}"></label>
-      <label>내 이름(영어로, 예: Hyemin)<input id="me" maxlength="20" value="${esc(d.me)}" autocapitalize="words"></label>
+      ${field("friend", "친구 이름", `maxlength="8"`, d.friend)}
+      ${field("me", "내 이름(영어로, 예: Hyemin)", `maxlength="20" autocapitalize="words"`, d.me)}
       <p class="muted small">친구 이름은 한글이나 영어로 1~8자, 내 이름은 영어로 1~20자예요.</p>
       ${S.error ? `<p class="error">${esc(S.error)}</p>` : ""}
       <button class="pill primary" data-act="saveNames" ${S.busy ? "disabled" : ""}>${S.busy ? "잠시만요…" : "시작하기"}</button>
@@ -131,37 +144,41 @@ function renderMain() {
     <header class="top"><img src="img/logo_horizontal.png" alt="bilody"><span class="title">${title}</span></header>
     <main class="content">${body}</main>
     <nav class="tabs">
-      ${[["chat", "대화", "💬"], ["history", "기록", "🕘"], ["settings", "설정", "⚙️"]].map(([k, l, i]) =>
-        `<button data-act="tab" data-v="${k}" class="${S.tab === k ? "on" : ""}"><span class="ti">${i}</span>${l}</button>`).join("")}
+      ${[["chat", "대화", "chat_bubble", "chat_bubble_outline", false], ["history", "기록", "history", "history", false], ["settings", "설정", "settings", "settings", true]].map(([k, l, on, off, outlined]) =>
+        `<button data-act="tab" data-v="${k}" class="${S.tab === k ? "on" : ""}"><span class="ti">${S.tab === k ? I(on) : I(off, "", outlined)}</span>${l}</button>`).join("")}
     </nav>
   </div>`;
 }
 
 // ---------------- 대화 ----------------
 function renderChat() {
+  if (S.story) return renderStory();
   const p = S.profile; const c = byId(p?.character); const pr = S.progress;
-  const chat = S.chat;
+  const chat = S.chat; const fname = esc(p?.friend_name ?? c.en);
+  const r = S.reminder;
   const home = !chat ? `
     <div class="streak card">
       <div class="ring" style="--p:${Math.min(1, (pr?.today_seconds ?? 0) / 300)}"><span>${(pr?.streak ?? 0) > 0 ? "🔥" : "🌱"}</span></div>
-      <div class="grow"><b>${esc(p?.friend_name ?? c.en)}와 ${(pr?.streak ?? 0) > 0 ? `${pr.streak}일째` : "첫날"}</b>
+      <div class="grow"><b>${fname}와 ${(pr?.streak ?? 0) > 0 ? `${pr.streak}일째` : "첫날"}</b>
         <div class="muted small">${pr?.done_today ? "오늘 5분 완료! ✨" : `오늘 ${Math.floor((pr?.today_seconds ?? 0) / 60)}분 · 목표 5분`}</div></div>
       <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>이번 주 🏆</span></button>
-    </div>` : "";
+    </div>
+    <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>` : "";
   const guide = !chat && !pref.get("guideSeen", false) ? `<div class="card guide"><b>이렇게 이야기해요</b><ul>
-      <li>‘대화 시작’을 누르면 짧은 음악이 끝나고 ${esc(p?.friend_name ?? "친구")}가 먼저 인사해요.</li>
+      <li>‘대화 시작’을 누르면 징글이 끝나고 ${fname}가 먼저 인사해요.</li>
       <li>빨간 ‘마이크 켜짐’일 때 편하게 말하면 돼요. 한국어가 섞여도, 짧게 답해도 괜찮아요.</li>
       <li>친구가 말하는 중에 말하면 친구가 멈추고 들어요. 생각할 시간이 필요하면 “Wait”라고 해 보세요.</li>
       <li>틀린 표현은 친구가 고쳐 주고 따라 말해 보게 해요.</li>
+      <li>‘일시정지’를 누르면 소리와 마이크가 바로 꺼져요. 한동안 대답이 없으면 잠시 멈춰요.</li>
       <li>곁에 아이나 가족이 있으면 일시정지해 주세요. 주변 목소리도 함께 보내질 수 있어요.</li>
-      <li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li></ul>
-      <button class="link" data-act="guideSeen">알겠어요</button></div>` : "";
+      ${push.isIOS() ? "<li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li>" : ""}</ul>
+      <div class="right"><button class="link" data-act="guideSeen">알겠어요</button></div></div>` : "";
   return `<div class="chat">
     <div class="chat-top">${home}
-      <div class="stage"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
-      <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">🎙 마이크 꺼짐</span></div>
-      <p class="muted tiny">${esc(p?.friend_name ?? "친구")}는 AI 친구예요 · 대답과 목소리는 AI가 만들어요</p>
-      <p id="remain" class="accent tiny"></p><p id="latency" class="muted tiny"></p>
+      <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
+      <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
+      <p class="ai-note">${fname}는 AI 친구예요 · 대답과 목소리는 AI가 만들어요</p>
+      <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
     <div id="card"></div>
@@ -169,43 +186,70 @@ function renderChat() {
     ${guide}
     <p id="notice" class="error"></p>
     <div class="controls" id="controls">${chat ? "" : `
-      <button class="pill primary grow" data-act="start">🎙 대화 시작</button>`}</div>
+      <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
+      ${S.kidsAvailable ? `<button class="pill secondary" data-act="storyPick">${I("auto_stories")}동화 듣기</button>` : ""}`}</div>
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
-      <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">📷</button>
-      <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send">
-      <button class="round send" data-act="send" aria-label="보내기">➤</button>
+      <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
+      <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send" autocomplete="off">
+      <button class="round send" data-act="send" aria-label="보내기" disabled>${I("send")}</button>
     </div>
     <input type="file" id="camera" accept="image/*" capture="environment" hidden>
     <input type="file" id="gallery" accept="image/*" hidden>
   </div>`;
 }
 
+const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+
 /** 대화 중 자주 바뀌는 부분만 고친다(글 입력칸 포커스를 지키려고 전체를 다시 그리지 않음). */
 function updateChat() {
   if (S.stage !== "main" || S.tab !== "chat") return;
+  if (S.story) return updateStory();
   const chat = S.chat; const u = chat?.ui; const c = byId(S.profile?.character);
   const img = $("#friendImg"); if (!img) return;
   const src = animSrc(c.id, u?.state ?? "idle"); if (!img.src.endsWith(src)) img.src = src;
   $("#stLabel").textContent = STATE_LABEL[u?.state ?? "idle"];
-  const mic = $("#micLabel"); mic.textContent = u?.micOn ? "🎙 마이크 켜짐" : "🎙 마이크 꺼짐"; mic.classList.toggle("on", !!u?.micOn);
+  const mic = $("#micLabel"); const micKey = u?.micOn ? "on" : "off";
+  if (mic.dataset.k !== micKey) { mic.dataset.k = micKey; mic.innerHTML = u?.micOn ? `${I("mic")}마이크 켜짐` : `${I("mic_off")}마이크 꺼짐`; mic.classList.toggle("on", !!u?.micOn); }
   $("#remain").textContent = u?.remainingMinutes ? `오늘 남은 대화 시간 약 ${u.remainingMinutes}분` : "";
-  $("#latency").textContent = u?.lastLatencyMs ? `마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : "";
+  $("#latency").textContent = chat ? `지금 대화: ${S.presetLabel}${u?.lastLatencyMs ? ` · 마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : ""}` : "";
   $("#notice").textContent = u?.notice ?? "";
   $("#photo").innerHTML = u?.photo ? `<div class="photo-card" data-act="clearPhoto"><img src="${u.photo}" alt="보여 준 사진"></div>` : "";
   const card = u?.card;
-  $("#card").innerHTML = card ? `<div class="card help" data-act="dismissCard">
-      <div class="accent small b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? "친구가 쉽게 다시 말했어요" : "친구가 다시 말했어요"}</div>
-      <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div></div>` : "";
+  const cardKey = card ? card.text + "|" + (card.chunk ?? "") : "";
+  if ($("#card").dataset.key !== cardKey) {
+    $("#card").dataset.key = cardKey;
+    const pics = card && !card.practice ? cardPics(card.text) : [];
+    const fn = esc(S.profile?.friend_name ?? "친구");
+    $("#card").innerHTML = card ? `<div class="card help enter" data-act="dismissCard">
+      <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${fn}가 쉽게 다시 말했어요` : `${fn}가 다시 말했어요`}</div>
+      <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div>
+      ${pics.length ? `<div class="help-pics">${pics.map((x) => `<img src="${story.picUrl(x)}" alt="${esc(x)}">`).join("")}</div>` : ""}</div>` : "";
+  }
   const subs = pref.get("subtitles", false);
   $("#lines").innerHTML = subs && u ? u.lines.slice(-8).map((l) => `<div class="bubble ${l.role === "user" ? "me" : ""}">${esc(l.text)}</div>`).join("") : "";
   if (chat) {
     const running = !["stopped", "disconnected"].includes(u.state);
-    $("#controls").innerHTML = `
-      <button class="pill dark" data-act="pause" ${running ? "" : "disabled"}>⏸ 일시정지</button>
-      <button class="pill primary" data-act="restart" ${u.canRestart && !running ? "" : "disabled"}>↻ 다시 시작</button>
-      <button class="pill secondary" data-act="exit">나가기</button>`;
+    const ctl = `${running}|${u.canRestart}`;
+    if ($("#controls").dataset.k !== ctl) {
+      $("#controls").dataset.k = ctl;
+      $("#controls").innerHTML = `
+      <button class="pill dark compact" data-act="pause" ${running ? "" : "disabled"}>${I("pause")}일시정지</button>
+      <button class="pill primary compact" data-act="restart" ${u.canRestart && !running ? "" : "disabled"}>${I("refresh")}다시 시작</button>
+      <button class="pill secondary compact narrow" data-act="exit">나가기</button>`;
+    }
     $("#inputbar").classList.remove("hidden");
   }
+}
+
+/** 쉽게 다시 말한 카드에 붙일 단어 그림(앱과 같이 최대 3개). 그림 묶음이 아직 없으면 불러온 뒤 다시 그린다. */
+let picLib = null;
+function cardPics(text) {
+  if (!picLib) {
+    story.loadLib().then((l) => story.loadCommon().then(() => { picLib = l; const k = $("#card"); if (k) k.dataset.key = ""; updateChat(); })).catch(() => {});
+    return [];
+  }
+  const have = new Set(picLib.pics);
+  return [...new Set((text.match(/[A-Za-z']+/g) ?? []).map((w) => picLib.match[w.toLowerCase().replace(/^'+|'+$/g, "")]).filter((x) => x && have.has(x)))].slice(0, 3);
 }
 
 function highlight(card) {
@@ -214,6 +258,98 @@ function highlight(card) {
   const i = t.toLowerCase().indexOf(ch.toLowerCase());
   if (i < 0) return `${esc(t)}<div class="accent b">지금: “${esc(card.chunk)}”</div>`;
   return `<span class="dim">${esc(t.slice(0, i))}</span><mark>${esc(t.slice(i, i + ch.length))}</mark><span class="dim">${esc(t.slice(i + ch.length))}</span>`;
+}
+
+// ---------------- 동화 듣기(앱과 같은 화면) ----------------
+function renderStory() {
+  const u = S.story.ui; const p = S.profile;
+  return `<div class="story" id="story" style="background:${esc(u.bg)}">
+    <div class="st-head"><div class="grow"><b id="stTitle">${esc(u.title)}</b><div id="stSub"></div>
+      ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">동화는 토리가 읽어 줘요</div>` : ""}</div>
+      <span class="micchip">${I("mic_off")}마이크 꺼짐</span></div>
+    <div class="st-main" id="stMain"><div class="st-pages" id="stPages"></div>
+      <img id="stTori" class="st-tori" src="${animSrc("tori", "idle")}" alt=""></div>
+    <p id="stLine" class="st-line"></p><p id="stNotice" class="error st-pad"></p>
+    <p id="stCredit" class="st-credit"></p>
+    <div class="controls st-pad" id="stCtl"></div>
+    <div id="zoom"></div>
+  </div>`;
+}
+
+function updateStory() {
+  const st = S.story; const u = st.ui; const root = $("#story"); if (!root) return;
+  root.style.background = u.bg;
+  $("#stTitle").textContent = u.title;
+  $("#stSub").innerHTML = u.quiz ? quizStars(u.quiz) : `<span class="st-sub">${u.page}/${u.pages}쪽 · 마이크 없이 터치로 놀아요</span>`;
+  const tsrc = animSrc("tori", u.state); const t = $("#stTori"); if (!t.src.endsWith(tsrc)) t.src = tsrc;
+  // 쪽(그림·단어 카드)은 쪽이 바뀔 때만 새로 그린다 → 지금 읽는 단어 카드만 튀어 오르게
+  const pageKey = `${u.storyId}|${u.page}|${u.image}|${u.image ? "" : u.picture}`;
+  const pages = $("#stPages");
+  if (st.book && pages.dataset.k !== pageKey) { pages.dataset.k = pageKey; pages.innerHTML = storyPage(u); pages.dataset.seq = ""; }
+  if (pages.dataset.seq !== String(u.pictureSeq)) {
+    pages.dataset.seq = String(u.pictureSeq);
+    pages.querySelectorAll(".chip").forEach((c) => { const on = c.dataset.v === u.picture; c.classList.toggle("on", on); if (on) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } });
+    const big = pages.querySelector(".bigpic"); if (big) { big.classList.remove("pop"); void big.offsetWidth; big.classList.add("pop"); }
+  }
+  $("#stLine").textContent = pref.get("subtitles", false) ? u.line : "";
+  $("#stNotice").textContent = u.notice ?? "";
+  $("#stCredit").textContent = u.credit ? `${u.credit} · StoryWeaver` : "";
+  const live = u.state !== "stopped";
+  const ck = `${u.canRestart}|${live}`;
+  if ($("#stCtl").dataset.k !== ck) {
+    $("#stCtl").dataset.k = ck;
+    $("#stCtl").innerHTML = (u.canRestart ? `<button class="pill primary grow" data-act="storyResume">${I("play_arrow")}이어서</button>`
+      : `<button class="pill dark grow" data-act="storyPause" ${live ? "" : "disabled"}>${I("pause")}일시정지</button>`)
+      + `<button class="pill secondary" data-act="storyExit">나가기</button>`;
+  }
+}
+
+function quizStars(q) {
+  return `<span class="quiz"><b>그림 찾기 놀이</b>${Array.from({ length: q.rounds }, (_, i) => (i < q.stars ? I("star", "star on") : I("star_border", "star"))).join("")}</span>`;
+}
+
+/** 이 쪽의 단어 그림: 동화 그림 바로 위·아래에 나눠 띄운다(아래 줄은 토리를 피해 왼쪽, 최대 2개). */
+function storyPage(u) {
+  const st = S.story; const book = st.book; const lib = st.lib;
+  const pg = book?.pages[u.page - 1];
+  const have = new Set(lib?.pics ?? []);
+  const label = (x) => esc((lib.words[x]?.text ?? x).replace(/[!.]+$/, ""));
+  const pics = pg ? [...new Set([...(pg.cues ?? []).map((c) => c.pic), ...(pg.see ?? [])])].filter((x) => have.has(x)) : [];
+  const nBottom = Math.min(2, Math.floor(pics.length / 2));
+  const top = pics.slice(0, pics.length - nBottom), bottom = pics.slice(pics.length - nBottom);
+  const chips = (list, off, cls) => (list.length ? `<div class="chips ${cls}"><div class="chips-in">${list.map((x, i) =>
+    `<button class="chip ${(i + off) % 2 === 0 ? "tl" : "tr"}" data-act="storyTap" data-v="${esc(x)}"><img src="${story.picUrl(x)}" alt=""><span>${label(x)}</span></button>`).join("")}</div></div>` : "");
+  const img = u.image ? `<div class="st-imgbox"><img class="st-img" src="${st.pageImg(u.image)}" alt=""></div>` : "";
+  const big = !u.image && u.picture && have.has(u.picture)
+    ? `<button class="bigpic" data-act="storyTap" data-v="${esc(u.picture)}"><img src="${story.picUrl(u.picture)}" alt=""><span>${label(u.picture)}</span></button>` : "";
+  return chips(top, 0, "mid") + img + big + chips(bottom, top.length, "lead");
+}
+
+/** 단어 그림을 누르면 그 카드 자리에서 화면 가운데로 날아오며 크게(약 2.6초 뒤 또는 누르면 사라짐). */
+function zoomWord(pic, fromEl) {
+  const z = $("#zoom"); if (!z) return;
+  const lib = S.story.lib;
+  z.innerHTML = `<div class="zoom-bg" data-act="zoomClose"><div class="zoom-card"><img src="${story.picUrl(pic)}" alt=""><b>${esc((lib.words[pic]?.text ?? pic).replace(/[!.]+$/, ""))}</b></div></div>`;
+  const card = z.querySelector(".zoom-card"); const bg = z.querySelector(".zoom-bg");
+  const a = fromEl.getBoundingClientRect(); const b = card.getBoundingClientRect();
+  card.style.transition = "none";
+  card.style.transform = `translate(${a.left + a.width / 2 - (b.left + b.width / 2)}px, ${a.top + a.height / 2 - (b.top + b.height / 2)}px) scale(.22)`;
+  requestAnimationFrame(() => requestAnimationFrame(() => { card.style.transition = ""; bg.classList.add("in"); card.style.transform = ""; }));
+  clearTimeout(zoomWord.t); zoomWord.t = setTimeout(() => { z.innerHTML = ""; }, 2600 + 450);
+}
+
+async function startStory(id) {
+  player.unlock(); player.setVolume(pref.get("volume", 1));
+  S.dialog = null;
+  S.story = new story.StoryPlayer({ player, onChange: () => updateChat() });
+  render();
+  await S.story.start(id);
+}
+
+async function endStory() {
+  const s = S.story; S.story = null; render();
+  if (s) await s.close();
+  S.progress = await api.myProgress(); render();
 }
 
 async function startChat() {
@@ -280,73 +416,92 @@ function renderHistory() {
   if (S.turns) {
     const practiced = [...new Set(S.turns.filter((t) => t.role !== "user").map((t) => /(?:usually say|we say|you can say),?\s*["“]([^"”]{2,120})["”]/i.exec(t.text)?.[1]).filter(Boolean))];
     return `<div class="list">
-      <button class="link" data-act="closeSession">← 목록으로</button>
+      <div class="subhead"><button class="iconbtn" data-act="closeSession" aria-label="목록으로">${I("arrow_back")}</button><b>대화 보기</b></div>
       ${practiced.length ? `<div class="card lilac"><div class="accent small b">이 대화에서 연습한 표현</div>${practiced.map((p) => `<p class="b">“${esc(p)}”</p>`).join("")}</div>` : ""}
       ${S.turns.map((t, i) => `<div class="bubble ${t.role === "user" ? "me" : ""}">${esc(t.text)}</div>
-        ${t.role !== "user" ? `<button class="link tiny" data-act="report" data-v="${i}">문제 알리기</button>` : ""}`).join("")}
+        ${t.role !== "user" ? `<button class="report-link" data-act="report" data-v="${i}">문제 알리기</button>` : ""}`).join("")}
     </div>`;
   }
   return `<div class="list">
-    ${S.sessions.length ? `<div class="right"><button class="link danger" data-act="deleteAll">전부 지우기</button></div>` : `<div class="empty"><img src="img/char_${byId(S.profile?.character).id}.webp" alt=""><b>아직 저장된 대화가 없어요</b><span class="muted">친구와 이야기하면 여기에 남아요</span></div>`}
-    ${S.sessions.map((s) => `<div class="card row">
-      <button class="grow left" data-act="openSession" data-v="${s.id}"><b>${esc(S.previews[s.id] ?? "(내가 한 말 없음)")}</b><span class="muted small">${niceDate(s.started_at)}</span></button>
-      <button class="icon" data-act="deleteSession" data-v="${s.id}" aria-label="지우기">🗑</button></div>`).join("")}
+    ${S.sessions.length ? `<div class="right"><button class="link danger small" data-act="deleteAll">전부 지우기</button></div>` : `<div class="empty"><img src="img/char_${byId(S.profile?.character).id}.webp" alt=""><b>아직 저장된 대화가 없어요</b><span class="muted">친구와 이야기하면 여기에 남아요</span></div>`}
+    ${S.sessions.map((s) => `<div class="card row hist">
+      <button class="grow left hist-open" data-act="openSession" data-v="${s.id}"><span class="badge">${I("chat_bubble")}</span>
+        <span class="hist-text"><b>${esc(S.previews[s.id] ?? "(내가 한 말 없음)")}</b><span class="muted small">${niceDate(s.started_at)}</span></span></button>
+      <button class="iconbtn" data-act="deleteSession" data-v="${s.id}" aria-label="지우기">${I("delete_outline")}</button></div>`).join("")}
   </div>`;
 }
 
 async function loadHistory() {
-  try { [S.sessions, S.previews] = await Promise.all([api.sessions(), api.firstLines()]); } catch (e) { S.error = api.errText(e); }
+  try { const [ss, pv] = await Promise.all([api.sessions(), api.firstLines()]); S.sessions = ss.filter((x) => x.preset_id !== "kids-demo"); S.previews = pv; } catch (e) { S.error = api.errText(e); }
   render();
 }
 
 // ---------------- 설정 ----------------
-function section(key, title, summary, body) {
+function section(key, title, summary, icon, body) {
   const open = S.open === key;
   return `<div class="card section ${open ? "open" : ""}">
-    <button class="sec-head" data-act="section" data-v="${key}"><b>${title}</b><span class="muted small">${esc(summary)}</span><i>›</i></button>
+    <button class="sec-head" data-act="section" data-v="${key}"><span class="badge">${I(icon)}</span>
+      <span class="sec-t"><b>${title}</b>${summary ? `<span class="muted small">${esc(summary)}</span>` : ""}</span>${I("chevron_right", "chev")}</button>
     ${open ? `<div class="sec-body">${body}</div>` : ""}</div>`;
+}
+const toggle = (id, on) => `<label class="switch"><input type="checkbox" id="${id}" ${on ? "checked" : ""}><i></i></label>`;
+
+function notifyBody() {
+  const r = S.reminder ?? { on: false, hour: 20, minute: 0 };
+  const why = push.blocker();
+  const note = why === "ios_install"
+    ? `<div class="note">아이폰은 Safari 아래쪽 <b>공유 버튼</b>을 누르고 <b>‘홈 화면에 추가’</b>로 bilody를 설치한 뒤, 홈 화면의 bilody를 열어 알림을 켜 주세요. 애플 정책상 설치한 웹앱만 알림을 받을 수 있어요(iOS 16.4 이상).</div>`
+    : why === "denied" ? `<div class="note">이 기기에서 bilody 알림이 막혀 있어요. 휴대폰 설정에서 알림을 허용한 뒤 다시 켜 주세요.</div>`
+    : why === "unsupported" ? `<div class="note">이 브라우저에서는 알림을 받을 수 없어요. 아이폰은 Safari, 안드로이드는 Chrome을 써 주세요.</div>` : "";
+  return `<div class="row top"><span class="grow muted small">정한 시간에 하루 한 번 알림이 떠요. 오늘 5분을 채운 날에는 알림이 뜨지 않고, 이틀 넘게 쉬면 2·4·7일째에만 떠요.</span>
+      ${why ? "" : toggle("remOn", r.on)}</div>
+    ${note}
+    ${why ? "" : `<button class="link" data-act="notifyTime">알림 시간 ${hhmm(r.hour, r.minute)} 바꾸기</button>`}`;
 }
 
 function renderSettings() {
   const p = S.profile ?? {}; const c = byId(p.character);
   const speed = pref.get("speed", 1), vol = pref.get("volume", 1), subs = pref.get("subtitles", false);
   const days = p.transcript_days ?? 30; const memOn = p.memory_enabled !== false;
+  const r = S.reminder;
+  const fname = p.friend_name ?? c.en;
   return `<div class="list">
-    ${section("friend", "친구", `${c.ko} · 이름 ${p.friend_name ?? c.en} · 속도 ${speed.toFixed(1)}배`, `
+    ${section("friend", "친구", `${c.ko} · 이름 ${fname} · 속도 ${speed.toFixed(1)}배`, "face", `
       <p class="muted small">함께 이야기할 친구를 골라요. 친구마다 성격과 목소리가 달라요. 바꿔도 기억과 대화 기록은 그대로예요.</p>
       ${charPicker(c.id)}
       <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview">▶ 목소리 듣기</button></div>
-      <div class="row"><input id="fname" maxlength="8" value="${esc(p.friend_name ?? c.en)}"><button class="link" data-act="renameFriend">저장</button></div>
+      <div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
       <p class="muted tiny">한글이나 영어로 1~8자. 이름을 바꿔도 성격과 목소리는 그대로예요.</p>
-      <hr><b>말 속도 <span id="speedV">${speed.toFixed(1)}</span>배</b>
+      ${fname !== c.en ? `<button class="link" data-act="resetFriend">원래 이름(${esc(c.en)})으로</button>` : ""}
+      <hr><b class="h">말 속도  <span id="speedV">${speed.toFixed(1)}</span>배</b>
       <p class="muted small">1.0배가 보통 원어민 대화 속도예요. 바꾸면 다음 문장부터 적용돼요.</p>
-      <input type="range" id="speed" min="0.7" max="1.2" step="0.1" value="${speed}">
-      <b>목소리 크기</b><input type="range" id="volume" min="0.2" max="1" step="0.05" value="${vol}">`)}
-    ${section("subs", "자막", subs ? "켜짐" : "꺼짐", `
-      <label class="switch-row"><span>대화 중 자막<br><span class="muted small">켜면 나와 친구의 말이 대화 화면에 글자로 나와요. 꺼도 기록에는 남고, 따라 말하기 카드는 그대로 보여요.</span></span>
-      <input type="checkbox" id="subs" ${subs ? "checked" : ""}></label>`)}
-    ${section("memory", "기억", `${memOn ? "켜짐" : "꺼짐"} · ${S.memories.length}개`, `
-      <label class="switch-row"><span class="muted small">내가 직접 말한 사실만 대화가 끝날 때 기억해요. 끄면 기억을 새로 만들거나 대화에 쓰지 않아요(지우지는 않아요).</span>
-      <input type="checkbox" id="memOn" ${memOn ? "checked" : ""}></label>
+      <input type="range" id="speed" min="0.7" max="1.5" step="0.1" value="${speed}">
+      <b class="h">목소리 크기</b><input type="range" id="volume" min="0.2" max="1" step="0.05" value="${vol}">`)}
+    ${section("subs", "자막", subs ? "켜짐" : "꺼짐", "subtitles", `
+      <div class="row top"><span class="grow"><b class="h">대화 중 자막</b><br><span class="muted small">켜면 나와 친구의 말이 대화 화면에 글자로 나와요. 꺼도 기록에는 남고, 따라 말하기·쉽게 다시 말하기 카드는 그대로 보여요.</span></span>
+      ${toggle("subs", subs)}</div>`)}
+    ${section("memory", "기억", `${memOn ? "켜짐" : "꺼짐"} · ${S.memories.length}개`, "psychology", `
+      <div class="row top"><span class="grow muted small">내가 직접 말한 사실만 대화가 끝날 때 기억해요. 끄면 기억을 새로 만들거나 대화에 쓰지 않아요(지우지는 않아요).</span>
+      ${toggle("memOn", memOn)}</div>
       ${S.memories.length ? S.memories.map((m) => `<div class="row"><span class="grow small">${esc(m.text)}</span><button class="link tiny" data-act="editMem" data-v="${m.id}">고치기</button><button class="link tiny" data-act="delMem" data-v="${m.id}">지우기</button></div>`).join("") : `<p class="small">아직 기억한 것이 없어요.</p>`}`)}
-    ${section("records", "대화 기록 보관", days === 0 ? "저장 안 함" : `${days}일`, `
+    ${section("records", "대화 기록 보관", days === 0 ? "저장 안 함" : `${days}일`, "description", `
       <p class="muted small">기간이 지난 대화 기록은 자동으로 지워져요. ‘저장 안 함’이면 새 대화를 기록하지 않고, 기억도 새로 만들지 않아요.</p>
-      <div class="seg">${[[30, "30일"], [7, "7일"], [0, "저장 안 함"]].map(([d, l]) => `<button data-act="days" data-v="${d}" class="${days === d ? "on" : ""}">${l}</button>`).join("")}</div>`)}
-    ${section("league", "순위", p.league_opt_in !== false ? "참여" : "참여 안 함", `
-      <label class="switch-row"><span>이번 주 순위에 나오기<br><span class="muted small">다른 사람에게는 이름 첫 글자만 보여요.</span></span>
-      <input type="checkbox" id="league" ${p.league_opt_in !== false ? "checked" : ""}></label>`)}
-    ${section("account", "계정", `내 이름 ${p.my_name ?? ""}`, `
+      <div class="radios">${[[30, "30일"], [7, "7일"], [0, "저장 안 함"]].map(([d, l]) => `<button class="radio-btn ${days === d ? "on" : ""}" data-act="days" data-v="${d}"><i></i>${l}</button>`).join("")}</div>`)}
+    ${section("notify", "알림", r?.on ? `매일 ${hhmm(r.hour, r.minute)}` : "꺼짐", "notifications", notifyBody())}
+    ${section("league", "순위", p.league_opt_in !== false ? "참여" : "참여 안 함", "emoji_events", `
+      <div class="row top"><span class="grow"><b class="h">이번 주 순위에 나오기</b><br><span class="muted small">다른 사람에게는 이름 첫 글자만 보여요.</span></span>
+      ${toggle("league", p.league_opt_in !== false)}</div>`)}
+    ${section("account", "계정", `내 이름 ${p.my_name ?? ""}`, "account_circle", `
       <p class="muted small">친구가 나를 부르는 이름이에요. 영어 글자로 써 주세요.</p>
-      <div class="row"><input id="myname" maxlength="20" value="${esc(p.my_name ?? "")}"><button class="link" data-act="renameMe">저장</button></div>
+      <div class="row">${field("myname", "내 이름", `maxlength="20"`, p.my_name ?? "")}<button class="link" data-act="renameMe">저장</button></div>
       <button class="link" data-act="signOut">로그아웃</button><br>
       <button class="link danger" data-act="deleteAccount">탈퇴하기</button>`)}
-    ${section("help", "도움말", "사용 안내 · 문의하기", `
+    ${section("help", "도움말", "사용 안내 · 문의하기", "support_agent", `
       <button class="link" data-act="guide">사용 안내 보기</button><br>
       <button class="link" data-act="inquiry">문의하기</button><br>
       <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button>
-      <p class="muted tiny">앱을 쓸 수 없을 때는 초대해 준 운영자에게 연락해 주세요(삭제 요청 포함).</p>
-      <p class="muted tiny">웹 시험판에는 알림과 동화 듣기가 아직 없어요.</p>`)}
-    <p class="muted tiny center-text">bilody ${VERSION} · 비공개 시험판</p>
+      <p class="muted tiny">앱을 쓸 수 없을 때는 초대해 준 운영자에게 연락해 주세요(삭제 요청 포함).</p>`)}
+    <p class="version">bilody ${VERSION} · 비공개 시험판</p>
   </div>`;
 }
 
@@ -357,8 +512,8 @@ function renderDialog() {
   if (d.kind === "confirm") return box(`<h2>${esc(d.title)}</h2><p>${esc(d.text ?? "")}</p>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link ${d.danger ? "danger" : ""}" data-act="confirmYes">${esc(d.yes)}</button></div>`);
   if (d.kind === "guide") return `<div class="overlay full"><div class="guide-page">
-    <div class="row"><button class="link" data-act="closeDialog">← 닫기</button><b class="grow">사용 안내</b></div>
-    ${GUIDE.map((g, i) => `<details class="card" ${i === 0 ? "open" : ""}><summary><b>${esc(g.title)}</b></summary><p>${esc(g.intro)}</p>
+    <div class="subhead"><button class="iconbtn" data-act="closeDialog" aria-label="닫기">${I("arrow_back")}</button><b>사용 안내</b></div>
+    ${GUIDE.map((g, i) => `<details class="card" ${i === 0 ? "open" : ""}><summary><b>${esc(g.title)}</b>${I("chevron_right", "chev")}</summary><p>${esc(g.intro)}</p>
       ${g.items.map(([k, v]) => `<p><b class="accent">${esc(k)}</b><br>${esc(v)}</p>`).join("")}</details>`).join("")}</div></div>`;
   if (d.kind === "inquiry") return box(`<h2>문의하기</h2>
     ${[["question", "사용 방법"], ["bug", "오류·불편"], ["idea", "의견"], ["delete", "데이터 삭제 요청"]].map(([v, l], i) => `<label class="radio"><input type="radio" name="cat" value="${v}" ${i === 0 ? "checked" : ""}> ${l}</label>`).join("")}
@@ -376,7 +531,7 @@ function renderDialog() {
     ${d.rows.length ? d.rows.map((r) => `<div class="row board ${r.me ? "me" : ""}"><span class="rank">${["🥇", "🥈", "🥉"][r.rank - 1] ?? r.rank}</span><i class="dot" style="background:${dotColor(r.color)}"></i><span class="grow">${esc(r.name)}${r.me ? " (나)" : ""}</span><b>${r.points}점</b></div>`).join("") : `<p>아직 이번 주 기록이 없어요. 오늘 5분이면 바로 올라가요!</p>`}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "photoPick") return box(`<h2>사진 보여 주기</h2><p class="muted small">보여 준 사진은 저장하지 않아요. 사람 얼굴보다 물건이 잘 맞아요.</p>
-    <button class="pill primary" data-act="camera">📷 사진 찍기</button><button class="pill secondary" data-act="gallery">🖼 앨범에서 고르기</button>
+    <button class="pill primary" data-act="camera">${I("photo_camera")}사진 찍기</button><button class="pill secondary" data-act="gallery">${I("photo_library")}앨범에서 고르기</button>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button></div>`);
   if (d.kind === "report") return box(`<h2>이 답변의 문제 알리기</h2><p class="small">아래 문장만 운영자에게 보내져요. 다른 대화는 보내지 않아요.</p>
     ${d.lines.map((l) => `<p class="quote">${l.role === "user" ? "나" : "친구"}: ${esc(l.text)}</p>`).join("")}
@@ -384,6 +539,24 @@ function renderDialog() {
     <textarea id="rnote" rows="2" placeholder="덧붙일 말(선택)"></textarea>
     <label class="radio"><input type="checkbox" id="ragree"> 위 문장을 운영자에게 보내는 데 동의해요</label>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link" data-act="sendReport">보내기</button></div>`);
+  if (d.kind === "notifyTime") return box(`<h2>알림 시간</h2><p class="muted small">정한 시간에 하루 한 번 알림이 떠요. 오늘 5분을 채운 날에는 뜨지 않아요.</p>
+    ${push.blocker() === "ios_install" ? `<div class="note">아이폰은 Safari 아래쪽 <b>공유 버튼</b> → <b>‘홈 화면에 추가’</b>로 bilody를 설치한 뒤, 홈 화면의 bilody에서 알림을 켜 주세요(애플 정책).</div>`
+      : `<input type="time" id="remTime" class="time" value="${hhmm(d.hour, d.minute)}">`}
+    <div class="row end"><button class="link" data-act="closeDialog">취소</button>${push.blocker() === "ios_install" ? "" : `<button class="link" data-act="saveTime">확인</button>`}</div>`);
+  if (d.kind === "storyPick") {
+    const lib = d.lib; const pos = story.loadPosition(); const rb = pos && lib.stories.find((b) => b.id === pos.id);
+    return box(`<h2>동화 듣기 시연 · ${lib.stories.length}권</h2>
+      <p class="warn small">⚠ 어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 동화로 이어집니다.</p>
+      <button class="pill dark" data-act="storyStart" data-v="resume">${rb ? `▶ 이어 듣기: ${esc(rb.titleKo)} (처음부터)` : "▶ 처음부터 듣기"}</button>
+      <div class="book-list">${lib.stories.map((b) => `<button class="book" data-act="storyStart" data-v="${b.id}">
+        ${story.thumbUrl(b.id) ? `<img src="${story.thumbUrl(b.id)}" alt="">` : ""}
+        <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>`).join("")}</div>
+      <div class="row end"><button class="link" data-act="closeDialog">닫기</button><button class="link" data-act="credits">그림 출처</button></div>`);
+  }
+  if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
+    <p class="muted small">단어 그림 대부분은 Microsoft Fluent Emoji(3D)를 썼어요. Copyright (c) Microsoft Corporation, MIT License — github.com/microsoft/fluentui-emoji. 배경 카드를 더하고 빨간 모자는 색을 바꿨어요. 벌집·탁자·베개·그네·모래성·풀 그림은 bilody가 직접 그렸어요.</p>
+    ${(d.lib.photoCredits ?? []).map((c) => `<p class="tiny">${esc(c.word)} · ${esc(c.title)}${c.creator ? ` · ${esc(c.creator)}` : ""} · ${esc(c.license)} · ${esc(c.url)}</p>`).join("")}
+    <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   return "";
 }
 
@@ -429,6 +602,7 @@ app.addEventListener("click", async (e) => {
     }
     case "tab": {
       if (v === "history" && S.chat) await endChat();
+      if (v === "history" && S.story) await endStory();
       S.tab = v; S.error = null; S.turns = null; render();
       if (v === "history") loadHistory();
       if (v === "settings") { try { S.memories = await api.memories(); } catch { /* */ } render(); }
@@ -437,10 +611,42 @@ app.addEventListener("click", async (e) => {
     case "guideSeen": pref.set("guideSeen", true); render(); break;
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
+    // ---- 동화 듣기 ----
+    case "storyPick": {
+      try { const lib = await story.loadLib(); S.dialog = { kind: "storyPick", lib }; render(); await story.loadCommon(); if (S.dialog?.kind === "storyPick") render(); }
+      catch { toast("동화 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."); }
+      break;
+    }
+    case "credits": S.dialog = { kind: "credits", lib: await story.loadLib() }; render(); break;
+    case "storyStart": await startStory(v); break;
+    case "storyTap": {
+      const st = S.story; if (!st) break;
+      el.querySelector("span")?.classList.add("shown");     // 누른 단어는 이름이 보인다
+      if (st.ui.image && !st.quizActive) zoomWord(v, el);
+      st.tapPicture(v); break;
+    }
+    case "zoomClose": $("#zoom").innerHTML = ""; break;
+    case "storyPause": S.story?.pause(); break;
+    case "storyResume": S.story?.resume(); break;
+    case "storyExit": await endStory(); break;
+    // ---- 알림 ----
+    case "notifyTime": { const r = S.reminder ?? { hour: 20, minute: 0 }; S.dialog = { kind: "notifyTime", hour: r.hour, minute: r.minute }; render(); break; }
+    case "saveTime": {
+      const [h, m] = ($("#remTime")?.value || "20:00").split(":").map(Number);
+      S.dialog = null;
+      try { await push.enable(h, m); S.reminder = { on: true, hour: h, minute: m }; pref.set("remHour", h); pref.set("remMinute", m); toast(`매일 ${hhmm(h, m)}에 알림이 떠요.`); }
+      catch (err) { toast(api.errText(err)); }
+      render(); break;
+    }
+    case "resetFriend": {
+      const c = byId(p.character);
+      await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: p.color, character: p.character }); S.profile = await api.loadProfile(); });
+      toast("저장했어요."); break;
+    }
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
     case "exit": await endChat(); break;
-    case "send": { const i = $("#say"); S.chat?.sendText(i.value); i.value = ""; break; }
+    case "send": { const i = $("#say"); if (!i.value.trim()) break; S.chat?.sendText(i.value); i.value = ""; el.disabled = true; break; }
     case "dismissCard": S.chat?.dismissCard(); break;
     case "clearPhoto": S.chat?.clearPhoto(); break;
     case "photo": S.dialog = { kind: "photoPick" }; render(); break;
@@ -479,7 +685,7 @@ app.addEventListener("click", async (e) => {
     case "editMem": S.dialog = { kind: "editMem", id: v, text: S.memories.find((m) => String(m.id) === v)?.text ?? "" }; render(); break;
     case "saveMem": { const t = $("#memText").value.trim(); const id = S.dialog.id; S.dialog = null; if (t) await work(async () => { await api.updateMemory(id, t); S.memories = await api.memories(); }); break; }
     case "delMem": await work(async () => { await api.deleteMemory(v); S.memories = await api.memories(); }); break;
-    case "signOut": if (S.chat) await endChat(); api.signOut(); S.profile = null; S.stage = "auth"; render(); break;
+    case "signOut": if (S.chat) await endChat(); if (S.story) await endStory(); api.signOut(); S.profile = null; S.stage = "auth"; render(); break;
     case "deleteAccount": confirm("정말 탈퇴할까요?", "계정과 모든 대화 기록·기억·작동 기록이 지워지고 되돌릴 수 없어요. 외부 AI 업체 쪽에 남은 처리 기록은 업체의 보관 기간이 지나면 지워져요.", "탈퇴", async () => { await work(async () => { await api.deleteAccount(); S.stage = "auth"; }); }, true); break;
     case "guide": S.dialog = { kind: "guide" }; render(); break;
     case "openCheckin": { const sid = (await api.sessions().catch(() => []))[0]?.id ?? null; S.dialog = { kind: "checkin", sid, rating: 0 }; render(); break; }
@@ -513,6 +719,14 @@ app.addEventListener("change", async (e) => {
   if (t.id === "volume") { pref.set("volume", Number(t.value)); player.setVolume(Number(t.value)); }
   if (t.id === "subs") { pref.set("subtitles", t.checked); render(); }
   if (t.id === "memOn") await work(async () => { await api.patchProfile({ memory_enabled: t.checked }); S.profile = await api.loadProfile(); });
+  if (t.id === "remOn") {
+    const r = S.reminder ?? { hour: 20, minute: 0 };
+    try {
+      if (t.checked) { await push.enable(r.hour, r.minute); S.reminder = { on: true, hour: r.hour, minute: r.minute }; toast(`매일 ${hhmm(r.hour, r.minute)}에 알림이 떠요.`); }
+      else { await push.disable(); S.reminder = { ...r, on: false }; }
+    } catch (err) { toast(api.errText(err)); }
+    render();
+  }
   if (t.id === "league") await work(async () => { await api.patchProfile({ league_opt_in: t.checked }); S.profile = await api.loadProfile(); });
   if (t.id === "camera" || t.id === "gallery") {
     const f = t.files?.[0]; t.value = "";
@@ -522,11 +736,23 @@ app.addEventListener("change", async (e) => {
   }
   void p;
 });
-app.addEventListener("input", (e) => { if (e.target.id === "speed") { const s = $("#speedV"); if (s) s.textContent = Number(e.target.value).toFixed(1); } });
-app.addEventListener("keydown", (e) => { if (e.target.id === "say" && e.key === "Enter") { S.chat?.sendText(e.target.value); e.target.value = ""; } });
+app.addEventListener("input", (e) => {
+  if (e.target.id === "speed") { const s = $("#speedV"); if (s) s.textContent = Number(e.target.value).toFixed(1); }
+  if (e.target.id === "say") { const b = $("[data-act=send]"); if (b) b.disabled = !e.target.value.trim(); }
+});
+// 동화: 옆으로 밀면 쪽 넘기기(왼쪽으로 밀면 다음 쪽, 오른쪽으로 밀면 앞 쪽)
+let swipeX = null;
+app.addEventListener("touchstart", (e) => { swipeX = e.target.closest("#stMain") ? e.touches[0].clientX : null; }, { passive: true });
+app.addEventListener("touchend", (e) => {
+  if (swipeX == null || !S.story) return;
+  const dx = e.changedTouches[0].clientX - swipeX; swipeX = null;
+  if (dx < -60) S.story.turnPage(1); else if (dx > 60) S.story.turnPage(-1);
+}, { passive: true });
+app.addEventListener("keydown", (e) => { if (e.target.id === "say" && e.key === "Enter" && e.target.value.trim()) { S.chat?.sendText(e.target.value); e.target.value = ""; const b = $("[data-act=send]"); if (b) b.disabled = true; } });
 
 // 다른 앱으로 나가면 대화와 마이크를 멈춘다(사진 고르러 간 경우는 제외). 돌아와도 저절로 말하지 않는다.
-document.addEventListener("visibilitychange", () => { if (document.hidden) S.chat?.pauseForBackground(); });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { S.chat?.pauseForBackground(); if (S.story && S.story.ui.state !== "stopped") S.story.pause(); } });
 window.addEventListener("focus", () => { setTimeout(() => { if (S.chat?.cameraHold) S.chat.holdForCamera(false); }, 1500); });
 
+push.register();
 refresh();

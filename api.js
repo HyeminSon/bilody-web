@@ -152,6 +152,21 @@ export async function saveCheckin(sessionId, rating, issues, note) {
   if (sessionId) o.session_id = sessionId; if (note && note.trim()) o.note = note.trim().slice(0, 500);
   await rest("daily_checkins", { method: "POST", body: o, prefer: "return=minimal" });
 }
+/** 이 계정이 쓸 수 있는 대화 방식(동화 듣기 'kids-demo'가 있으면 동화 듣기 버튼이 보인다). */
+export const presets = async () => { try { return await rest("model_presets?select=id,label,structure,sort&order=sort.asc"); } catch { return []; } };
+
+// ---------- 웹 알림(0.7.8) ----------
+export async function pushKey() {
+  const res = await call(`${SUPABASE_URL}/functions/v1/send-reminders`, { method: "POST", headers: { apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ action: "key" }) });
+  if (!res.ok) throw new ApiError(await errorCode(res), res.status);
+  return (await res.json()).publicKey;
+}
+export const pushSub = (endpoint) => rest(`push_subs?endpoint=eq.${encodeURIComponent(endpoint)}&select=enabled,hour,minute`);
+export async function savePushSub(o) {
+  await rest("push_subs?on_conflict=endpoint", { method: "POST", body: { ...o, user_id: userId(), last_sent_date: null, updated_at: new Date().toISOString() }, prefer: "resolution=merge-duplicates,return=minimal" });
+}
+export const updatePushSub = (endpoint, fields) => rest(`push_subs?endpoint=eq.${encodeURIComponent(endpoint)}`, { method: "PATCH", body: fields, prefer: "return=minimal" });
+
 export async function deleteAccount() { await fn("delete-account", {}); saveTokens(null); }
 
 export function errText(e) {
@@ -159,6 +174,7 @@ export function errText(e) {
   return ({
     wrong_login: "이메일이나 비밀번호가 맞지 않아요.", network: "인터넷 연결을 확인해 주세요.", session_expired: "다시 로그인해 주세요.",
     invite_invalid: "초대 코드가 맞지 않거나 이미 쓴 코드예요.", weak_password: "비밀번호는 8자 이상으로 해 주세요.", invalid_input: "입력한 내용을 다시 확인해 주세요.",
-    email_taken: "이미 가입한 이메일이에요. 로그인해 주세요.", daily_limit: "오늘 대화 시간을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요.",
+    email_taken: "이미 가입한 이메일이에요. 로그인해 주세요.",
+    notif_denied: "알림이 허용되지 않았어요. 휴대폰 설정에서 bilody 알림을 허용해 주세요.", notif_unsupported: "이 브라우저에서는 알림을 받을 수 없어요.", daily_limit: "오늘 대화 시간을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요.",
   })[c] ?? `문제가 생겼어요. (${c})`;
 }
