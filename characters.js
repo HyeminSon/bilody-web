@@ -16,3 +16,17 @@ export function animSrc(id, state) {
   const s = state === "listening" ? "listen" : state === "speaking" ? "speak" : state === "stopped" || state === "disconnected" ? "pause" : "idle";
   return `anim/${byId(id).anim}_${s}.webp`;
 }
+
+/** 이름 뒤 조사(은/는, 이/가, 과/와)를 받침에 맞춰 고른다. 영어 이름은 소리로 어림(l·m·n·ng로 끝나면 받침). 앱 Josa.kt와 같음. */
+export function hasBatchim(word) {
+  const w = String(word ?? "").trim().replace(/[!.?~\s]+$/, ""); const c = w.slice(-1);
+  if (!c) return false;
+  const code = c.charCodeAt(0);
+  if (code >= 0xAC00 && code <= 0xD7A3) return (code - 0xAC00) % 28 !== 0;
+  const l = w.toLowerCase();
+  return l.endsWith("ng") || "lmn".includes(l.slice(-1));
+}
+export const josa = (w, withB, without) => w + (hasBatchim(w) ? withB : without);
+export const eunNeun = (w) => josa(w, "은", "는");
+export const iGa = (w) => josa(w, "이", "가");
+export const gwaWa = (w) => josa(w, "과", "와");

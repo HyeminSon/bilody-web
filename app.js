@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.1";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.1";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc } from "./characters.js?v=0.2.1";
-import { GUIDE } from "./guide.js?v=0.2.1";
-import { Player } from "./audio.js?v=0.2.1";
-import { Chat } from "./rt.js?v=0.2.1";
-import * as story from "./story.js?v=0.2.1";
-import * as push from "./push.js?v=0.2.1";
+import * as api from "./api.js?v=0.2.2";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.2";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.2";
+import { GUIDE } from "./guide.js?v=0.2.2";
+import { Player } from "./audio.js?v=0.2.2";
+import { Chat } from "./rt.js?v=0.2.2";
+import * as story from "./story.js?v=0.2.2";
+import * as push from "./push.js?v=0.2.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -159,25 +159,23 @@ function renderChat() {
   const home = !chat ? `
     <div class="streak card">
       <div class="ring" style="--p:${Math.min(1, (pr?.today_seconds ?? 0) / 300)}"><span>${(pr?.streak ?? 0) > 0 ? "🔥" : "🌱"}</span></div>
-      <div class="grow"><b>${fname}와 ${(pr?.streak ?? 0) > 0 ? `${pr.streak}일째` : "첫날"}</b>
+      <div class="grow"><b>${gwaWa(fname)} ${(pr?.streak ?? 0) > 0 ? `${pr.streak}일째` : "첫날"}</b>
         <div class="muted small">${pr?.done_today ? "오늘 5분 완료! ✨" : `오늘 ${Math.floor((pr?.today_seconds ?? 0) / 60)}분 · 목표 5분`}</div></div>
       <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>이번 주 🏆</span></button>
     </div>
     <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>` : "";
   const guide = !chat && !pref.get("guideSeen", false) ? `<div class="card guide"><b>이렇게 이야기해요</b><ul>
-      <li>‘대화 시작’을 누르면 징글이 끝나고 ${fname}가 먼저 인사해요.</li>
-      <li>빨간 ‘마이크 켜짐’일 때 편하게 말하면 돼요. 한국어가 섞여도, 짧게 답해도 괜찮아요.</li>
-      <li>친구가 말하는 중에 말하면 친구가 멈추고 들어요. 생각할 시간이 필요하면 “Wait”라고 해 보세요.</li>
-      <li>틀린 표현은 친구가 고쳐 주고 따라 말해 보게 해요.</li>
-      <li>‘일시정지’를 누르면 소리와 마이크가 바로 꺼져요. 한동안 대답이 없으면 잠시 멈춰요.</li>
-      <li>곁에 아이나 가족이 있으면 일시정지해 주세요. 주변 목소리도 함께 보내질 수 있어요.</li>
+      <li>‘대화 시작’을 누르면 ${iGa(fname)} 먼저 인사해요.</li>
+      <li>마이크가 빨갛게 켜지면 편하게 말하세요. 짧게 말해도, 한국어를 섞어도 괜찮아요.</li>
+      <li>${iGa(fname)} 말하는 도중에 말해도 돼요. 하던 말을 멈추고 들어 줘요. 생각할 시간이 필요하면 “Wait”라고 말해 보세요.</li>
+      <li>어색한 표현은 ${iGa(fname)} 자연스럽게 바꿔 알려 줘요. 한 번 따라 말해 보세요.</li>
       ${push.isIOS() ? "<li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li>" : ""}</ul>
       <div class="right"><button class="link" data-act="guideSeen">알겠어요</button></div></div>` : "";
   return `<div class="chat">
     <div class="chat-top">${home}
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
       <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
-      <p class="ai-note">${fname}는 AI 친구예요 · 대답과 목소리는 AI가 만들어요</p>
+      <p class="ai-note">${eunNeun(fname)} AI 친구예요 · 대답과 목소리는 AI가 만들어요</p>
       <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
@@ -221,7 +219,7 @@ function updateChat() {
     const pics = card && !card.practice ? cardPics(card.text) : [];
     const fn = esc(S.profile?.friend_name ?? "친구");
     $("#card").innerHTML = card ? `<div class="card help enter" data-act="dismissCard">
-      <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${fn}가 쉽게 다시 말했어요` : `${fn}가 다시 말했어요`}</div>
+      <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${iGa(fn)} 쉽게 다시 말했어요` : `${iGa(fn)} 다시 말했어요`}</div>
       <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div>
       ${pics.length ? `<div class="help-pics">${pics.map((x) => `<img src="${story.picUrl(x)}" alt="${esc(x)}">`).join("")}</div>` : ""}</div>` : "";
   }
