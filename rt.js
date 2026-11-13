@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.7";
-import { PRESET } from "./config.js?v=0.2.7";
-import { takeSentences, decideCard, confused } from "./text.js?v=0.2.7";
+import * as api from "./api.js?v=0.2.8";
+import { PRESET } from "./config.js?v=0.2.8";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.2.8";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -144,7 +144,7 @@ export class Chat {
           return;
         }
         this.startedDuringPlayback = false;
-        if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; }
+        if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
         break;
       }
       case "response.created": {
@@ -373,12 +373,23 @@ export class Chat {
 
   // ---------------- 도움 카드·자막 ----------------
   updateCard(reply) {
-    const d = decideCard(reply, this.practiceTarget, this.helpWanted); if (!d) return;
+    let d = decideCard(reply, this.practiceTarget, this.helpWanted); if (!d) return;
+    if (this.showTextWanted) {
+      // 글로 보여 달라고 한 뒤의 대답: 따옴표 문장(없으면 지금 연습 중인 문장)을 바로 카드로
+      this.showTextWanted = false;
+      const q = lastQuote(reply) ?? this.practiceTarget;
+      if (q) d = { card: { practice: true, text: q }, target: q };
+    }
     this.practiceTarget = d.target; this.helpWanted = false;
     if (d.card || this.ui.card) this.set({ card: d.card });
     if (d.card) this.log("help_card", { kind: d.card.chunk ? "chunk" : d.card.practice ? "practice" : "rephrase" });
   }
   dismissCard() { this.set({ card: null }); }
+  noteTextAsk(t) {
+    if (this.story || !wantsText(t)) return;
+    this.showTextWanted = true;
+    if (this.practiceTarget) { this.set({ card: { practice: true, text: this.practiceTarget } }); this.log("help_card", { kind: "asked" }); }
+  }
 
   addLine(role, text, pending = false) { this.set({ lines: [...this.ui.lines, { role, text, pending }].slice(-60) }); }
   appendAssistant(text) {
@@ -405,7 +416,7 @@ export class Chat {
     this.send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: t }] } });
     this.send({ type: "response.create" });
     this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true;
-    this.learnerTurns = (this.learnerTurns ?? 0) + 1;
+    this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t);
     this.tSpeechStopped = Date.now();
     this.set({ state: "thinking" });
   }
