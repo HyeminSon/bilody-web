@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.2";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.2";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.2";
-import { GUIDE } from "./guide.js?v=0.8.2";
-import { Player } from "./audio.js?v=0.8.2";
-import { Chat } from "./rt.js?v=0.8.2";
-import * as story from "./story.js?v=0.8.2";
-import * as push from "./push.js?v=0.8.2";
+import * as api from "./api.js?v=0.8.3";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.3";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.3";
+import { GUIDE } from "./guide.js?v=0.8.3";
+import { Player } from "./audio.js?v=0.8.3";
+import { Chat } from "./rt.js?v=0.8.3";
+import * as story from "./story.js?v=0.8.3";
+import * as push from "./push.js?v=0.8.3";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -398,7 +398,9 @@ const POST_Q = [
   { id: "chatgpt", t: "ChatGPT 음성 대화로 영어 연습을 해 본 적이 있나요?", type: "one", o: [["often", "자주 해요"], ["some", "몇 번 해 봤어요"], ["never", "해 본 적 없어요"]] },
   { id: "vs_chatgpt", t: "해 봤다면, bilody와 비교하면 어때요?", type: "one", o: [["bilody", "bilody가 더 좋아요"], ["same", "비슷해요"], ["chatgpt", "ChatGPT가 더 좋아요"], ["na", "해 본 적 없어요"]], note: "vs_note", ph: "무엇이 더 좋았고 무엇이 아쉬웠는지 한 줄로 (선택)" },
   { id: "continue", t: "정식으로 나오면 계속 쓸 것 같아요?", type: "one", o: [["yes", "꼭 쓸래요"], ["maybe", "아마 쓸 것 같아요"], ["unsure", "잘 모르겠어요"], ["no", "안 쓸 것 같아요"]] },
-  { id: "price", t: "돈을 낸다면 한 달에 얼마까지 낼 수 있어요?", type: "one", o: [["0", "무료일 때만 쓸래요"], ["5000", "5천 원까지"], ["10000", "1만 원까지"], ["20000", "2만 원까지"], ["20000+", "2만 원보다 더"]] },
+  // 11/13 17:35 실장님: 값은 하루·한 달 이용 한도에 따라 달라짐 → 먼저 원하는 시간을 묻고, 그 시간 기준으로 값을 묻는다
+  { id: "usage", t: "정식으로 나오면 하루에 얼마나 쓰고 싶어요?", type: "one", o: [["10", "10분쯤"], ["20", "20분쯤"], ["30", "30분쯤"], ["60", "1시간쯤"], ["60+", "1시간보다 더"]] },
+  { id: "price", t: "바로 앞에서 고른 시간만큼 매일 쓸 수 있다면, 한 달에 얼마까지 낼 수 있어요?", type: "one", o: [["0", "무료일 때만 쓸래요"], ["5000", "5천 원까지"], ["10000", "1만 원까지"], ["20000", "2만 원까지"], ["30000", "3만 원까지"], ["30000+", "3만 원보다 더"]] },
   { id: "kids", t: "18~36개월 아이에게 영어 그림책을 읽어 주고 아이 말에 반응하는 bilody가 있다면 쓰고 싶나요?", type: "one", o: [["yes", "쓰고 싶어요"], ["maybe", "한번 보고 싶어요"], ["no", "관심 없어요"], ["na", "그 나이 아이가 없어요"]] },
   { id: "free", t: "그 밖에 하고 싶은 말이 있으면 적어 주세요. (선택)", type: "text", ph: "좋았던 점, 고쳤으면 하는 점, 아이디어 모두 좋아요" },
 ];
