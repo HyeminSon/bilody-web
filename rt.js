@@ -342,14 +342,14 @@ export class Chat {
       catch { output = { error: "search_failed" }; }
       this.log("web_search_used", { ok: !!output.answer, ms: Date.now() - c.at });
     } else if (c.name === "show_picture") {
-      // 11/13 단어 사진(Pexels): 사진을 먼저 받아 둔 뒤 화면에 띄우고, 친구에게는 띄웠는지만 알려 준다
+      // 11/13 단어 사진(Pixabay 등): 사진을 먼저 받아 둔 뒤 화면에 띄우고, 친구에게는 띄웠는지만 알려 준다
       let shown = false;
       try {
         const res = await api.picture(q, this.sessionId);
-        if (res.ok && /^https:\/\/images\.pexels\.com\//.test(res.url || "") && await preload(res.url) && !this.closed) {
+        if (res.ok && /^https:\/\/(pixabay\.com\/get\/|cdn\.pixabay\.com\/|images\.pexels\.com\/)/.test(res.url || "") && await preload(res.url) && !this.closed) {
           shown = true; this.pictureTurns = 0;
           const word = String(args.word || q).slice(0, 40);
-          this.set({ webPicture: { url: res.url, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://www.pexels.com", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
+          this.set({ webPicture: { url: res.url, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://pixabay.com", source: res.source || "Pixabay", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
           output = res.alt ? { shown: true, description: res.alt } : { shown: true };
         } else output = { shown: false, reason: res.error || "not_found" };
       } catch { output = { shown: false, reason: "picture_failed" }; }

@@ -122,7 +122,7 @@ export async function saveTurn(sessionId, seq, role, text) {
   await rest("turns", { method: "POST", body: { session_id: sessionId, user_id: userId(), seq, role, text }, prefer: "return=minimal" });
 }
 export async function finishSession(sessionId) { try { await fn("end-session", { sessionId }); } catch { /* 기억 정리 실패는 대화를 막지 않음 */ } }
-// features: 이 앱이 할 수 있는 것(사진 카드). 서버는 Pexels 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
+// features: 이 앱이 할 수 있는 것(사진 카드). 서버는 사진 사이트 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
 export const realtimeKey = (presetId, speed) => fn("realtime-session", { presetId, speed, features: ["picture"] });
 
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
@@ -139,7 +139,7 @@ export async function say(text, voice, speed, sessionId, preview = false) {
 
 /** 대화 중 인터넷 찾아보기(11/13). 검색어·결과는 서버에 남기지 않는다. */
 export const lookup = (query, sessionId) => fn("web-lookup", { query, sessionId });
-/** 대화 중 단어 사진(11/13, Pexels). 검색어는 서버에 남기지 않는다. */
+/** 대화 중 단어 사진(11/13, Pixabay 등). 검색어는 서버에 남기지 않는다. */
 export const picture = (query, sessionId) => fn("picture-lookup", { query, sessionId });
 
 export async function addActiveSeconds(seconds, presetId) {

@@ -213,12 +213,12 @@ function updateChat() {
   $("#latency").textContent = chat ? `지금 대화: ${S.presetLabel}${u?.lastLatencyMs ? ` · 마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : ""}` : "";
   $("#notice").textContent = u?.notice ?? "";
   $("#photo").innerHTML = u?.photo ? `<div class="photo-card" data-act="clearPhoto"><img src="${u.photo}" alt="보여 준 사진"></div>` : "";
-  // 친구가 띄운 단어 사진(11/13). 사진을 누르면 닫히고, 출처를 누르면 Pexels 사진 페이지가 열린다(Pexels 조건).
+  // 친구가 띄운 단어 사진(11/13). 사진을 누르면 닫히고, 출처를 누르면 사진 사이트의 사진 페이지가 열린다(사이트 조건).
   const wp = u?.webPicture; const wpKey = wp ? String(wp.seq) : "";
   if ($("#webPic").dataset.key !== wpKey) {
     $("#webPic").dataset.key = wpKey;
     $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
-      <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · Pexels` : "Pexels")}</a></div></div>` : "";
+      <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
   }
   const card = u?.card;
   const cardKey = card ? card.text + "|" + (card.chunk ?? "") : "";
