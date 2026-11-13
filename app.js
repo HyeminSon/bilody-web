@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.3.1";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.3.1";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.3.1";
-import { GUIDE } from "./guide.js?v=0.3.1";
-import { Player } from "./audio.js?v=0.3.1";
-import { Chat } from "./rt.js?v=0.3.1";
-import * as story from "./story.js?v=0.3.1";
-import * as push from "./push.js?v=0.3.1";
+import * as api from "./api.js?v=0.3.2";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.3.2";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.3.2";
+import { GUIDE } from "./guide.js?v=0.3.2";
+import { Player } from "./audio.js?v=0.3.2";
+import { Chat } from "./rt.js?v=0.3.2";
+import * as story from "./story.js?v=0.3.2";
+import * as push from "./push.js?v=0.3.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -217,7 +217,10 @@ function updateChat() {
   const wp = u?.webPicture; const wpKey = wp ? String(wp.seq) : "";
   if ($("#webPic").dataset.key !== wpKey) {
     $("#webPic").dataset.key = wpKey;
-    $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
+    const old = $("#webPic").firstElementChild;
+    if (!wp && old) {   // 닫힐 때: 살짝 위로 사라진 뒤 지운다
+      old.classList.add("leave"); setTimeout(() => { if ($("#webPic")?.dataset.key === "") $("#webPic").innerHTML = ""; }, 220);
+    } else $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
       <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
   }
   const card = u?.card;

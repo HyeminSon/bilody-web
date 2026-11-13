@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.3.1";
-import { PRESET } from "./config.js?v=0.3.1";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.3.1";
+import * as api from "./api.js?v=0.3.2";
+import { PRESET } from "./config.js?v=0.3.2";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.3.2";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -352,7 +352,9 @@ export class Chat {
         if (res.ok && src && await preload(src) && !this.closed) {
           shown = true; this.pictureTurns = 0;
           const word = String(args.word || q).slice(0, 40);
-          this.set({ webPicture: { url: src, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://pixabay.com", source: res.source || "Pixabay", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
+          const seq = (this.ui.webPicture?.seq ?? 0) + 1;
+          this.set({ webPicture: { url: src, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://pixabay.com", source: res.source || "Pixabay", seq } });
+          this.closePictureLater(seq);
           output = res.alt ? { shown: true, description: res.alt } : { shown: true };
         } else output = { shown: false, reason: res.error || "not_found" };
       } catch { output = { shown: false, reason: "picture_failed" }; }
@@ -419,6 +421,17 @@ export class Chat {
   }
   dismissCard() { this.set({ card: null }); }
   dismissWebPicture() { this.set({ webPicture: null }); }
+  /** 11/13 15:07 실장님: 사진이 계속 떠 있음 → 10초 뒤 저절로 닫는다. 그때 친구가 아직 설명 중이면 말이 끝나고 조금 뒤에(최대 25초). */
+  closePictureLater(seq) {
+    const t0 = Date.now();
+    const tick = () => {
+      if (this.ui.webPicture?.seq !== seq) return;
+      const busy = this.player.isPlaying || !!this.resp;
+      if (busy && Date.now() - t0 < 25000) return setTimeout(tick, 1500);
+      this.set({ webPicture: null });
+    };
+    setTimeout(tick, 10000);
+  }
   noteTextAsk(t) {
     // 단어 사진은 학습자가 세 번 말하면 저절로 닫는다(앱과 같음)
     if (this.ui.webPicture && (this.pictureTurns = (this.pictureTurns ?? 0) + 1) >= 3) this.set({ webPicture: null });
