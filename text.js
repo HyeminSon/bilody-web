@@ -1,9 +1,13 @@
 // 문장 자르기·도움 카드 판단(안드로이드 Sentences.kt, HelpCards.kt와 같은 규칙).
 const ABBREV = /\b(Mr|Mrs|Ms|Dr|St|vs|etc|e\.g|i\.e|a\.m|p\.m)\.$/i;
 const MAX_LEN = 120;
+/** 두 대답 조각이 띄어쓰기 없이 붙어 오면 띄우고, "생각해 볼게요" 같은 군말 문장은 소리로 내지 않는다(11/13, 앱과 같음). */
+const GLUED = /([a-z][.!?])(?=[A-Z])/g;
+const FILLER = /(\blet me think\b|\bthink (this|it) through\b|\blet['’]?s make it simple together\b|\bi['’]?ll explain (the main idea |it |this )?in (easy|simple) words\b)/i;
+export const isFiller = (s) => FILLER.test(s);
 
 export function takeSentences(buf, final) {
-  const out = []; let rest = buf;
+  const out = []; let rest = buf.replace(GLUED, "$1 ");
   for (;;) {
     let cut = -1;
     const END = /[.!?]+["')\]”’]?(\s+|$)/g; let m;
@@ -23,10 +27,10 @@ export function takeSentences(buf, final) {
       cut = comma > 20 ? comma + 1 : space > 20 ? space : MAX_LEN;
     }
     if (cut === -1) break;
-    const s = rest.slice(0, cut).trim(); if (s) out.push(s);
+    const s = rest.slice(0, cut).trim(); if (s && !isFiller(s)) out.push(s);
     rest = rest.slice(cut).trimStart();
   }
-  if (final && rest.trim()) { out.push(rest.trim()); rest = ""; }
+  if (final && rest.trim()) { if (!isFiller(rest)) out.push(rest.trim()); rest = ""; }
   return { sentences: out, rest };
 }
 
