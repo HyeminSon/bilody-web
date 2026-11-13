@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.9";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.9";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.9";
-import { GUIDE } from "./guide.js?v=0.2.9";
-import { Player } from "./audio.js?v=0.2.9";
-import { Chat } from "./rt.js?v=0.2.9";
-import * as story from "./story.js?v=0.2.9";
-import * as push from "./push.js?v=0.2.9";
+import * as api from "./api.js?v=0.3.0";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.3.0";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.3.0";
+import { GUIDE } from "./guide.js?v=0.3.0";
+import { Player } from "./audio.js?v=0.3.0";
+import { Chat } from "./rt.js?v=0.3.0";
+import * as story from "./story.js?v=0.3.0";
+import * as push from "./push.js?v=0.3.0";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -179,6 +179,7 @@ function renderChat() {
       <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
+    <div id="webPic"></div>
     <div id="card"></div>
     <div id="lines" class="lines"></div>
     ${guide}
@@ -212,6 +213,13 @@ function updateChat() {
   $("#latency").textContent = chat ? `지금 대화: ${S.presetLabel}${u?.lastLatencyMs ? ` · 마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : ""}` : "";
   $("#notice").textContent = u?.notice ?? "";
   $("#photo").innerHTML = u?.photo ? `<div class="photo-card" data-act="clearPhoto"><img src="${u.photo}" alt="보여 준 사진"></div>` : "";
+  // 친구가 띄운 단어 사진(11/13). 사진을 누르면 닫히고, 출처를 누르면 Pexels 사진 페이지가 열린다(Pexels 조건).
+  const wp = u?.webPicture; const wpKey = wp ? String(wp.seq) : "";
+  if ($("#webPic").dataset.key !== wpKey) {
+    $("#webPic").dataset.key = wpKey;
+    $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
+      <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · Pexels` : "Pexels")}</a></div></div>` : "";
+  }
   const card = u?.card;
   const cardKey = card ? card.text + "|" + (card.chunk ?? "") : "";
   if ($("#card").dataset.key !== cardKey) {
@@ -650,6 +658,7 @@ app.addEventListener("click", async (e) => {
     case "exit": await endChat(); break;
     case "send": { const i = $("#say"); if (!i.value.trim()) break; S.chat?.sendText(i.value); i.value = ""; el.disabled = true; break; }
     case "dismissCard": S.chat?.dismissCard(); break;
+    case "dismissWebPicture": S.chat?.dismissWebPicture(); break;
     case "clearPhoto": S.chat?.clearPhoto(); break;
     case "photo": S.dialog = { kind: "photoPick" }; render(); break;
     case "camera": case "gallery": { S.dialog = null; render(); S.chat?.holdForCamera(true); $(act === "camera" ? "#camera" : "#gallery").click(); break; }

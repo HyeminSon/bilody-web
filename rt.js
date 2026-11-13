@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.9";
-import { PRESET } from "./config.js?v=0.2.9";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.2.9";
+import * as api from "./api.js?v=0.3.0";
+import { PRESET } from "./config.js?v=0.3.0";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.3.0";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -334,14 +334,27 @@ export class Chat {
   /** 인터넷 찾아보기: "Let me check."을 다 들려준 뒤 결과로 다시 대답하게 한다. 그사이 학습자가 말했으면 결과만 넘기고 새 대답은 만들지 않는다. */
   async runTool(c) {
     this.set({ searching: true, state: "thinking" });
-    let output;
-    if (c.name !== "web_search") output = { error: "unknown_tool" };
-    else {
-      let q = ""; try { q = String(JSON.parse(c.args || "{}").query ?? ""); } catch { /* */ }
+    let output, args = {};
+    try { args = JSON.parse(c.args || "{}") ?? {}; } catch { /* */ }
+    const q = String(args.query ?? "");
+    if (c.name === "web_search") {
       try { const res = await api.lookup(q, this.sessionId); output = res.ok ? { answer: res.answer } : { error: res.error || "not_found" }; }
       catch { output = { error: "search_failed" }; }
-    }
-    this.log("web_search_used", { ok: !!output.answer, ms: Date.now() - c.at });
+      this.log("web_search_used", { ok: !!output.answer, ms: Date.now() - c.at });
+    } else if (c.name === "show_picture") {
+      // 11/13 단어 사진(Pexels): 사진을 먼저 받아 둔 뒤 화면에 띄우고, 친구에게는 띄웠는지만 알려 준다
+      let shown = false;
+      try {
+        const res = await api.picture(q, this.sessionId);
+        if (res.ok && /^https:\/\/images\.pexels\.com\//.test(res.url || "") && await preload(res.url) && !this.closed) {
+          shown = true; this.pictureTurns = 0;
+          const word = String(args.word || q).slice(0, 40);
+          this.set({ webPicture: { url: res.url, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://www.pexels.com", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
+          output = res.alt ? { shown: true, description: res.alt } : { shown: true };
+        } else output = { shown: false, reason: res.error || "not_found" };
+      } catch { output = { shown: false, reason: "picture_failed" }; }
+      this.log("picture_used", { ok: shown, ms: Date.now() - c.at });
+    } else output = { error: "unknown_tool" };
     this.set({ searching: false });
     if (this.closed || !this.pc) return;
     // 결과는 바로 대화에 넣는다. 그사이 다른 이야기를 하고 있었으면(11/13 실장님: 그건 좋음) 지금 대답이 끝난 뒤 "아까 찾아본 건…"으로 전한다.
@@ -402,7 +415,10 @@ export class Chat {
     if (d.card) this.log("help_card", { kind: d.card.chunk ? "chunk" : d.card.practice ? "practice" : "rephrase" });
   }
   dismissCard() { this.set({ card: null }); }
+  dismissWebPicture() { this.set({ webPicture: null }); }
   noteTextAsk(t) {
+    // 단어 사진은 학습자가 세 번 말하면 저절로 닫는다(앱과 같음)
+    if (this.ui.webPicture && (this.pictureTurns = (this.pictureTurns ?? 0) + 1) >= 3) this.set({ webPicture: null });
     if (this.story || !wantsText(t)) return;
     this.showTextWanted = true;
     if (this.practiceTarget) { this.set({ card: { practice: true, text: this.practiceTarget } }); this.log("help_card", { kind: "asked" }); }
@@ -509,4 +525,13 @@ export class Chat {
     this.stopInternal("SESSION_END", null);
     if (this.sessionId) await api.finishSession(this.sessionId);
   }
+}
+
+/** 사진을 미리 받아 둔다(카드가 빈 채로 뜨지 않게). 8초 안에 못 받으면 실패. */
+function preload(url) {
+  return new Promise((ok) => {
+    const img = new Image(); const t = setTimeout(() => ok(false), 8000);
+    img.onload = () => { clearTimeout(t); ok(true); }; img.onerror = () => { clearTimeout(t); ok(false); };
+    img.src = url;
+  });
 }
