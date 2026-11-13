@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.8";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.8";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.8";
-import { GUIDE } from "./guide.js?v=0.2.8";
-import { Player } from "./audio.js?v=0.2.8";
-import { Chat } from "./rt.js?v=0.2.8";
-import * as story from "./story.js?v=0.2.8";
-import * as push from "./push.js?v=0.2.8";
+import * as api from "./api.js?v=0.2.9";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.9";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.9";
+import { GUIDE } from "./guide.js?v=0.2.9";
+import { Player } from "./audio.js?v=0.2.9";
+import { Chat } from "./rt.js?v=0.2.9";
+import * as story from "./story.js?v=0.2.9";
+import * as push from "./push.js?v=0.2.9";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */

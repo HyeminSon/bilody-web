@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.8";
-import { PRESET } from "./config.js?v=0.2.8";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.2.8";
+import * as api from "./api.js?v=0.2.9";
+import { PRESET } from "./config.js?v=0.2.9";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.2.9";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -16,6 +16,7 @@ export class Chat {
   constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null }) {
     this.voiceId = voiceId; this.speed = speed; this.saveTranscripts = saveTranscripts;
     this.player = player; this.onChange = onChange; this.presetId = presetId; this.story = story;
+    this.connGen = 0;
     this.ui = { state: "idle", micOn: false, lines: [], card: null, notice: null, remainingMinutes: null, lastLatencyMs: null, canRestart: false, speech: false, photo: null };
     this.sessionId = sessionId; this.seq = 0; this.closed = false;
     this.pc = null; this.dc = null; this.stream = null; this.track = null;
@@ -35,20 +36,29 @@ export class Chat {
   async restart() { if (!this.closed) { this.set({ notice: null, canRestart: false }); await this.connect(false); } }
 
   async connect(first) {
+    // 11/13 헨니 검토: 연결 중에 화면을 나가면(멈춤·닫기) 늦게 끝난 연결이 마이크를 다시 켜던 문제 → 연결마다 번호를 붙여, 그사이 멈췄으면 잡은 것을 모두 놓고 끝낸다
+    const gen = ++this.connGen;
+    const stale = () => this.closed || gen !== this.connGen;
     this.set({ state: "connecting", notice: null, canRestart: false });
     if (!this.story) this.player.chime();
     const t0 = Date.now();
+    let stream = null, pc = null;
+    const abandon = () => { stream?.getTracks().forEach((t) => t.stop()); try { pc?.close(); } catch { /* */ } };
     try {
       if (!this.sessionId) this.sessionId = await api.startSession(this.presetId);
+      if (stale()) return abandon();
       const key = await api.realtimeKey(this.presetId, this.speed);
+      if (stale()) return abandon();
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
       try {
-        this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+        stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       } catch {
-        this.stream = null;
+        stream = null;
         this.set({ notice: "마이크를 쓸 수 없어요. 브라우저 설정에서 마이크를 허용하거나, 아래에 글로 입력해 주세요." });
       }
-      const pc = new RTCPeerConnection(); this.pc = pc;
+      if (stale()) return abandon();
+      this.stream = stream;
+      pc = new RTCPeerConnection(); this.pc = pc;
       if (this.stream) { this.track = this.stream.getAudioTracks()[0]; this.track.enabled = false; pc.addTrack(this.track, this.stream); }
       else pc.addTransceiver("audio", { direction: "recvonly" });
       pc.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(pc.connectionState) && this.pc === pc) this.lost(); };
@@ -57,20 +67,24 @@ export class Chat {
       dc.onmessage = (m) => { try { this.onEvent(JSON.parse(m.data)); } catch { /* 깨진 메시지 무시 */ } };
       this.greeted = false;
       const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+      if (stale()) return abandon();
       const res = await fetch("https://api.openai.com/v1/realtime/calls", {
         method: "POST", headers: { Authorization: `Bearer ${key.value}`, "Content-Type": "application/sdp" }, body: offer.sdp,
       });
       const answer = await res.text();
+      if (stale()) return abandon();
       if (!res.ok) {
         const credit = res.status === 429 && /insufficient_quota|credit/i.test(answer);
         throw new api.ApiError(credit ? "ai_credit" : `sdp_${res.status}`, res.status);
       }
       await pc.setRemoteDescription({ type: "answer", sdp: answer });
+      if (stale()) return abandon();
       const m = /a=max-message-size:(\d+)/.exec(answer);
       this.maxMsg = Math.min(pc.sctp?.maxMessageSize || (m ? Number(m[1]) || 1_000_000 : 65536), 1_000_000);
       this.log("rt_connected", { connect_ms: Date.now() - t0, first, mic: !!this.stream, story: !!this.story });
       if (!this.story) this.startMeter();
     } catch (e) {
+      if (stale()) return abandon();
       this.teardown();
       const code = e?.code ?? e?.name ?? "error";
       const msg = {
@@ -97,6 +111,7 @@ export class Chat {
   }
 
   openMic() {
+    if (this.closed || !this.pc) return;
     this.greeted = true;
     if (this.track && !this.cameraHold) { this.track.enabled = true; this.set({ micOn: true }); }
   }
@@ -184,7 +199,7 @@ export class Chat {
         const r = this.resp; if (!r || r.done) return;
         takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
         r.pending = ""; r.done = true;
-        if (!this.story) this.updateCard(r.text);
+        // 11/13 헨니 검토: 카드는 안전검사를 통과해 실제로 들려준 말로만 만든다(onReplyPlayed)
         r.chain.then(() => this.onReplyPlayed(r));
         break;
       }
@@ -215,10 +230,11 @@ export class Chat {
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
     r.chain = r.chain.then(async () => {
-      if (r.epoch !== this.epoch) return;
-      let s; try { s = await job; } catch { if (r.first) this.set({ notice: "목소리를 만들지 못했어요. 다시 말해 주거나 글로 입력해 주세요." }); return; }
+      if (r.epoch !== this.epoch || r.blocked) return;
+      let s; try { s = await job; } catch (e) { if (r.first) this.set({ notice: e?.code === "daily_voice_limit" ? "오늘 친구 목소리를 만들 수 있는 양을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요." : "목소리를 만들지 못했어요. 다시 말해 주거나 글로 입력해 주세요." }); return; }
       if (r.epoch !== this.epoch) return;
       const spoken = s.fixed ?? sentence;
+      if (s.result !== "ok") r.blocked = true;   // 안전검사에 걸리면 고정 문장 하나만 들려주고 나머지는 버린다(앱과 같음)
       if (r.first) {
         r.first = false;
         const lat = this.tSpeechStopped ? Date.now() - this.tSpeechStopped : null;
@@ -243,6 +259,7 @@ export class Chat {
   onReplyPlayed(r) {
     if (r.epoch !== this.epoch || this.resp !== r) return;
     this.finishReply(r, true);
+    if (!this.story) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
     this.resp = null;
     if (!this.greeted) this.openMic();
     if (this.pc) this.set({ state: "listening" });
@@ -469,6 +486,7 @@ export class Chat {
   lost() { if (this.pc) { this.stopInternal("NETWORK", "인터넷 연결이 끊겼어요. 연결을 확인한 뒤 다시 시작을 눌러 주세요."); this.set({ state: "disconnected" }); } }
 
   stopInternal(reason, notice) {
+    this.connGen++;   // 진행 중인 연결이 있으면 끝나는 대로 버린다
     this.player.stop(); this.player.duck(false);
     if (this.resp) { this.epoch++; this.finishReply(this.resp, false); this.resp = null; }
     clearTimeout(this.idleTimer); clearTimeout(this.softTimer); this.soft = false;
@@ -487,8 +505,8 @@ export class Chat {
 
   async close() {
     if (this.closed) return;
-    if (this.pc) this.stopInternal("SESSION_END", null);
-    this.closed = true;
+    this.closed = true; this.connGen++;
+    this.stopInternal("SESSION_END", null);
     if (this.sessionId) await api.finishSession(this.sessionId);
   }
 }

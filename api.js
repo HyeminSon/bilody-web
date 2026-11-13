@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.2.8";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.2.9";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -9,6 +9,9 @@ const TOKEN_KEY = "bilody_tokens";
 let tokens = null;
 try { tokens = JSON.parse(localStorage.getItem(TOKEN_KEY) || "null"); } catch { tokens = null; }
 
+// 11/13 헨니 검토: 로그아웃 직후 끝난 토큰 갱신이 로그인 정보를 다시 저장하던 문제 → 로그인 상태가 바뀔 때마다 번호를 올리고, 갱신 결과는 같은 번호일 때만 저장
+let authGen = 0;
+let refreshing = null;
 function saveTokens(t) {
   tokens = t;
   try { t ? localStorage.setItem(TOKEN_KEY, JSON.stringify(t)) : localStorage.removeItem(TOKEN_KEY); } catch { /* 저장 못 해도 이번 접속은 계속 */ }
@@ -34,6 +37,7 @@ export async function signIn(email, password) {
     method: "POST", headers: { apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ email, password }),
   });
   if (!res.ok) throw new ApiError(res.status === 400 ? "wrong_login" : await errorCode(res), res.status);
+  authGen++; refreshing = null;
   saveTokens(withExpiry(await res.json()));
 }
 
@@ -44,20 +48,32 @@ export async function redeemInvite(code, email, password) {
   if (!res.ok) throw new ApiError(await errorCode(res), res.status);
 }
 
-export function signOut() { saveTokens(null); }
+export function signOut() {
+  const access = tokens?.access_token;
+  authGen++; refreshing = null; saveTokens(null);
+  // 서버 쪽 갱신 토큰도 끊는다(실패해도 이 기기에서는 이미 로그아웃)
+  if (access) call(`${SUPABASE_URL}/auth/v1/logout`, { method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${access}` } }).catch(() => {});
+}
 
 async function accessToken() {
   if (!tokens) throw new ApiError("not_logged_in");
   if (Date.now() < (tokens.expires_at_ms ?? 0)) return tokens.access_token;
+  if (!refreshing) refreshing = refreshTokens().finally(() => { refreshing = null; });
+  return refreshing;
+}
+async function refreshTokens() {
+  const gen = authGen; const old = tokens;
   const res = await call(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST", headers: { apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: tokens.refresh_token }),
+    method: "POST", headers: { apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: old.refresh_token }),
   });
+  if (gen !== authGen) throw new ApiError("not_logged_in");   // 그사이 로그아웃(또는 다른 계정 로그인)
   if (!res.ok) {
-    if (res.status >= 400 && res.status < 500) { saveTokens(null); throw new ApiError("session_expired", res.status); }
+    if (res.status >= 400 && res.status < 500) { authGen++; saveTokens(null); throw new ApiError("session_expired", res.status); }
     throw new ApiError("network", res.status);
   }
   const nt = await res.json();
-  saveTokens(withExpiry({ ...nt, user: nt.user ?? tokens.user }));
+  if (gen !== authGen) throw new ApiError("not_logged_in");
+  saveTokens(withExpiry({ ...nt, user: nt.user ?? old.user }));
   return tokens.access_token;
 }
 
@@ -170,7 +186,7 @@ export async function savePushSub(o) {
 }
 export const updatePushSub = (endpoint, fields) => rest(`push_subs?endpoint=eq.${encodeURIComponent(endpoint)}`, { method: "PATCH", body: fields, prefer: "return=minimal" });
 
-export async function deleteAccount() { await fn("delete-account", {}); saveTokens(null); }
+export async function deleteAccount() { await fn("delete-account", {}); authGen++; refreshing = null; saveTokens(null); }
 
 export function errText(e) {
   const c = e?.code ?? String(e);

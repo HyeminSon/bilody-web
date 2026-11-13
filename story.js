@@ -1,8 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.2.8";
-import { Chat } from "./rt.js?v=0.2.8";
-import { byId } from "./characters.js?v=0.2.8";
+import * as api from "./api.js?v=0.2.9";
+import { Chat } from "./rt.js?v=0.2.9";
+import { byId } from "./characters.js?v=0.2.9";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
