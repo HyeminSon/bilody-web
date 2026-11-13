@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.0";
-import { PRESET } from "./config.js?v=0.8.0";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.0";
+import * as api from "./api.js?v=0.8.1";
+import { PRESET } from "./config.js?v=0.8.1";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.1";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -154,7 +154,7 @@ export class Chat {
           if (ev.item_id) this.send({ type: "conversation.item.delete", item_id: ev.item_id });
           if (this.resp) this.interruptReply();
           this.send({ type: "response.cancel" });
-          this.log(noise ? "story_noise" : "rt_echo", {});
+          this.log(noise ? "story_noise" : "rt_echo", {}); this.lastEchoAt = Date.now();
           if (this.story) this.story.onNoise();
           return;
         }
@@ -213,7 +213,7 @@ export class Chat {
         }
         const call = this.pendingCall; this.pendingCall = null;
         if (call) { this.runTool(call); break; }
-        if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else this.nudge(Date.now()); }
+        if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else if (Date.now() - (this.lastEchoAt ?? 0) > 5000) this.nudge(Date.now()); }   // 메아리 뒤에는 다시 청하지 않음(16:06)
         break;
       }
       case "error": if (ev.error?.code !== "response_cancel_not_active") this.log("rt_error", { code: ev.error?.code ?? "error" }); break;   // 늦게 닿은 취소(해 없음)는 기록 안 함
@@ -379,15 +379,15 @@ export class Chat {
   noteQuestion(played) {
     const q = played.split(/(?<=[.!?])\s+/).filter((s) => s.trim().endsWith("?")).pop(); if (!q) return;
     this.choiceRun = /\bor\b/i.test(q) ? (this.choiceRun ?? 0) + 1 : 0;
+    if (this.choiceRun >= 2 && this.pc && !this.closed) {   // 센 자리에서 바로 메모(앱과 같음)
+      this.choiceRun = 0;
+      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
+        text: "Note from the app: your last two questions offered choices. Your next question must not contain the word or and must not list examples (no like A, B...). Ask one open question that needs a full sentence (What...? How...? Why...? Have you ever...? What would you do if...?). If this topic has gone on for a while, move to a different part of daily life instead." }] } });
+      this.log("question_nudge", {});
+    }
   }
   afterReplyNotes() {
     if (this.story) return;
-    if ((this.choiceRun ?? 0) >= 2) {
-      this.choiceRun = 0;
-      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
-        text: "Note from the app: your last two questions offered choices (A or B). In your next question, do not offer any choices: ask one open question (What...? How...? Why...? Have you ever...? What would you do if...?). If this topic has gone on for a while, move to a different part of daily life instead." }] } });
-      this.log("question_nudge", {});
-    }
     if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
       this.correctionNoted = true;
       this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
