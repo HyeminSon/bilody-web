@@ -43,7 +43,7 @@ const partsRe = /(in parts|\bsay:|\bnow:|all together)/i;
 
 export const confused = (t) => confusedRe.test(t.trim());
 /** 11/13 실장님: "Could you show the text?" 하면 따라 말할 문장을 바로 글로 보여 준다(앱과 같음). */
-const showTextRe = /(show (me )?(the |that |it )?(text|sentence|words?|it)|can i see (it|the (text|sentence))|write it( down)?|type it|(글|글자|텍스트|문장|자막)(로|을|를)? ?(보여|써)|보여 ?줘)/i;
+const showTextRe = /((show|give|send)( me)?( (a|the|that|this))? (text|sentence|words?|script)|show (me )?(it|that)\b|(text|sentence|words?|it|that) on (the )?screen|can i see (it|the (text|sentence|words?))|write it( down)?|type it|in writing|spell (it|that)|(글|글자|텍스트|문장|자막)(로|을|를)? ?(보여|써|띄워)|화면에 ?(띄워|보여)|보여 ?줘)/i;
 export const wantsText = (t) => showTextRe.test(t);
 export function lastQuote(reply) {
   const qs = [...reply.matchAll(quoteRe)]; const q = qs.length ? qs[qs.length - 1][1].trim() : null;

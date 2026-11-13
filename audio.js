@@ -22,7 +22,7 @@ export class Player {
 
   /** PCM 한 덩어리를 틀고, 다 끝나면 resolve(true). 중간에 stop()하면 resolve(false). */
   play(pcm, rate) {
-    this.unlock();
+    this.unlock(); this.jingleStop();
     const gen = this.gen;
     return new Promise((resolve) => {
       if (!pcm || pcm.length === 0) return resolve(true);
@@ -39,12 +39,33 @@ export class Player {
   get isPlaying() { return !!this.current; }
 
   stop() {
-    this.gen++;
+    this.gen++; this.jingleStop();
     const c = this.current; this.current = null;
     if (c) { try { c.src.onended = null; c.src.stop(); } catch { /* 이미 끝남 */ } c.resolve(false); }
   }
 
-  /** 띵 소리(대화 연결 중 알림). */
+  /** 브랜드 징글(앱과 같은 BILODY 3음, 11/13 14:45). 대화를 여는 동안 틀고, 친구 첫 대답이 나오면 부드럽게 끈다. */
+  async jingle() {
+    this.unlock(); this.jingleStop();
+    const my = (this.jingleGen = (this.jingleGen ?? 0) + 1);
+    try {
+      if (!this.jingleBuf) this.jingleBuf = await fetch("jingle.mp3?v=1").then((r) => r.arrayBuffer()).then((b) => new Promise((ok, no) => this.ctx.decodeAudioData(b, ok, no)));
+      if (my !== this.jingleGen) return;   // 그사이 첫 대답이 나왔거나 멈춤
+      const src = this.ctx.createBufferSource(); const g = this.ctx.createGain();
+      src.buffer = this.jingleBuf; g.gain.value = 0.8; src.connect(g); g.connect(this.gain);
+      src.onended = () => { if (this.jingleNode?.src === src) this.jingleNode = null; };
+      this.jingleNode = { src, g }; src.start();
+    } catch { this.chime(); }   // 징글을 못 받으면 예전 띵 소리
+  }
+  /** 징글 끄기(0.25초에 걸쳐 작게). */
+  jingleStop() {
+    this.jingleGen = (this.jingleGen ?? 0) + 1;
+    const n = this.jingleNode; this.jingleNode = null; if (!n || !this.ctx) return;
+    const t = this.ctx.currentTime;
+    try { n.g.gain.setValueAtTime(n.g.gain.value, t); n.g.gain.linearRampToValueAtTime(0, t + 0.25); n.src.stop(t + 0.3); } catch { /* 이미 끝남 */ }
+  }
+
+  /** 띵 소리(징글을 못 틀 때). */
   chime() {
     this.unlock();
     const t = this.ctx.currentTime;

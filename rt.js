@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.3.0";
-import { PRESET } from "./config.js?v=0.3.0";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.3.0";
+import * as api from "./api.js?v=0.3.1";
+import { PRESET } from "./config.js?v=0.3.1";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.3.1";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -40,7 +40,7 @@ export class Chat {
     const gen = ++this.connGen;
     const stale = () => this.closed || gen !== this.connGen;
     this.set({ state: "connecting", notice: null, canRestart: false });
-    if (!this.story) this.player.chime();
+    if (!this.story) this.player.jingle();
     const t0 = Date.now();
     let stream = null, pc = null;
     const abandon = () => { stream?.getTracks().forEach((t) => t.stop()); try { pc?.close(); } catch { /* */ } };
@@ -346,10 +346,13 @@ export class Chat {
       let shown = false;
       try {
         const res = await api.picture(q, this.sessionId);
-        if (res.ok && /^https:\/\/(pixabay\.com\/get\/|cdn\.pixabay\.com\/|images\.pexels\.com\/)/.test(res.url || "") && await preload(res.url) && !this.closed) {
+        // 11/13 14:45: 사진 사이트 주소를 브라우저가 바로 못 불러옴 → 서버가 넘겨 준 사진 자체(image)를 쓴다
+        const src = res.image && /^image\/(jpeg|png|webp|gif)$/.test(res.mime || "") ? `data:${res.mime};base64,${res.image}`
+          : /^https:\/\/(pixabay\.com\/get\/|cdn\.pixabay\.com\/|images\.pexels\.com\/)/.test(res.url || "") ? res.url : null;
+        if (res.ok && src && await preload(src) && !this.closed) {
           shown = true; this.pictureTurns = 0;
           const word = String(args.word || q).slice(0, 40);
-          this.set({ webPicture: { url: res.url, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://pixabay.com", source: res.source || "Pixabay", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
+          this.set({ webPicture: { url: src, word, photographer: res.photographer || "", pageUrl: res.pageUrl || "https://pixabay.com", source: res.source || "Pixabay", seq: (this.ui.webPicture?.seq ?? 0) + 1 } });
           output = res.alt ? { shown: true, description: res.alt } : { shown: true };
         } else output = { shown: false, reason: res.error || "not_found" };
       } catch { output = { shown: false, reason: "picture_failed" }; }
