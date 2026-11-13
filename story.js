@@ -1,8 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.2.5";
-import { Chat } from "./rt.js?v=0.2.5";
-import { byId } from "./characters.js?v=0.2.5";
+import * as api from "./api.js?v=0.2.6";
+import { Chat } from "./rt.js?v=0.2.6";
+import { byId } from "./characters.js?v=0.2.6";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
@@ -103,8 +103,29 @@ export class StoryPlayer {
         pictureFor: (w) => { const p = this.lib.match[w.toLowerCase().replace(/^'+|'+$/g, "")]; return p && pics.has(p) ? p : null; },
       },
     });
+    this.syncTalk();
     this.chat.start();
   }
+  /** 아이 모드 지시문(앱 kidsInstructions와 같은 규칙). 쪽이 바뀔 때마다 그 쪽 글을 담아 보낸다. */
+  kidsInstructions(extra = "") {
+    const b = this.book; if (!b) return null;
+    const p = b.pages[this.page]?.text ?? "";
+    const words = [...new Set(this.lib.pics ?? [])].filter((w) => w.length > 2).join(", ");
+    return [
+      `You are Tori, a gentle, playful friend reading the picture book "${b.title}" with a toddler (about 2 to 3 years old) and a parent nearby.`,
+      "Rules:",
+      "- Speak only English. Reply with 1 or 2 very short sentences, 2 to 6 words each. Present tense, here and now.",
+      "- React warmly to what the child says. If the child names something (even in Korean), say the English word clearly, for example: Yes! A dog. Woof, woof.",
+      `- When it fits, use words that have pictures: ${words}.`,
+      "- If you cannot understand the sound, give a short kind reaction like \"Oh!\" or \"I hear you.\" Never pretend to understand.",
+      "- Never quiz, never ask them to repeat, never correct, never say you can see them. (You only see photos they choose to show you.)",
+      "- Do not continue the story yourself and do not say goodbye. The app keeps reading after you.",
+      "- No emojis, lists, or stage directions.",
+      `The page being read now: "${p}"`,
+    ].join("\n") + extra;
+  }
+  syncTalk(extra = "") { const t = this.kidsInstructions(extra); if (t && this.chat) this.chat.setInstructions(t); }
+
   /** 말소리가 들리면 읽던 동화를 멈춘다(대답이 끝나면 '어디까지 했지' 말과 함께 그 쪽을 다시 읽는다). */
   pauseNarration() {
     clearTimeout(this.resumeTimer); clearTimeout(this.quizWait);
@@ -186,6 +207,7 @@ export class StoryPlayer {
       return;
     }
     this.narrInterrupted = false;
+    this.syncTalk();
     this.set({ page: i + 1, image: p.img ?? null, picture: p.img ? null : (p.key ?? this.ui.picture), pictureSeq: this.ui.pictureSeq + 1 });
     this.playNarration(NARR.PAGE, p.text, [p.res], p.cues ?? [], p.ms || 2500);
   }
@@ -264,6 +286,7 @@ export class StoryPlayer {
   showQuizPage() {
     const q = this.quizQs[this.quizIdx]; if (!q) return;
     this.page = q.page; const pg = this.book.pages[q.page];
+    this.syncTalk(`\nRight now the app is playing a find-the-picture game. The child is looking for: ${q.pic}. If the child talks, react in 2 to 4 words and gently encourage them to touch the picture. Never say where it is.`);
     this.set({ page: q.page + 1, image: pg.img, picture: null, pictureSeq: this.ui.pictureSeq + 1, quiz: { round: this.quizIdx, rounds: this.quizQs.length, stars: this.quizStars, done: false } });
   }
   nextQuizOrEnd() {

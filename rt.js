@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.5";
-import { PRESET } from "./config.js?v=0.2.5";
-import { takeSentences, decideCard, confused } from "./text.js?v=0.2.5";
+import * as api from "./api.js?v=0.2.6";
+import { PRESET } from "./config.js?v=0.2.6";
+import { takeSentences, decideCard, confused } from "./text.js?v=0.2.6";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -53,7 +53,7 @@ export class Chat {
       else pc.addTransceiver("audio", { direction: "recvonly" });
       pc.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(pc.connectionState) && this.pc === pc) this.lost(); };
       const dc = pc.createDataChannel("oai-events"); this.dc = dc;
-      dc.onopen = () => this.requestGreeting();
+      dc.onopen = () => { if (this.instr) this.setInstructions(this.instr); this.requestGreeting(); };
       dc.onmessage = (m) => { try { this.onEvent(JSON.parse(m.data)); } catch { /* 깨진 메시지 무시 */ } };
       this.greeted = false;
       const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
@@ -82,6 +82,12 @@ export class Chat {
       this.set({ state: code === "daily_limit" || code === "service_paused" ? "stopped" : "disconnected", micOn: false, canRestart: code !== "daily_limit", notice: msg });
       this.log("rt_connect_failed", { code });
     }
+  }
+
+  /** 동화 듣기: 그 쪽 내용을 담은 아이 모드 지시문으로 바꾼다(앱 updateKidsInstructions와 같음). 연결 전이면 열릴 때 보낸다. */
+  setInstructions(text) {
+    this.instr = text;
+    if (this.dc?.readyState === "open") this.send({ type: "session.update", session: { type: "realtime", instructions: text } });
   }
 
   requestGreeting() {
@@ -155,6 +161,13 @@ export class Chat {
         if (ev.item?.role === "assistant" && this.resp) this.resp.itemId = ev.item.id;
         break;
       }
+      case "response.output_item.done": {
+        // 친구가 인터넷 찾아보기(web_search)를 부름: 대답이 끝나면 서버에서 찾아 결과를 돌려준다(11/13)
+        if (this.ignoredResp && ev.response_id === this.ignoredResp) return;
+        const it = ev.item;
+        if (it?.type === "function_call" && !this.story) this.pendingCall = { callId: it.call_id, name: it.name, args: it.arguments, at: Date.now(), r: this.resp };
+        break;
+      }
       case "response.output_text.delta": case "response.text.delta": {
         if (this.ignoredResp && ev.response_id === this.ignoredResp) return;
         const r = this.resp; if (!r) return;
@@ -182,6 +195,8 @@ export class Chat {
           takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
           r.pending = ""; r.done = true; r.chain.then(() => this.onReplyPlayed(r));
         }
+        const call = this.pendingCall; this.pendingCall = null;
+        if (call) { this.runTool(call); break; }
         if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else this.nudge(Date.now()); }
         break;
       }
@@ -296,6 +311,26 @@ export class Chat {
     const h = words(heard); if (h.length < 2) return false;
     const f = new Set(words(this.recentFriend));
     return h.filter((w) => f.has(w)).length >= h.length * 0.8;
+  }
+
+  /** 인터넷 찾아보기: "Let me check."을 다 들려준 뒤 결과로 다시 대답하게 한다. 그사이 학습자가 말했으면 결과만 넘기고 새 대답은 만들지 않는다. */
+  async runTool(c) {
+    this.set({ searching: true, state: "thinking" });
+    let output;
+    if (c.name !== "web_search") output = { error: "unknown_tool" };
+    else {
+      let q = ""; try { q = String(JSON.parse(c.args || "{}").query ?? ""); } catch { /* */ }
+      try { const res = await api.lookup(q, this.sessionId); output = res.ok ? { answer: res.answer } : { error: res.error || "not_found" }; }
+      catch { output = { error: "search_failed" }; }
+    }
+    this.log("web_search_used", { ok: !!output.answer, ms: Date.now() - c.at });
+    if (c.r) await Promise.race([c.r.chain, new Promise((ok) => setTimeout(ok, 8000))]);
+    this.set({ searching: false });
+    if (this.closed || !this.pc) return;
+    this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: JSON.stringify(output) } });
+    if (this.lastSpeechStart > c.at || this.resp || this.ui.speech) return;
+    this.send({ type: "response.create" });
+    this.set({ state: "thinking" });
   }
 
   nudge(at) {

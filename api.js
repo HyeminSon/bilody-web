@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.2.5";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.2.6";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -119,6 +119,9 @@ export async function say(text, voice, speed, sessionId, preview = false) {
   const buf = await res.arrayBuffer();
   return { pcm: new Int16Array(buf, 0, Math.floor(buf.byteLength / 2)), rate, result, fixed };
 }
+
+/** 대화 중 인터넷 찾아보기(11/13). 검색어·결과는 서버에 남기지 않는다. */
+export const lookup = (query, sessionId) => fn("web-lookup", { query, sessionId });
 
 export async function addActiveSeconds(seconds, presetId) {
   try { return await rest("rpc/add_active_seconds", { method: "POST", body: { p_seconds: seconds, p_preset: presetId } }); } catch { return null; }

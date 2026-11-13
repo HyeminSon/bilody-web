@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.5";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.5";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.5";
-import { GUIDE } from "./guide.js?v=0.2.5";
-import { Player } from "./audio.js?v=0.2.5";
-import { Chat } from "./rt.js?v=0.2.5";
-import * as story from "./story.js?v=0.2.5";
-import * as push from "./push.js?v=0.2.5";
+import * as api from "./api.js?v=0.2.6";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.6";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.6";
+import { GUIDE } from "./guide.js?v=0.2.6";
+import { Player } from "./audio.js?v=0.2.6";
+import { Chat } from "./rt.js?v=0.2.6";
+import * as story from "./story.js?v=0.2.6";
+import * as push from "./push.js?v=0.2.6";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -205,7 +205,7 @@ function updateChat() {
   const chat = S.chat; const u = chat?.ui; const c = byId(S.profile?.character);
   const img = $("#friendImg"); if (!img) return;
   const src = animSrc(c.id, u?.state ?? "idle"); if (!img.src.endsWith(src)) img.src = src;
-  $("#stLabel").textContent = STATE_LABEL[u?.state ?? "idle"];
+  $("#stLabel").textContent = u?.searching ? "찾아보는 중" : STATE_LABEL[u?.state ?? "idle"];
   const mic = $("#micLabel"); const micKey = u?.micOn ? "on" : "off";
   if (mic.dataset.k !== micKey) { mic.dataset.k = micKey; mic.innerHTML = u?.micOn ? `${I("mic")}마이크 켜짐` : `${I("mic_off")}마이크 꺼짐`; mic.classList.toggle("on", !!u?.micOn); }
   $("#remain").textContent = u?.remainingMinutes ? `오늘 남은 대화 시간 약 ${u.remainingMinutes}분` : "";
