@@ -277,3 +277,4 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
   .chip { width: 76px; } .chip span { font-size: 12px; }
   .st-tori { width: 100px; height: 115px; }
 }
+.controls .pill.grow { padding-left: 20px; padding-right: 20px; }   /* 11/13 두 버튼(대화 시작·그림책 보기) 같은 너비 */
