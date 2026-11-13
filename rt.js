@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.6";
-import { PRESET } from "./config.js?v=0.2.6";
-import { takeSentences, decideCard, confused } from "./text.js?v=0.2.6";
+import * as api from "./api.js?v=0.2.7";
+import { PRESET } from "./config.js?v=0.2.7";
+import { takeSentences, decideCard, confused } from "./text.js?v=0.2.7";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -144,7 +144,7 @@ export class Chat {
           return;
         }
         this.startedDuringPlayback = false;
-        if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; }
+        if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; }
         break;
       }
       case "response.created": {
@@ -152,6 +152,7 @@ export class Chat {
         if (this.soft || Date.now() < this.ignoreUntil) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
         clearTimeout(this.idleTimer);
         if (this.resp) this.finishReply(this.resp, false);
+        if (this.announceAt && Date.now() > this.announceAt) this.announceAt = 0;   // 검색 결과가 들어간 뒤의 대답이 결과를 전한다
         this.epoch++;
         this.resp = { id: rid, epoch: this.epoch, text: "", pending: "", done: false, played: [], chain: Promise.resolve(), itemId: null, first: true, hadText: false };
         break;
@@ -254,7 +255,7 @@ export class Chat {
     const played = r.played.join(" ").trim();
     if (!complete || played !== r.text.trim()) this.fixServerContext(r, played);
     if (played) this.persist("assistant", played);
-    if (played && !this.story) this.trackPractice(played);
+    if (played && !this.story) { this.trackPractice(played); this.noteCorrection(played); }
     this.closeAssistantLine(!complete);
   }
 
@@ -324,13 +325,33 @@ export class Chat {
       catch { output = { error: "search_failed" }; }
     }
     this.log("web_search_used", { ok: !!output.answer, ms: Date.now() - c.at });
-    if (c.r) await Promise.race([c.r.chain, new Promise((ok) => setTimeout(ok, 8000))]);
     this.set({ searching: false });
     if (this.closed || !this.pc) return;
+    // 결과는 바로 대화에 넣는다. 그사이 다른 이야기를 하고 있었으면(11/13 실장님: 그건 좋음) 지금 대답이 끝난 뒤 "아까 찾아본 건…"으로 전한다.
     this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: JSON.stringify(output) } });
-    if (this.lastSpeechStart > c.at || this.resp || this.ui.speech) return;
-    this.send({ type: "response.create" });
-    this.set({ state: "thinking" });
+    this.announceAt = Date.now();
+    if (this.idleForAnnounce()) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
+  }
+  idleForAnnounce() { return !this.resp && !this.player.isPlaying && !this.ui.speech; }
+
+  // ---------- 교정 빈도(11/13 실장님: 학습자 말 4번에 한 번쯤, 자주 틀리는 표현은 꼭) — 앱과 같음 ----------
+  noteCorrection(played) {
+    const m = /(we usually say|a more natural way to say|let's try it in parts|listen once more|you can say,)/i.exec(played); if (!m) return;
+    this.learnerTurns = 0; this.correctionNoted = false;
+    this.log("correction", { kind: m[1].toLowerCase().slice(0, 24) });
+  }
+  afterReplyNotes() {
+    if (this.story) return;
+    if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
+      this.correctionNoted = true;
+      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
+        text: "Note from the app: there has been no correction for a few turns. In your next reply, if the learner made a clear mistake recently, give one practice correction (for a question or request: answer first, then the By the way tip). Choose a mistake they have made more than once first. If there is no clear mistake, just continue naturally." }] } });
+      this.log("correction_nudge", {});
+    }
+    if (this.announceAt) setTimeout(() => {
+      if (this.closed || !this.pc || !this.announceAt || !this.idleForAnnounce()) return;
+      this.send({ type: "response.create" });
+    }, 700);
   }
 
   nudge(at) {
@@ -343,6 +364,7 @@ export class Chat {
   afterFriendFinished() {
     if (this.limitReached) { this.stopInternal("DAILY_LIMIT", "오늘 대화 시간을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요."); this.set({ canRestart: false }); return; }
     clearTimeout(this.idleTimer);
+    this.afterReplyNotes();
     this.idleTimer = setTimeout(() => {
       if (this.closed || !this.pc || this.player.isPlaying || this.ui.speech || this.resp) return;
       this.stopInternal("IDLE_PAUSE", "한동안 대답이 없어서 잠시 멈췄어요. 이어서 하려면 다시 시작을 눌러 주세요.");
@@ -383,6 +405,7 @@ export class Chat {
     this.send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: t }] } });
     this.send({ type: "response.create" });
     this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true;
+    this.learnerTurns = (this.learnerTurns ?? 0) + 1;
     this.tSpeechStopped = Date.now();
     this.set({ state: "thinking" });
   }
