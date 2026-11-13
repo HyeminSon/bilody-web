@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.1";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.2";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -173,6 +173,11 @@ export async function saveCheckin(sessionId, rating, issues, note) {
   const o = { user_id: userId(), rating, issues, app_version: VERSION };
   if (sessionId) o.session_id = sessionId; if (note && note.trim()) o.note = note.trim().slice(0, 500);
   await rest("daily_checkins", { method: "POST", body: o, prefer: "return=minimal" });
+}
+/** 마지막 설문(11/13, 1차 시험 11/17 10시 종료). 이미 답했으면 true. */
+export async function postSurveyDone() { const r = await rest("survey_responses?survey=eq.post&select=id"); return Array.isArray(r) && r.length > 0; }
+export async function savePostSurvey(answers) {
+  await rest("survey_responses", { method: "POST", body: { user_id: userId(), survey: "post", answers, app_version: VERSION }, prefer: "return=minimal" });
 }
 /** 이 계정이 쓸 수 있는 대화 방식(동화 듣기 'kids-demo'가 있으면 동화 듣기 버튼이 보인다). */
 export const presets = async () => { try { return await rest("model_presets?select=id,label,structure,sort&order=sort.asc"); } catch { return []; } };

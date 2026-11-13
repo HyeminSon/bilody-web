@@ -278,3 +278,8 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
   .st-tori { width: 100px; height: 115px; }
 }
 .controls .pill.grow { padding-left: 20px; padding-right: 20px; }   /* 11/13 두 버튼(대화 시작·그림책 보기) 같은 너비 */
+/* 11/13 마지막 설문 */
+.survey .q { padding: 14px 16px; border-radius: 20px; display: flex; flex-direction: column; gap: 6px; }
+.survey .q b { font-size: 15px; line-height: 1.4; }
+.survey textarea { width: 100%; }
+.survey .pill { margin-top: 6px; }

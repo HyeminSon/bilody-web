@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.1";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.1";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.1";
-import { GUIDE } from "./guide.js?v=0.8.1";
-import { Player } from "./audio.js?v=0.8.1";
-import { Chat } from "./rt.js?v=0.8.1";
-import * as story from "./story.js?v=0.8.1";
-import * as push from "./push.js?v=0.8.1";
+import * as api from "./api.js?v=0.8.2";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.2";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.2";
+import { GUIDE } from "./guide.js?v=0.8.2";
+import { Player } from "./audio.js?v=0.8.2";
+import { Chat } from "./rt.js?v=0.8.2";
+import * as story from "./story.js?v=0.8.2";
+import * as push from "./push.js?v=0.8.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -79,12 +79,14 @@ function render() {
   app.innerHTML = html + `<div id="toast" class="toast"></div>` + renderDialog();
   if (view !== lastView) { window.scrollTo(0, 0); lastView = view; }  // 화면이 바뀌면 맨 위부터
   if (S.stage === "main" && S.tab === "chat") updateChat();
+  if (S.stage === "main" && wantsPostSurvey() && !S.postOpened) { S.postOpened = true; openPostSurvey(); }
 }
 
 /** 앱의 OutlinedTextField처럼 이름표가 테두리 위로 올라가는 입력칸. */
 const field = (id, label, attrs = "", value = "") => `<label class="field"><input id="${id}" placeholder=" " value="${esc(value)}" ${attrs}><span>${label}</span></label>`;
 
 function renderAuth() {
+  if (!S.authMode && wantsPostSurvey()) S.authMode = "login";   // 설문 링크로 왔으면 로그인 화면부터
   const signup = S.authMode !== "login";
   return `<div class="page center-col">
     <img class="logo-stacked" src="img/logo_stacked.png" alt="bilody">
@@ -384,6 +386,28 @@ async function endChat() {
   render();
 }
 
+// ---------- 마지막 설문(11/13 실장님: 1차 시험 11/17 오전 10시 종료) ----------
+// 링크: https://hyeminson.github.io/bilody-web/?survey=post  (로그인하면 바로 열림, 한 사람 한 번)
+const POST_Q = [
+  { id: "overall", t: "bilody를 써 본 느낌은 전체적으로 어땠어요?", type: "face" },
+  { id: "helpful", t: "영어로 말하는 데 도움이 됐나요?", type: "one", o: [["1", "전혀 아니에요"], ["2", "별로요"], ["3", "보통이에요"], ["4", "도움이 됐어요"], ["5", "많이 됐어요"]] },
+  { id: "best", t: "가장 좋았던 점은 뭐예요? (여러 개 골라도 돼요)", type: "many", o: [["chat", "친구와 편하게 이야기하기"], ["correct", "틀린 표현을 고쳐 주기"], ["repeat", "따라 말하기 연습"], ["howto", "‘영어로 뭐라고 해?’ 도움"], ["cards", "글 카드·사진으로 보여 주기"], ["memory", "친구가 내 이야기를 기억하기"], ["character", "캐릭터와 목소리"], ["story", "그림책 보기"], ["habit", "알림·연속 기록·순위"], ["other", "기타"]] },
+  { id: "worst", t: "가장 아쉬웠던 점은 뭐예요? (여러 개 골라도 돼요)", type: "many", o: [["slow", "대답이 느려요"], ["misheard", "내 말을 잘못 알아들어요"], ["too_many_fix", "교정이 너무 많아요"], ["too_few_fix", "교정이 너무 적어요"], ["same_q", "질문이 비슷비슷해요"], ["cut", "끊기거나 연결이 끊겨요"], ["voice", "목소리·소리가 아쉬워요"], ["hard", "쓰는 방법이 어려워요"], ["boring", "금방 지루해요"], ["other", "기타"]] },
+  { id: "fix_amount", t: "틀린 표현을 고쳐 주는 횟수는 어땠어요?", type: "one", o: [["few", "너무 적어요"], ["ok", "적당해요"], ["many", "너무 많아요"]] },
+  { id: "speed", t: "대답 속도는 어땠어요?", type: "one", o: [["bad", "답답했어요"], ["ok", "참을 만했어요"], ["good", "괜찮았어요"]] },
+  { id: "chatgpt", t: "ChatGPT 음성 대화로 영어 연습을 해 본 적이 있나요?", type: "one", o: [["often", "자주 해요"], ["some", "몇 번 해 봤어요"], ["never", "해 본 적 없어요"]] },
+  { id: "vs_chatgpt", t: "해 봤다면, bilody와 비교하면 어때요?", type: "one", o: [["bilody", "bilody가 더 좋아요"], ["same", "비슷해요"], ["chatgpt", "ChatGPT가 더 좋아요"], ["na", "해 본 적 없어요"]], note: "vs_note", ph: "무엇이 더 좋았고 무엇이 아쉬웠는지 한 줄로 (선택)" },
+  { id: "continue", t: "정식으로 나오면 계속 쓸 것 같아요?", type: "one", o: [["yes", "꼭 쓸래요"], ["maybe", "아마 쓸 것 같아요"], ["unsure", "잘 모르겠어요"], ["no", "안 쓸 것 같아요"]] },
+  { id: "price", t: "돈을 낸다면 한 달에 얼마까지 낼 수 있어요?", type: "one", o: [["0", "무료일 때만 쓸래요"], ["5000", "5천 원까지"], ["10000", "1만 원까지"], ["20000", "2만 원까지"], ["20000+", "2만 원보다 더"]] },
+  { id: "kids", t: "18~36개월 아이에게 영어 그림책을 읽어 주고 아이 말에 반응하는 bilody가 있다면 쓰고 싶나요?", type: "one", o: [["yes", "쓰고 싶어요"], ["maybe", "한번 보고 싶어요"], ["no", "관심 없어요"], ["na", "그 나이 아이가 없어요"]] },
+  { id: "free", t: "그 밖에 하고 싶은 말이 있으면 적어 주세요. (선택)", type: "text", ph: "좋았던 점, 고쳤으면 하는 점, 아이디어 모두 좋아요" },
+];
+const wantsPostSurvey = () => new URLSearchParams(location.search).get("survey") === "post";
+async function openPostSurvey() {
+  try { if (await api.postSurveyDone()) { S.dialog = { kind: "postDone" }; return render(); } } catch { /* 확인 못 해도 설문은 연다 */ }
+  S.dialog = { kind: "post", face: 0 }; render();
+}
+
 // ---------- 매일 짧은 설문(0.7.7) ----------
 const CHECKIN_ISSUES = [["no_reply", "내가 말했는데 대답을 안 했어요"], ["repeat_after_me", "같은 말을 자꾸 따라 해 보라고 했어요"], ["cut_off", "내 말을 끊었어요"],
   ["misheard", "내 말을 잘못 알아들었어요"], ["slow", "대답이 느렸어요"], ["repetitive", "같은 얘기를 되풀이했어요"], ["voice", "목소리나 소리가 이상했어요"],
@@ -537,6 +561,16 @@ function renderDialog() {
     ${CHECKIN_ISSUES.map(([v, l]) => `<label class="radio"><input type="checkbox" data-ck="${v}"> ${l}</label>`).join("")}
     <textarea id="cknote" rows="2" maxlength="500" placeholder="무슨 일이 있었는지 한 줄로 (선택) 예: 여행 얘기를 했는데 계속 다른 질문만 했어요"></textarea>
     <div class="row end"><button class="link" data-act="closeDialog">다음에 할게요</button><button class="link" data-act="sendCheckin" ${d.rating ? "" : "disabled"}>보내기</button></div>`);
+  if (d.kind === "postDone") return box(`<h2>마지막 설문</h2><p>이미 답해 주셨어요. 정말 고마워요! 🙏</p><div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
+  if (d.kind === "post") return `<div class="overlay full"><div class="guide-page survey">
+    <div class="subhead"><button class="iconbtn" data-act="closeDialog" aria-label="닫기">${I("arrow_back")}</button><b>bilody 1차 시험 마지막 설문</b></div>
+    <p class="muted small">3분이면 끝나요. 답은 bilody를 고치는 데만 쓰고, 이름 없이 모아서 봐요.</p>
+    ${POST_Q.map((q, n) => `<div class="card q"><b>${n + 1}. ${esc(q.t)}</b>
+      ${q.type === "face" ? `<div class="faces">${["😣", "😕", "😐", "🙂", "😄"].map((f, i) => `<button class="face ${d.face === i + 1 ? "on" : ""}" data-act="pqFace" data-v="${i + 1}" aria-label="${i + 1}점">${f}</button>`).join("")}</div>`
+        : q.type === "text" ? `<textarea data-pq="${q.id}" rows="3" maxlength="1000" placeholder="${esc(q.ph)}"></textarea>`
+        : q.o.map(([v, l]) => `<label class="radio"><input type="${q.type === "many" ? "checkbox" : "radio"}" name="pq_${q.id}" value="${v}"> ${esc(l)}</label>`).join("")}
+      ${q.note ? `<textarea data-pq="${q.note}" rows="2" maxlength="500" placeholder="${esc(q.ph)}"></textarea>` : ""}</div>`).join("")}
+    <button class="pill primary" data-act="sendPost">보내기</button></div></div>`;
   if (d.kind === "editMem") return box(`<h2>기억 고치기</h2><textarea id="memText" rows="3">${esc(d.text)}</textarea>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link" data-act="saveMem">저장</button></div>`);
   if (d.kind === "board") return box(`<h2>이번 주 순위 🏆</h2><p class="muted small">5분 이상 이야기한 날 10점 + 1분마다 1점(하루 최대 30점). 매주 월요일에 새로 시작해요. 다른 사람 이름은 첫 글자만 보여요.</p>
@@ -714,6 +748,22 @@ app.addEventListener("click", async (e) => {
       const note = $("#cknote").value; const { sid, rating } = S.dialog; S.dialog = null;
       await work(async () => { await api.saveCheckin(sid, rating, issues, note); lsSet("checkin_day", today()); });
       toast("고마워요! 의견을 잘 받았어요."); break;
+    }
+    case "pqFace": { S.dialog.face = Number(v); document.querySelectorAll(".survey .face").forEach((b) => b.classList.toggle("on", b.dataset.v === v)); break; }
+    case "sendPost": {
+      const a = { overall: S.dialog.face || null };
+      for (const q of POST_Q) {
+        if (q.type === "many") a[q.id] = [...document.querySelectorAll(`input[name=pq_${q.id}]:checked`)].map((x) => x.value);
+        else if (q.type === "one") a[q.id] = document.querySelector(`input[name=pq_${q.id}]:checked`)?.value ?? null;
+        else if (q.type === "text") a[q.id] = (document.querySelector(`[data-pq=${q.id}]`)?.value ?? "").trim();
+        if (q.note) a[q.note] = (document.querySelector(`[data-pq=${q.note}]`)?.value ?? "").trim();
+      }
+      const missing = POST_Q.filter((q) => q.type !== "text" && q.type !== "many" && !a[q.id]).length;
+      if (missing) return toast(`아직 답하지 않은 질문이 ${missing}개 있어요.`);
+      S.dialog = null;
+      await work(() => api.savePostSurvey(a));
+      if (!S.error) { S.dialog = { kind: "postDone" }; render(); }
+      break;
     }
     case "inquiry": S.dialog = { kind: "inquiry" }; render(); break;
     case "sendInquiry": {
