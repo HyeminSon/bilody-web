@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.3.2";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.3.2";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.3.2";
-import { GUIDE } from "./guide.js?v=0.3.2";
-import { Player } from "./audio.js?v=0.3.2";
-import { Chat } from "./rt.js?v=0.3.2";
-import * as story from "./story.js?v=0.3.2";
-import * as push from "./push.js?v=0.3.2";
+import * as api from "./api.js?v=0.3.3";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.3.3";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.3.3";
+import { GUIDE } from "./guide.js?v=0.3.3";
+import { Player } from "./audio.js?v=0.3.3";
+import { Chat } from "./rt.js?v=0.3.3";
+import * as story from "./story.js?v=0.3.3";
+import * as push from "./push.js?v=0.3.3";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -186,7 +186,7 @@ function renderChat() {
     <p id="notice" class="error"></p>
     <div class="controls" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
-      ${S.kidsAvailable ? `<button class="pill secondary" data-act="storyPick">${I("auto_stories")}동화 듣기</button>` : ""}`}</div>
+      ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
       <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
       <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send" autocomplete="off">
@@ -274,7 +274,7 @@ function renderStory() {
   const u = S.story.ui; const p = S.profile;
   return `<div class="story" id="story" style="background:${esc(u.bg)}">
     <div class="st-head"><div class="grow"><b id="stTitle">${esc(u.title)}</b><div id="stSub"></div>
-      ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">동화는 토리가 읽어 줘요</div>` : ""}</div>
+      ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">그림책은 토리가 읽어 줘요</div>` : ""}</div>
       <span class="micchip" id="stMic">${I("mic_off")}마이크 꺼짐</span></div>
     <div class="st-main" id="stMain"><div class="st-pages" id="stPages"></div>
       <img id="stTori" class="st-tori" src="${animSrc("tori", "idle")}" alt=""></div>
@@ -557,8 +557,8 @@ function renderDialog() {
     <div class="row end"><button class="link" data-act="closeDialog">취소</button>${push.blocker() === "ios_install" ? "" : `<button class="link" data-act="saveTime">확인</button>`}</div>`);
   if (d.kind === "storyPick") {
     const lib = d.lib; const pos = story.loadPosition(); const rb = pos && lib.stories.find((b) => b.id === pos.id);
-    return box(`<h2>동화 듣기 시연 · ${lib.stories.length}권</h2>
-      <p class="warn small">⚠ 어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 동화로 이어집니다.</p>
+    return box(`<h2>그림책 보기 · ${lib.stories.length}권</h2>
+      <p class="warn small">⚠ 어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 그림책으로 이어집니다.</p>
       <button class="pill dark" data-act="storyStart" data-v="resume">${rb ? `▶ 이어 듣기: ${esc(rb.titleKo)} (처음부터)` : "▶ 처음부터 듣기"}</button>
       <div class="book-list">${lib.stories.map((b) => `<button class="book" data-act="storyStart" data-v="${b.id}">
         ${story.thumbUrl(b.id) ? `<img src="${story.thumbUrl(b.id)}" alt="">` : ""}
@@ -627,7 +627,7 @@ app.addEventListener("click", async (e) => {
     // ---- 동화 듣기 ----
     case "storyPick": {
       try { const lib = await story.loadLib(); S.dialog = { kind: "storyPick", lib }; render(); await story.loadCommon(); if (S.dialog?.kind === "storyPick") render(); }
-      catch { toast("동화 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."); }
+      catch { toast("그림책 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."); }
       break;
     }
     case "credits": S.dialog = { kind: "credits", lib: await story.loadLib() }; render(); break;

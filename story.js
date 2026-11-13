@@ -1,8 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.3.2";
-import { Chat } from "./rt.js?v=0.3.2";
-import { byId } from "./characters.js?v=0.3.2";
+import * as api from "./api.js?v=0.3.3";
+import { Chat } from "./rt.js?v=0.3.3";
+import { byId } from "./characters.js?v=0.3.3";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
@@ -73,7 +73,7 @@ export class StoryPlayer {
       this.startStory();
       this.connectTalk();
     } catch (e) {
-      this.set({ state: "stopped", canRestart: true, notice: "동화를 불러오지 못했어요. 인터넷을 확인하고 이어서를 눌러 주세요." });
+      this.set({ state: "stopped", canRestart: true, notice: "그림책을 불러오지 못했어요. 인터넷을 확인하고 이어서를 눌러 주세요." });
     }
   }
 
@@ -93,7 +93,7 @@ export class StoryPlayer {
       voiceId: byId("tori").voice, speed: 1, saveTranscripts: false, player: this.player, presetId: KIDS_PRESET, sessionId: this.sessionId,
       // 동화 화면에는 '다시 시작' 버튼이 없으므로, 연결 실패는 동화 화면에 맞는 말로 바꿔 보여 준다(하루 한도 안내는 그대로)
       onChange: (u) => this.set({ micOn: !!u.micOn, talkNotice: !u.notice ? null : (u.state === "stopped" || /마이크/.test(u.notice)) ? u.notice
-        : "말로 이야기하는 연결이 끊겼어요. 동화는 계속 들을 수 있어요. ‘일시정지’ 뒤 ‘이어서’를 누르면 다시 연결해요." }),
+        : "말로 이야기하는 연결이 끊겼어요. 그림책은 계속 볼 수 있어요. ‘일시정지’ 뒤 ‘이어서’를 누르면 다시 연결해요." }),
       story: {
         onSpeechStart: () => this.pauseNarration(),
         onReplyDone: () => { if (this.quizActive) this.later(1500, () => { if (this.quizActive && !this.quizBusy) this.askQuiz(); }); else this.scheduleResume(2500); },
@@ -217,7 +217,7 @@ export class StoryPlayer {
     const nb = lib.stories[(lib.stories.findIndex((s) => s.id === cur.id) + 1) % lib.stories.length];
     this.log("story_next", { from: cur.id, to: nb.id });
     this.endQuizState(); this.tapped.clear(); this.decoded.clear();
-    try { await this.openBook(nb, 0); } catch { this.pause("다음 동화를 불러오지 못했어요. 이어서를 눌러 주세요."); return; }
+    try { await this.openBook(nb, 0); } catch { this.pause("다음 그림책을 불러오지 못했어요. 이어서를 눌러 주세요."); return; }
     if (this.closed || this.ui.state === "stopped") return;
     if (lib.lines.next) this.playLine("next", NARR.NEXT); else this.playTitleOrPage();
   }
