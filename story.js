@@ -1,6 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.2.3";
+import * as api from "./api.js?v=0.2.4";
+import { Chat } from "./rt.js?v=0.2.4";
+import { byId } from "./characters.js?v=0.2.4";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
@@ -69,6 +71,7 @@ export class StoryPlayer {
       this.set({ state: "listening", canRestart: false, notice: null });
       this.startMeter();
       this.startStory();
+      this.connectTalk();
     } catch (e) {
       this.set({ state: "stopped", canRestart: true, notice: "동화를 불러오지 못했어요. 인터넷을 확인하고 이어서를 눌러 주세요." });
     }
@@ -81,6 +84,36 @@ export class StoryPlayer {
     this.set({ title: b.titleKo, titleEn: b.title, pages: b.pages.length, page: page + 1, image: null, picture: null, storyId: b.id, bg: b.bg,
       credit: (b.credit.split(" 바꾼 점")[0].split(", via StoryWeaver")[0]) });
   }
+  // ---------- 동화 중 대화(11/13: 시험자도 마이크로 대화, 앱과 같음) ----------
+  /** 토리와 말로 이야기하는 연결을 연다. 마이크를 못 쓰면 동화는 터치로 계속된다. */
+  connectTalk() {
+    if (this.chat || this.closed) return;
+    const pics = new Set(this.lib.pics);
+    this.chat = new Chat({
+      voiceId: byId("tori").voice, speed: 1, saveTranscripts: false, player: this.player, presetId: KIDS_PRESET, sessionId: this.sessionId,
+      // 동화 화면에는 '다시 시작' 버튼이 없으므로, 연결 실패는 동화 화면에 맞는 말로 바꿔 보여 준다(하루 한도 안내는 그대로)
+      onChange: (u) => this.set({ micOn: !!u.micOn, talkNotice: !u.notice ? null : (u.state === "stopped" || /마이크/.test(u.notice)) ? u.notice
+        : "말로 이야기하는 연결이 끊겼어요. 동화는 계속 들을 수 있어요. ‘일시정지’ 뒤 ‘이어서’를 누르면 다시 연결해요." }),
+      story: {
+        onSpeechStart: () => this.pauseNarration(),
+        onReplyDone: () => { if (this.quizActive) this.later(1500, () => { if (this.quizActive && !this.quizBusy) this.askQuiz(); }); else this.scheduleResume(2500); },
+        onNoise: () => { if (this.quizActive) return this.later(600, () => { if (this.quizActive && !this.quizBusy) this.askQuiz(); }); this.narrInterrupted = false; this.scheduleResume(600); },
+        onCue: (pic) => this.set({ picture: pic, pictureSeq: this.ui.pictureSeq + 1 }),
+        isNarrating: () => this.playing,
+        pictureFor: (w) => { const p = this.lib.match[w.toLowerCase().replace(/^'+|'+$/g, "")]; return p && pics.has(p) ? p : null; },
+      },
+    });
+    this.chat.start();
+  }
+  /** 말소리가 들리면 읽던 동화를 멈춘다(대답이 끝나면 '어디까지 했지' 말과 함께 그 쪽을 다시 읽는다). */
+  pauseNarration() {
+    clearTimeout(this.resumeTimer); clearTimeout(this.quizWait);
+    if (this.playing) { this.stopAudio(); this.narrInterrupted = true; }
+    this.quizBusy = false;
+    this.set({ state: "listening" });
+  }
+  get talkBusy() { const c = this.chat; return !!c && (!!c.resp || !!c.ui.speech || this.player.isPlaying); }
+
   pageImg(name) { return url(this.pack, `i/${name}`); }
 
   // ---------- 소리 ----------
@@ -122,6 +155,7 @@ export class StoryPlayer {
       if (i === bufs.length - 1) s.onended = () => { if (ep === this.epoch) { this.playing = false; this.sources = []; this.onNarrationDone(); } };
     });
     this.playing = true;
+    if (text) this.chat?.noteHeard(text);
     this.set({ state: "speaking", line: text });
     for (const c of cues) this.later(c.t + 50, () => { if (ep === this.epoch && this.playing) this.set({ picture: c.pic, pictureSeq: this.ui.pictureSeq + 1 }); });
   }
@@ -173,6 +207,7 @@ export class StoryPlayer {
     if (this.quizActive) { this.quizTap(pic); return; }
     this.tapped.add(pic);
     clearTimeout(this.resumeTimer);
+    this.chat?.interruptReply();   // 토리가 대답하던 중이면 멈추고 누른 단어부터
     this.log("story_word", { pic });
     this.set({ picture: pic, pictureSeq: this.ui.pictureSeq + 1 });
     this.playNarration(NARR.WORD, w.text, [w.res]);
@@ -306,7 +341,7 @@ export class StoryPlayer {
     clearTimeout(this.resumeTimer);
     this.resumeTimer = setTimeout(() => {
       if (this.closed || this.ui.state === "stopped") return;
-      if (this.playing) return this.scheduleResume(1500, fresh);
+      if (this.playing || this.talkBusy) return this.scheduleResume(1500, fresh);
       if (this.narrInterrupted && !fresh) this.playLine("back", NARR.BACK); else this.playPage(this.page);
     }, ms);
   }
@@ -320,6 +355,7 @@ export class StoryPlayer {
     // 놀이 중에 멈추면 이어서 할 때 다음 동화부터(앱과 같음)
     if (this.quizActive) { this.endQuizState(); this.skipToNext = true; }
     this.flushMeter(); clearInterval(this.meterTimer); this.meterTimer = null;
+    if (this.chat?.pc) this.chat.stopInternal("USER_STOP", null);   // 멈춘 동안 마이크도 끈다
     this.log("story_pause", { page: this.page + 1 });
     this.set({ state: "stopped", canRestart, notice });
   }
@@ -329,6 +365,7 @@ export class StoryPlayer {
     if (!this.book) return this.start("resume");
     this.set({ state: "listening", canRestart: false, notice: null });
     this.startMeter();
+    if (this.chat) this.chat.restart(); else this.connectTalk();
     if (this.skipToNext) { this.skipToNext = false; return this.nextStory(); }
     this.startStory();
   }
@@ -338,7 +375,8 @@ export class StoryPlayer {
     this.closed = true;
     clearTimeout(this.resumeTimer); clearTimeout(this.quizWait); clearInterval(this.meterTimer);
     this.stopAudio();
-    if (this.sessionId) await api.finishSession(this.sessionId);
+    if (this.chat) await this.chat.close();   // 대화 연결을 닫고 대화 번호를 마무리한다
+    else if (this.sessionId) await api.finishSession(this.sessionId);
   }
 
   // ---------- 이용 시간(앱과 같이 15초마다) ----------

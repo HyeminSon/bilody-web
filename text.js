@@ -34,6 +34,8 @@ const confusedRe = /(i don'?t (understand|get it|know what you mean)|i didn'?t (
 const quoteRe = /["“]([^"”]{1,160})["”]/g;
 const practiceRe = /(we usually say|can you say|\bsay:|in parts|\bnow:|all together|try (it )?(once )?(more|again))/i;
 const rephraseRe = /^let me say it another way[.!,]?\s*/i;
+/** 11/13: 처음 두 번(교정·한 번 더 듣기)은 소리로만, 두 번째도 틀려 구절별 연습으로 넘어가면 그때 글 카드를 보여 준다. */
+const partsRe = /(in parts|\bsay:|\bnow:|all together)/i;
 
 export const confused = (t) => confusedRe.test(t.trim());
 const norm = (x) => x.toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
@@ -45,6 +47,7 @@ export function decideCard(reply, target, helpWanted) {
   const q = quotes.length ? quotes[quotes.length - 1][1].trim() : null;
   const quote = q && /\p{L}/u.test(q) ? q : null;
   if (quote && practiceRe.test(text)) {
+    if (!partsRe.test(text)) return { card: null, target: target && norm(target).includes(norm(quote)) ? target : quote };
     if (target && norm(quote) !== norm(target) && norm(target).includes(norm(quote)))
       return { card: { practice: true, text: target, chunk: quote }, target };
     return { card: { practice: true, text: quote }, target: quote };

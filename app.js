@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.3";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.3";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.3";
-import { GUIDE } from "./guide.js?v=0.2.3";
-import { Player } from "./audio.js?v=0.2.3";
-import { Chat } from "./rt.js?v=0.2.3";
-import * as story from "./story.js?v=0.2.3";
-import * as push from "./push.js?v=0.2.3";
+import * as api from "./api.js?v=0.2.4";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.4";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.4";
+import { GUIDE } from "./guide.js?v=0.2.4";
+import { Player } from "./audio.js?v=0.2.4";
+import { Chat } from "./rt.js?v=0.2.4";
+import * as story from "./story.js?v=0.2.4";
+import * as push from "./push.js?v=0.2.4";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -264,7 +264,7 @@ function renderStory() {
   return `<div class="story" id="story" style="background:${esc(u.bg)}">
     <div class="st-head"><div class="grow"><b id="stTitle">${esc(u.title)}</b><div id="stSub"></div>
       ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">동화는 토리가 읽어 줘요</div>` : ""}</div>
-      <span class="micchip">${I("mic_off")}마이크 꺼짐</span></div>
+      <span class="micchip" id="stMic">${I("mic_off")}마이크 꺼짐</span></div>
     <div class="st-main" id="stMain"><div class="st-pages" id="stPages"></div>
       <img id="stTori" class="st-tori" src="${animSrc("tori", "idle")}" alt=""></div>
     <p id="stLine" class="st-line"></p><p id="stNotice" class="error st-pad"></p>
@@ -278,7 +278,7 @@ function updateStory() {
   const st = S.story; const u = st.ui; const root = $("#story"); if (!root) return;
   root.style.background = u.bg;
   $("#stTitle").textContent = u.title;
-  $("#stSub").innerHTML = u.quiz ? quizStars(u.quiz) : `<span class="st-sub">${u.page}/${u.pages}쪽 · 마이크 없이 터치로 놀아요</span>`;
+  $("#stSub").innerHTML = u.quiz ? quizStars(u.quiz) : `<span class="st-sub">${u.page}/${u.pages}쪽 · 어른 목소리로만</span>`;
   const tsrc = animSrc("tori", u.state); const t = $("#stTori"); if (!t.src.endsWith(tsrc)) t.src = tsrc;
   // 쪽(그림·단어 카드)은 쪽이 바뀔 때만 새로 그린다 → 지금 읽는 단어 카드만 튀어 오르게
   const pageKey = `${u.storyId}|${u.page}|${u.image}|${u.image ? "" : u.picture}`;
@@ -290,7 +290,9 @@ function updateStory() {
     const big = pages.querySelector(".bigpic"); if (big) { big.classList.remove("pop"); void big.offsetWidth; big.classList.add("pop"); }
   }
   $("#stLine").textContent = pref.get("subtitles", false) ? u.line : "";
-  $("#stNotice").textContent = u.notice ?? "";
+  $("#stNotice").textContent = u.notice ?? u.talkNotice ?? "";
+  const mic = $("#stMic"); const mk = u.micOn ? "on" : "off";
+  if (mic.dataset.k !== mk) { mic.dataset.k = mk; mic.classList.toggle("on", !!u.micOn); mic.innerHTML = u.micOn ? `${I("mic")}마이크 켜짐` : `${I("mic_off")}마이크 꺼짐`; }
   $("#stCredit").textContent = u.credit ? `${u.credit} · StoryWeaver` : "";
   const live = u.state !== "stopped";
   const ck = `${u.canRestart}|${live}`;

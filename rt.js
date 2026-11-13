@@ -1,19 +1,23 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.2.3";
-import { PRESET } from "./config.js?v=0.2.3";
-import { takeSentences, decideCard, confused } from "./text.js?v=0.2.3";
+import * as api from "./api.js?v=0.2.4";
+import { PRESET } from "./config.js?v=0.2.4";
+import { takeSentences, decideCard, confused } from "./text.js?v=0.2.4";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
 
 export class Chat {
-  constructor({ voiceId, speed, saveTranscripts, player, onChange }) {
+  /**
+   * story: 동화 듣기 중 대화(앱과 같음, 11/13). { onSpeechStart, onReplyDone, onNoise, onCue(pic), isNarrating(), pictureFor(word) }
+   * 동화 모드에서는 인사·도움 카드·기록 저장·쉬는 시간 멈춤이 없고, 이용 시간은 동화 쪽이 잰다.
+   */
+  constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null }) {
     this.voiceId = voiceId; this.speed = speed; this.saveTranscripts = saveTranscripts;
-    this.player = player; this.onChange = onChange;
+    this.player = player; this.onChange = onChange; this.presetId = presetId; this.story = story;
     this.ui = { state: "idle", micOn: false, lines: [], card: null, notice: null, remainingMinutes: null, lastLatencyMs: null, canRestart: false, speech: false, photo: null };
-    this.sessionId = null; this.seq = 0; this.closed = false;
+    this.sessionId = sessionId; this.seq = 0; this.closed = false;
     this.pc = null; this.dc = null; this.stream = null; this.track = null;
     this.epoch = 0; this.resp = null; this.greeted = false;
     this.recentFriend = ""; this.practiceTarget = null; this.helpWanted = false;
@@ -32,11 +36,11 @@ export class Chat {
 
   async connect(first) {
     this.set({ state: "connecting", notice: null, canRestart: false });
-    this.player.chime();
+    if (!this.story) this.player.chime();
     const t0 = Date.now();
     try {
-      if (!this.sessionId) this.sessionId = await api.startSession(PRESET);
-      const key = await api.realtimeKey(PRESET, this.speed);
+      if (!this.sessionId) this.sessionId = await api.startSession(this.presetId);
+      const key = await api.realtimeKey(this.presetId, this.speed);
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
       try {
         this.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -64,8 +68,8 @@ export class Chat {
       await pc.setRemoteDescription({ type: "answer", sdp: answer });
       const m = /a=max-message-size:(\d+)/.exec(answer);
       this.maxMsg = Math.min(pc.sctp?.maxMessageSize || (m ? Number(m[1]) || 1_000_000 : 65536), 1_000_000);
-      this.log("rt_connected", { connect_ms: Date.now() - t0, first, mic: !!this.stream });
-      this.startMeter();
+      this.log("rt_connected", { connect_ms: Date.now() - t0, first, mic: !!this.stream, story: !!this.story });
+      if (!this.story) this.startMeter();
     } catch (e) {
       this.teardown();
       const code = e?.code ?? e?.name ?? "error";
@@ -81,6 +85,7 @@ export class Chat {
   }
 
   requestGreeting() {
+    if (this.story) { this.openMic(); return; }   // 동화: 인사 없이 바로 마이크(동화는 이미 흐르고 있다)
     this.send({ type: "response.create" });
     setTimeout(() => { if (!this.greeted) this.openMic(); }, 8000);
   }
@@ -102,8 +107,9 @@ export class Chat {
       case "input_audio_buffer.speech_started": {
         this.lastSpeechStart = Date.now();
         clearTimeout(this.idleTimer);
-        this.startedDuringPlayback = this.player.isPlaying;
-        if (this.player.isPlaying && this.resp) this.startSoft();
+        this.startedDuringPlayback = this.player.isPlaying || !!this.story?.isNarrating();
+        if (this.story) { this.story.onSpeechStart(); this.interruptReply(); }
+        else if (this.player.isPlaying && this.resp) this.startSoft();
         else this.interruptReply();
         this.set({ state: "listening", speech: true });
         break;
@@ -121,11 +127,14 @@ export class Chat {
           this.endSoft(real, ev.item_id, real ? "speech" : t ? "echo" : "blank");
           if (!real) return;
         }
-        if (this.startedDuringPlayback && this.looksLikeEcho(t)) {
+        const noise = !!this.story && !/\p{L}/u.test(t);   // 동화: 글자가 하나도 없는 소리(잡음)는 말로 치지 않는다
+        if (noise || (this.startedDuringPlayback && this.looksLikeEcho(t))) {
           this.startedDuringPlayback = false;
           if (ev.item_id) this.send({ type: "conversation.item.delete", item_id: ev.item_id });
+          if (this.resp) this.interruptReply();
           this.send({ type: "response.cancel" });
-          this.log("rt_echo", {});
+          this.log(noise ? "story_noise" : "rt_echo", {});
+          if (this.story) this.story.onNoise();
           return;
         }
         this.startedDuringPlayback = false;
@@ -161,7 +170,7 @@ export class Chat {
         const r = this.resp; if (!r || r.done) return;
         takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
         r.pending = ""; r.done = true;
-        this.updateCard(r.text);
+        if (!this.story) this.updateCard(r.text);
         r.chain.then(() => this.onReplyPlayed(r));
         break;
       }
@@ -173,7 +182,7 @@ export class Chat {
           takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
           r.pending = ""; r.done = true; r.chain.then(() => this.onReplyPlayed(r));
         }
-        if (r && !r.hadText) this.nudge(Date.now());
+        if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else this.nudge(Date.now()); }
         break;
       }
       case "error": this.log("rt_error", { code: ev.error?.code ?? "error" }); break;
@@ -186,7 +195,7 @@ export class Chat {
 
   enqueue(r, sentence) {
     if (r.epoch !== this.epoch) return;
-    const voice = this.voiceId, speed = this.speed, sid = this.sessionId;
+    const voice = this.voiceId, speed = this.story ? 1 : this.speed, sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
     r.chain = r.chain.then(async () => {
@@ -203,6 +212,13 @@ export class Chat {
         this.addLine("assistant", spoken, true);
       } else this.appendAssistant(spoken);
       this.recentFriend = (this.recentFriend + " " + spoken).slice(-400);
+      if (this.story) {
+        // 동화: 대답 속 단어의 그림을 그 단어가 나올 즈음 띄운다(토리 목소리 약 13자/초로 어림, 앱과 같음)
+        for (const m of spoken.matchAll(/[A-Za-z']+/g)) {
+          const pic = this.story.pictureFor(m[0]);
+          if (pic) setTimeout(() => { if (r.epoch === this.epoch) this.story.onCue(pic); }, Math.round(m.index * 1000 / 13));
+        }
+      }
       const ok = await this.player.play(s.pcm, s.rate);
       if (ok && r.epoch === this.epoch) r.played.push(spoken);
     });
@@ -214,6 +230,7 @@ export class Chat {
     this.resp = null;
     if (!this.greeted) this.openMic();
     if (this.pc) this.set({ state: "listening" });
+    if (this.story) { this.story.onReplyDone(); return; }
     this.afterFriendFinished();
   }
 
@@ -222,7 +239,18 @@ export class Chat {
     const played = r.played.join(" ").trim();
     if (!complete || played !== r.text.trim()) this.fixServerContext(r, played);
     if (played) this.persist("assistant", played);
+    if (played && !this.story) this.trackPractice(played);
     this.closeAssistantLine(!complete);
+  }
+
+  /** 앱과 같게: 문장 전체 따라 말하기가 세 번 연달아 나오면 다음엔 넘어가라는 메모를 넣는다(두 번까지는 정상, 11/13). */
+  trackPractice(played) {
+    this.practiceStreak = /(we usually say|can you say that|can you try that)/i.test(played) ? (this.practiceStreak ?? 0) + 1 : 0;
+    if (this.practiceStreak < 3) return;
+    this.practiceStreak = 0;
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
+      text: "Note from the app: the learner has already practiced this sentence enough. In your next reply, do not correct and do not ask them to repeat. Say a few warm words about the effort, then ask one easy new question." }] } });
+    this.log("practice_limit", {});
   }
 
   fixServerContext(r, played) {
@@ -259,6 +287,9 @@ export class Chat {
     this.softHeld = false;
     this.log("rt_soft_barge", { result: why });
   }
+
+  /** 동화 읽는 글도 되울림 판단에 넣는다(마이크가 동화 소리를 다시 들은 것인지). */
+  noteHeard(text) { this.recentFriend = (this.recentFriend + " " + text).slice(-400); }
 
   looksLikeEcho(heard) {
     const words = (x) => x.toLowerCase().split(/[^a-z']+/).filter((w) => w.length > 1);

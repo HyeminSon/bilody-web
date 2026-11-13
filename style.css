@@ -226,6 +226,7 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .st-head b { font-size: 18px; } .st-sub { font-size: 12px; color: rgba(53, 16, 47, .6); }
 .micchip { display: inline-flex; align-items: center; gap: 4px; background: #BDBDBD; color: #fff; border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: 500; }
 .micchip .mi { font-size: 16px; }
+.micchip.on { background: var(--red); }
 .quiz { display: inline-flex; align-items: center; gap: 2px; } .quiz b { font-size: 13px; color: var(--purple); margin-right: 8px; }
 .star { font-size: 26px; color: rgba(53, 16, 47, .3); } .star.on { color: #FFB800; animation: starpop .45s cubic-bezier(.3, 1.6, .5, 1); }
 @keyframes starpop { from { transform: scale(.4); } }
