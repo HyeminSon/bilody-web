@@ -1,12 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.2.2";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.2";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.2";
-import { GUIDE } from "./guide.js?v=0.2.2";
-import { Player } from "./audio.js?v=0.2.2";
-import { Chat } from "./rt.js?v=0.2.2";
-import * as story from "./story.js?v=0.2.2";
-import * as push from "./push.js?v=0.2.2";
+import * as api from "./api.js?v=0.2.3";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.2.3";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.2.3";
+import { GUIDE } from "./guide.js?v=0.2.3";
+import { Player } from "./audio.js?v=0.2.3";
+import { Chat } from "./rt.js?v=0.2.3";
+import * as story from "./story.js?v=0.2.3";
+import * as push from "./push.js?v=0.2.3";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -167,15 +167,15 @@ function renderChat() {
   const guide = !chat && !pref.get("guideSeen", false) ? `<div class="card guide"><b>이렇게 이야기해요</b><ul>
       <li>‘대화 시작’을 누르면 ${iGa(fname)} 먼저 인사해요.</li>
       <li>마이크가 빨갛게 켜지면 편하게 말하세요. 짧게 말해도, 한국어를 섞어도 괜찮아요.</li>
-      <li>${iGa(fname)} 말하는 도중에 말해도 돼요. 하던 말을 멈추고 들어 줘요. 생각할 시간이 필요하면 “Wait”라고 말해 보세요.</li>
-      <li>어색한 표현은 ${iGa(fname)} 자연스럽게 바꿔 알려 줘요. 한 번 따라 말해 보세요.</li>
+      <li>${iGa(fname)} 말하는 도중에 말해도 돼요. 하던 말을 멈추고 들어줘요. 생각할 시간이 필요하면 “Wait”라고 말해 보세요.</li>
+      <li>어색한 표현은 ${iGa(fname)} 자연스럽게 바꿔 알려줘요. 한 번 따라 말해 보세요.</li>
       ${push.isIOS() ? "<li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li>" : ""}</ul>
       <div class="right"><button class="link" data-act="guideSeen">알겠어요</button></div></div>` : "";
   return `<div class="chat">
     <div class="chat-top">${home}
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
       <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
-      <p class="ai-note">${eunNeun(fname)} AI 친구예요 · 대답과 목소리는 AI가 만들어요</p>
+      <p class="ai-note">${eunNeun(fname)} AI 친구예요. 대답과 목소리는 AI가 만들어요.</p>
       <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
@@ -497,7 +497,8 @@ function renderSettings() {
     ${section("help", "도움말", "사용 안내 · 문의하기", "support_agent", `
       <button class="link" data-act="guide">사용 안내 보기</button><br>
       <button class="link" data-act="inquiry">문의하기</button><br>
-      <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button>
+      <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button><br>
+      <button class="link" data-act="showGuideCard">첫 화면 안내 다시 보기</button>
       <p class="muted tiny">앱을 쓸 수 없을 때는 초대해 준 운영자에게 연락해 주세요(삭제 요청 포함).</p>`)}
     <p class="version">bilody ${VERSION} · 비공개 시험판</p>
   </div>`;
@@ -607,6 +608,7 @@ app.addEventListener("click", async (e) => {
       break;
     }
     case "guideSeen": pref.set("guideSeen", true); render(); break;
+    case "showGuideCard": pref.set("guideSeen", false); toast("대화 화면에 안내를 다시 띄웠어요."); break;
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
     // ---- 동화 듣기 ----
