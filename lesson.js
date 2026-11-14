@@ -61,6 +61,15 @@ async function loadLesson(id) {
   return l.cache[id];
 }
 
+/** 이어 할 과: 기록이 없으면 첫 과, 마지막 과를 끝냈으면 그다음 과(마지막이면 그대로), 아니면 그 과. */
+export function resumeId(store) {
+  const list = lib?.lessons ?? []; if (!list.length) return null;
+  const last = store.get("lessonLast", null);
+  const i = last ? list.findIndex((l) => l.id === last.id) : -1;
+  if (i < 0) return list[0].id;
+  return last.done ? list[Math.min(i + 1, list.length - 1)].id : list[i].id;
+}
+
 // ---------------- 진행 ----------------
 /**
  * 대화(Chat) 하나에 붙는 교재 관리자. ui: 화면에 그릴 교재 카드 상태(null이면 없음).
@@ -81,8 +90,9 @@ export class LessonManager {
 
   set(patch) { this.ui = patch === null ? null : { ...(this.ui ?? {}), ...patch }; this.onChange?.(); }
   log(kind, data = {}) { this.chat.log(kind, { ...data, lesson: this.lesson?.id ?? null }); }
-  level() { return this.store.get("lessonLevel", "L1"); }
   done() { return this.store.get("lessonDone", []); }
+  /** 그림책처럼 이어 하기(11/14 실장님): 처음엔 1과, 다음엔 마지막으로 한 과에서. 그 과를 끝까지 했으면 다음 과. */
+  resumeId() { return resumeId(this.store); }
 
   // ---------- 제안(도움 요청·긴 침묵 두 번·관련 화제, 대화당 한 번) ----------
   observe(t) {
@@ -90,10 +100,10 @@ export class LessonManager {
     if (/\p{L}/u.test(t)) { this.learnerSaid++; this.silent = 0; }
     if (this.offered || this.declined) return;
     const n = normalize(t);
-    if (new RegExp(lib.help_request, "i").test(t)) return this.offer(this.nextLesson(), "help");
+    if (new RegExp(lib.help_request, "i").test(t)) return this.offer(this.resumeId(), "help");
     if (this.learnerSaid >= 3) {
       for (const l of lib.lessons) {
-        if (l.level !== this.level() || this.done().includes(l.id)) continue;
+        if (this.done().includes(l.id)) continue;
         const c = lib.cache[l.id]; if (!c) continue;
         if (c.topics_en.some((k) => ` ${n} `.includes(` ${k} `))) return this.offer(l.id, "topic");
       }
@@ -109,16 +119,11 @@ export class LessonManager {
       if (this.active || this.offered || this.declined) return;
       if (this.chat.ui.speech || this.chat.resp || this.player.isPlaying) return;
       this.silent++;
-      if (this.silent >= 2) return this.offer(this.nextLesson(), "silence");
+      if (this.silent >= 2) return this.offer(this.resumeId(), "silence");
       this.silenceTimer = setTimeout(check, 8000);
     };
     this.silent = 0;
     this.silenceTimer = setTimeout(check, 8000);
-  }
-  nextLesson() {
-    const lv = this.level(); const done = this.done();
-    const list = lib.lessons.filter((l) => l.level === lv);
-    return (list.find((l) => !done.includes(l.id)) ?? list[0] ?? lib.lessons[0]).id;
   }
   async preload() { const l = await loadLib(); await Promise.all(l.lessons.map((x) => loadLesson(x.id).catch(() => null))); }
 
@@ -133,7 +138,7 @@ export class LessonManager {
     try {
       await this.speak("Want to learn a new expression today?", g);
       const a = await this.wait(g, { kind: "offer" });
-      if (a.type === "yes") { this.log("lesson_offer_answer", { a: "yes" }); return await this.run(les, g); }
+      if (a.type === "yes") { this.log("lesson_offer_answer", { a: "yes" }); return await this.run(les, g, "Great!"); }
       this.declined = true;
       this.log("lesson_offer_answer", { a: a.type });
       if (a.type === "other") return this.finish({ say: null, keepLast: true });
@@ -149,18 +154,22 @@ export class LessonManager {
     const les = await loadLesson(id); this.lesson = les;
     this.chat.beginLessonHold();
     this.log("lesson_start", { via: "button" });
-    try { await this.run(les, ++this.gen); } catch (e) { if (e !== STOP) throw e; }
+    try { await this.run(les, ++this.gen, "Okay!"); } catch (e) { if (e !== STOP) throw e; }
   }
 
   // ---------- 본 진행 ----------
-  async run(les, g) {
+  async run(les, g, opener = "Okay!") {
     this.lesson = les; this.x = null; this.xRaw = null; this.results = {}; this.t0 = Date.now(); this.lastWhen = null; this.lastSay = ""; this.hard = false;
     const P = les.partner_name;
     const lines = les.scene.map((l) => ({ who: l.who === "tori" ? "Tori" : P, en: l.en, mine: false, st: "" }));
-    this.set({ phase: "lesson", title: les.title_ko, step: "토리가 먼저 읽기", img: les.img, lines, hint: null, blank: null, choices: null, role: false, notice: null, timeSkip: les.time_skip_before ?? null, ask: null });
-    this.prefetch(["Okay! Listen.", ...les.scene.map((l) => l.en)]);
+    this.store.set("lessonLast", { id: les.id, done: false, at: Date.now() });
+    // 11/14 실장님: 바로 ‘Okay! Listen.’ 하면 어색함 → 친구처럼 오늘 할 표현을 먼저 말하고 시작
+    const intro = [`${opener} Let’s practice together!`, `Today’s expression: “${les.title_en}”`, `First, listen to me and ${P}.`];
+    this.set({ phase: "lesson", title: les.title_ko, step: "오늘의 표현", img: les.img, lines: null, hint: null, blank: null, choices: null, role: false, notice: null, timeSkip: les.time_skip_before ?? null, ask: null, said: null });
+    this.prefetch([...intro, ...les.scene.map((l) => l.en)]);
+    for (const t of intro) await this.speak(t, g);
     // 1. 토리가 먼저 읽기
-    await this.speak("Okay! Listen.", g);
+    this.set({ step: "토리가 먼저 읽기", lines });
     for (let i = 0; i < lines.length; i++) { this.mark(i, "now"); await this.speak(les.scene[i].en, g); this.mark(i, "done"); }
     // 2. 번갈아 읽기(한 바퀴) + 역할 바꾸기(선택)
     await this.readRound(les, g, "partner");
@@ -325,6 +334,7 @@ export class LessonManager {
     const summary = Object.fromEntries(Object.entries(this.results).map(([k, v]) => [k, v]));
     this.log("lesson_result", { results: summary, ms: Date.now() - this.t0, hard: this.hard });
     const done = new Set(this.done()); done.add(this.lesson.id); this.store.set("lessonDone", [...done]);
+    this.store.set("lessonLast", { id: this.lesson.id, done: true, at: Date.now() });
     this.store.set("lessonRecall", { id: this.lesson.id, session: this.chat.sessionId, at: Date.now() });
     this.finish({ say: this.hard ? "Thanks for practicing. Let’s just talk." : "That was fun! Let’s keep talking.", toast: "오늘 연습한 표현을 기록에 남겼어요", g });
   }
@@ -483,21 +493,35 @@ export class LessonManager {
 }
 
 // ---------------- 교재 카드 그림(app.js가 씀) ----------------
-/** u: LessonManager.ui, mic: 마이크 켜짐, esc: 글 이스케이프, I: 아이콘 */
-export function lessonCard(u, mic, esc, I) {
+// 11/14 실장님: 대사가 넘어갈 때마다 카드가 통통 튐 → 겉틀(제목·그림)은 한 번만 그리고 안쪽만 바꾼다.
+/** 겉틀: 교재가 바뀌거나 제안→진행으로 넘어갈 때만 새로 그림. */
+export function lessonShell(u, esc, I, enter) {
+  return `<div class="card lesson ${u.phase} ${enter ? "enter" : ""}">
+    <div class="lesson-h"><span class="tag">교재</span><b class="grow">${esc(u.title)}</b><span class="lesson-role"></span>
+      <button class="iconbtn sm" data-act="lessonInfo" aria-label="출처">${I("info", "", true)}</button></div>
+    <img class="lesson-img" alt="" hidden>
+    <div class="lesson-body"></div></div>`;
+}
+/** 겉틀 안의 그림만 바꾼다(같은 그림이면 그대로 둬서 다시 불러오지 않음). */
+export function lessonImage(root, u) {
+  const img = root.querySelector(".lesson-img"); if (!img) return;
+  const want = u.phase !== "offer" && u.img ? u.img : "";
+  if (img.dataset.src !== want) { img.dataset.src = want; if (want) img.src = want; img.hidden = !want; }
+  img.classList.toggle("small", !u.lines);
+  const role = root.querySelector(".lesson-role"); const rk = u.role ? "1" : "";
+  if (role && role.dataset.k !== rk) { role.dataset.k = rk; role.innerHTML = u.role ? `<span class="tag role">역할극</span>` : ""; }
+}
+/** 안쪽: 단계·대사·힌트·버튼. */
+export function lessonBody(u, mic, esc, I) {
+  if (u.phase === "offer") return `<p class="lesson-offer">${esc(u.offer)}</p>
+      <div class="row gap"><button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">좋아요</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">다음에</button></div>`;
   const lessonLines = (u.lines ?? []).map((l, i) => `${u.timeSkip === i ? `<div class="ln skip">· · · 잠시 뒤 · · ·</div>` : ""}
     <div class="ln ${l.mine ? "mine" : ""} ${l.st}"><span class="w">${esc(l.who)}</span><span>${esc(l.en)}</span></div>`).join("");
   const blank = u.blank ? `<div class="lesson-blank">${esc(u.blank).replace(/___/g, "<u>&nbsp;</u>")}</div>` : "";
   const help = u.showHelp && u.choices ? `<div class="lesson-help"><span class="muted tiny">${esc(u.choices.ko)}</span>
     ${u.blank ? "" : `<div class="lesson-blank small">${esc(u.choices.blank).replace(/___/g, "<u>&nbsp;</u>")}</div>`}
     <div class="lesson-chips">${u.choices.choices.map((c) => `<span>${esc(c)}</span>`).join("")}</div></div>` : "";
-  return `<div class="card lesson ${u.phase}">
-    <div class="lesson-h"><span class="tag">교재</span><b class="grow">${esc(u.title)}</b>${u.role ? `<span class="tag role">역할극</span>` : ""}
-      <button class="iconbtn sm" data-act="lessonInfo" aria-label="출처">${I("info", "", true)}</button></div>
-    ${u.phase === "offer" ? `<p class="lesson-offer">${esc(u.offer)}</p>
-      <div class="row gap"><button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">좋아요</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">다음에</button></div>` : `
-    <div class="lesson-step">${esc(u.step ?? "")}</div>
-    ${u.img ? `<img class="lesson-img ${u.lines ? "" : "small"}" src="${esc(u.img)}" alt="">` : ""}
+  return `<div class="lesson-step">${esc(u.step ?? "")}</div>
     ${u.clock ? `<div class="lesson-clock">${I("schedule")} ${esc(u.clock)}</div>` : ""}
     ${lessonLines ? `<div class="lesson-lines">${lessonLines}</div>` : ""}
     ${u.notice ? `<p class="lesson-notice">${esc(u.notice)}</p>` : ""}
@@ -510,6 +534,5 @@ export function lessonCard(u, mic, esc, I) {
     <div class="lesson-foot"><span class="mic ${mic ? "on" : ""}">${mic ? `${I("mic")}내 차례` : `${I("volume_up")}듣는 중`}</span><span class="grow"></span>
       <button class="link tiny" data-act="lessonBtn" data-v="replay">${I("replay")}다시 듣기</button>
       ${u.waiting && u.waiting !== "offer" && u.waiting !== "yesno" ? `<button class="link tiny" data-act="lessonBtn" data-v="hint">힌트</button><button class="link tiny" data-act="lessonBtn" data-v="skip">건너뛰기</button>` : ""}</div>
-    <button class="pill secondary compact lesson-stop" data-act="lessonBtn" data-v="stop">그만하고 대화하기</button>`}
-  </div>`;
+    <button class="pill secondary compact lesson-stop" data-act="lessonBtn" data-v="stop">그만하고 대화하기</button>`;
 }

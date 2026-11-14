@@ -7,7 +7,7 @@ import { Player } from "./audio.js?v=0.8.4";
 import { Chat } from "./rt.js?v=0.8.4";
 import * as story from "./story.js?v=0.8.4";
 import * as push from "./push.js?v=0.8.4";
-import { LessonManager, loadLib as loadLessons, lessonCard } from "./lesson.js?v=0.8.4";
+import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.4";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -257,14 +257,19 @@ function updateChat() {
   }
 }
 
-// ---------------- 교재 카드(11/14): 그림은 lesson.js lessonCard ----------------
+// ---------------- 교재 카드(11/14): 그림은 lesson.js lessonShell·lessonBody ----------------
 function renderLesson() {
   const box = $("#lesson"); if (!box) return;
   const u = S.lesson?.ui; const mic = !!S.chat?.ui.micOn;
-  const key = u ? JSON.stringify(u) + (mic ? "|m" : "") : "";
+  if (!u) { if (box.innerHTML) box.innerHTML = ""; box.dataset.shell = ""; box.dataset.key = ""; return; }
+  // 겉틀(제목·그림)은 교재·단계가 바뀔 때만 새로 그리고, 처음 나타날 때만 올라오는 움직임
+  const shell = `${u.title}|${u.phase}`;
+  if (box.dataset.shell !== shell) { const enter = !box.dataset.shell; box.dataset.shell = shell; box.innerHTML = lessonShell(u, esc, I, enter); box.dataset.key = ""; }
+  const key = JSON.stringify(u) + (mic ? "|m" : "");
   if (box.dataset.key === key) return;
   box.dataset.key = key;
-  box.innerHTML = u ? lessonCard(u, mic, esc, I) : "";
+  lessonImage(box, u);
+  box.querySelector(".lesson-body").innerHTML = lessonBody(u, mic, esc, I);
 }
 
 /** 쉽게 다시 말한 카드에 붙일 단어 그림(앱과 같이 최대 3개). 그림 묶음이 아직 없으면 불러온 뒤 다시 그린다. */
@@ -622,11 +627,13 @@ function renderDialog() {
   if (d.kind === "lessons") {
     const done = new Set(pref.get("lessonDone", []));
     const lv = d.level;
+    const rb = d.lib.byId[d.resume]; const started = !!pref.get("lessonLast", null);
     return box(`<h2>교재로 배우기</h2>
-    <p class="muted small">고른 수준의 교재를 토리가 먼저 제안해요. 아래에서 바로 골라도 돼요.</p>
-    <div class="seg">${[["L1", "쉬움"], ["L2", "보통"], ["L3", "도전"]].map(([k, l]) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}">${l}</button>`).join("")}</div>
+    <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "이어서" : "처음부터"}: ${esc(rb?.title_ko ?? "")}</button>
+    <p class="muted tiny center">${started ? "마지막으로 한 교재에서 이어 가요. 끝낸 교재면 다음 교재로 가요." : "1과부터 차례대로 해요."}</p>
+    ${d.list ? `<div class="seg">${[["L1", "쉬움"], ["L2", "보통"], ["L3", "도전"]].map(([k, l]) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}">${l}</button>`).join("")}</div>
     <div class="lesson-list">${d.lib.lessons.filter((l) => l.level === lv).map((l) => `<button class="lesson-item" data-act="lessonPick" data-v="${l.id}">
-      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>
+      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>` : `<button class="link" data-act="lessonList">다른 교재 고르기</button>`}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
@@ -723,8 +730,9 @@ app.addEventListener("click", async (e) => {
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
     case "exit": await endChat(); break;
-    case "lessonOpen": { const lib = await loadLessons(); S.dialog = { kind: "lessons", lib, level: pref.get("lessonLevel", "L1") }; render(); break; }
-    case "lessonLevel": pref.set("lessonLevel", v); if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
+    case "lessonOpen": { const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
+    case "lessonList": if (S.dialog?.kind === "lessons") { S.dialog.list = true; render(); } break;
+    case "lessonLevel": if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
     case "lessonPick": S.dialog = null; render(); S.lesson?.startNow(v); break;
     case "lessonBtn": S.lesson?.button(v); break;
     case "lessonInfo": toast(S.lesson?.lesson?.credit_ko ?? "bilody가 만든 대화예요"); break;

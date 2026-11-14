@@ -332,3 +332,7 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .lesson-item img { width: 72px; height: 48px; object-fit: cover; border-radius: 10px; flex: none; }
 .lesson-item b { display: block; font-size: 15px; } .lesson-item .grow { flex: 1; }
 .lesson-img.small { aspect-ratio: auto; height: 110px; }
+.card.lesson { animation: none; } .card.lesson.enter { animation: rise .35s cubic-bezier(.2, .9, .3, 1); }
+.lesson-img { margin-top: 8px; } .lesson-img[hidden] { display: none; }
+.pill.lesson-resume { width: 100%; margin-top: 4px; font-size: 16px; }
+.center { text-align: center; }
