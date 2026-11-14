@@ -1,0 +1,270 @@
+{
+ "id": "L2-04",
+ "level": "L2",
+ "title_ko": "이거 얼마예요?",
+ "title_en": "How much is this hat?",
+ "goal_ko": "가격을 묻고 다른 색을 찾고 사기",
+ "partner": "nubi",
+ "offer_ko": "‘이거 얼마예요?’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How much is this ___?",
+   "ko": "이 ___ 얼마예요?",
+   "help": {
+    "blank": "How ___ is this hat?",
+    "choices": [
+     "much",
+     "many",
+     "more"
+    ]
+   },
+   "pattern": "^how much (?:is|are) (?:this|that|these|those|the|it)(?: (?<x>[a-z ]{2,20}))?$",
+   "partial_patterns": [
+    "^how much$"
+   ],
+   "tests": {
+    "ok": [
+     "How much is this hat?",
+     "how much is it"
+    ],
+    "partial": [
+     "how much"
+    ],
+    "form_only": [],
+    "no": [
+     "this hat"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Do you have a ___ one?",
+   "ko": "___ 있어요?",
+   "help": {
+    "blank": "Do you have a ___ one?",
+    "choices": [
+     "blue",
+     "blew",
+     "glue"
+    ]
+   },
+   "pattern": "^do you have (?:a |an |this in |it in )?(?<x>[a-z]{3,10})(?: one| ones)?$",
+   "partial_patterns": [
+    "^(?:a )?[a-z]{3,10} one$"
+   ],
+   "slot": {
+    "kind": "color",
+    "closed": true,
+    "lexicon": [
+     "blue",
+     "red",
+     "black",
+     "white",
+     "yellow",
+     "green",
+     "pink",
+     "purple",
+     "gray",
+     "grey",
+     "brown",
+     "orange",
+     "bigger",
+     "smaller"
+    ]
+   },
+   "tests": {
+    "ok": [
+     "Do you have a blue one?",
+     "do you have this in red",
+     "Do you have a bigger one"
+    ],
+    "partial": [
+     "blue one"
+    ],
+    "form_only": [
+     "do you have a banana one"
+    ],
+    "no": [
+     "blue"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I’ll take it.",
+   "ko": "이걸로 할게요.",
+   "help": {
+    "blank": "I’ll ___ it.",
+    "choices": [
+     "take",
+     "talk",
+     "make"
+    ]
+   },
+   "accept": [
+    "ill take it",
+    "i will take it",
+    "ill take this",
+    "ill take this one",
+    "ill buy it",
+    "i want it",
+    "no thanks",
+    "maybe next time"
+   ],
+   "accept_note": "안 사고 싶으면 ‘No, thanks.’도 정답.",
+   "tests": {
+    "ok": [
+     "I’ll take it.",
+     "No, thanks."
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "take it"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hello! Can I help you?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes. How much is this hat?"
+  },
+  {
+   "who": "tori",
+   "en": "It’s fifteen dollars."
+  },
+  {
+   "who": "partner",
+   "en": "Hmm. Do you have a blue one?"
+  },
+  {
+   "who": "tori",
+   "en": "Yes, here you are."
+  },
+  {
+   "who": "partner",
+   "en": "I like it! I’ll take it."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "how much is this hat",
+    "yes how much is this hat"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "do you have a blue one",
+    "hmm do you have a blue one"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "i like it ill take it",
+    "ill take it"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 내가 손님이에요. 좋아하는 색으로 골라 봐요.",
+ "story": [
+  {
+   "en": "This hat is fifteen dollars. Any color you like?",
+   "expect": "e2",
+   "model": "Do you have a {x} one?",
+   "screen_hint_ko": "원하는 색이 있는지 물어봐요: Do you have a ___ one?",
+   "screen_blank": "Do you have a ___ one?",
+   "role": true,
+   "branches": [
+    {
+     "when": "slot_in:blue|red|black",
+     "say": "Yes! Here you are."
+    },
+    {
+     "when": "default",
+     "say": "RETRY:Sorry, only red, blue, or black."
+    }
+   ]
+  },
+  {
+   "en": "Do you want it?",
+   "expect": "e3",
+   "screen_hint_ko": "사려면 I’ll take it. 아니면 No, thanks.",
+   "role": true,
+   "branches": [
+    {
+     "when": "matched_text:no thanks|maybe next time",
+     "say": "Okay! Come again."
+    },
+    {
+     "when": "default",
+     "say": "Great choice!"
+    }
+   ]
+  }
+ ],
+ "fallback": "blue",
+ "korean_map": {
+  "파랑": "blue",
+  "파란색": "blue",
+  "빨강": "red",
+  "빨간색": "red",
+  "검정": "black",
+  "검은색": "black",
+  "흰색": "white",
+  "하양": "white",
+  "노랑": "yellow",
+  "초록": "green",
+  "분홍": "pink",
+  "보라": "purple",
+  "회색": "gray"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me the price.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 가격을 물어봐요: How much is this hat?",
+   "role": true
+  },
+  {
+   "en": "It’s fifteen dollars.",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Ask the price.",
+  "hint_ko": "모자 가격을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Now ask me the price.",
+  "Great choice!",
+  "Come again."
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요. 실제 구매가 아니에요. 모자 값은 늘 15달러.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "shopping",
+  "clothes",
+  "hat",
+  "price",
+  "buy"
+ ],
+ "img": "lessons/img/L2-04.webp"
+}

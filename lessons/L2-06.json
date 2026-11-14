@@ -1,0 +1,234 @@
+{
+ "id": "L2-06",
+ "level": "L2",
+ "title_ko": "식당에서 주문",
+ "title_en": "I’d like the pasta.",
+ "goal_ko": "식당에서 주문하고 계산 요청하기",
+ "partner": "sola",
+ "offer_ko": "‘식당에서 주문’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Are you ready to order?",
+   "ko": "주문하시겠어요?",
+   "help": {
+    "blank": "Are you ___ to order?",
+    "choices": [
+     "ready",
+     "red",
+     "really"
+    ]
+   },
+   "accept": [
+    "are you ready to order",
+    "ready to order",
+    "can i take your order",
+    "may i take your order"
+   ],
+   "tests": {
+    "ok": [
+     "Are you ready to order?",
+     "can I take your order"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "order"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’d like the ___, please.",
+   "ko": "___로 주세요.",
+   "help": {
+    "blank": "I’d ___ the pasta, please.",
+    "choices": [
+     "like",
+     "light",
+     "lie"
+    ]
+   },
+   "pattern": "^(?:id like|i would like|can i have|can i get|ill have|i will have) (?:the |a |an |some )?(?<x>[a-z ]{2,25}?)(?: please)?$",
+   "partial_patterns": [
+    "^(?:the )?[a-z ]{2,20} please$"
+   ],
+   "slot": {
+    "kind": "dish",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "I’d like the pasta, please.",
+     "I would like a salad",
+     "Can I have the steak please"
+    ],
+    "partial": [
+     "pasta please"
+    ],
+    "form_only": [],
+    "no": [
+     "pasta"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Can I get the check, please?",
+   "ko": "계산서 주시겠어요?",
+   "help": {
+    "blank": "Can I get the ___, please?",
+    "choices": [
+     "check",
+     "chicken",
+     "chair"
+    ]
+   },
+   "accept": [
+    "can i get the check please",
+    "can i get the check",
+    "can i have the check please",
+    "can i have the check",
+    "check please",
+    "can i get the bill please",
+    "can i get the bill",
+    "can i have the bill please",
+    "can i have the bill",
+    "bill please"
+   ],
+   "tests": {
+    "ok": [
+     "Can I get the check, please?",
+     "check please",
+     "Can I have the bill?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "check"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hi! Are you ready to order?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes. I’d like the pasta, please."
+  },
+  {
+   "who": "tori",
+   "en": "Good choice! Anything to drink?"
+  },
+  {
+   "who": "partner",
+   "en": "Just water, please."
+  },
+  {
+   "who": "tori",
+   "en": "How was your meal?"
+  },
+  {
+   "who": "partner",
+   "en": "Delicious! Can I get the check, please?"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "id like the pasta please",
+    "yes id like the pasta please"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "can i get the check please",
+    "delicious can i get the check please"
+   ]
+  }
+ ],
+ "time_skip_before": 4,
+ "story_notice_ko": "역할극: 내가 손님이에요. 메뉴판에서 골라도 돼요.",
+ "story": [
+  {
+   "en": "Hi! Are you ready to order?",
+   "expect": "e2",
+   "model": "I’d like the {x}, please.",
+   "screen_hint_ko": "메뉴에서 골라 주문해요: I’d like the ___, please.",
+   "screen_blank": "I’d like the ___, please.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sure!"
+    }
+   ]
+  },
+  {
+   "en": "How was your meal?",
+   "expect": "e3",
+   "screen_hint_ko": "다 먹었어요. 계산서를 달라고 해요: Can I get the check, please?",
+   "role": true,
+   "time_skip": true
+  },
+  {
+   "en": "Sure! Here you are.",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "fallback": "pasta",
+ "korean_map": {
+  "파스타": "pasta",
+  "피자": "pizza",
+  "샐러드": "salad",
+  "비빔밥": "bibimbap",
+  "스테이크": "steak",
+  "버거": "burger",
+  "햄버거": "burger",
+  "김치찌개": "kimchi stew",
+  "불고기": "bulgogi",
+  "냉면": "cold noodles"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you work here. Ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "역할극: 이번엔 내가 종업원이에요: Are you ready to order?",
+   "role": true
+  },
+  {
+   "en": "Yes! I’d like the pizza, please.",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Order dinner.",
+  "hint_ko": "식당에서 음식을 주문해 보세요",
+  "expect": "e2"
+ },
+ "extra_guides": [
+  "Now you work here.",
+  "Sure!"
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요. 모두 역할극이에요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "restaurant",
+  "dinner",
+  "lunch",
+  "menu",
+  "order"
+ ],
+ "img": "lessons/img/L2-06.webp"
+}

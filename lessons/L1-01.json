@@ -1,0 +1,227 @@
+{
+ "id": "L1-01",
+ "level": "L1",
+ "title_ko": "새 이웃",
+ "title_en": "Nice to meet you!",
+ "goal_ko": "처음 만난 사람에게 어디에서 왔는지 묻고, 내가 어디에서 왔는지 말하기",
+ "partner": "moa",
+ "offer_ko": "새 이웃과 잠깐 인사해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Where are you from?",
+   "ko": "어디에서 왔어요?",
+   "help": {
+    "blank": "Where are you ___?",
+    "choices": [
+     "from",
+     "to",
+     "at"
+    ],
+    "listen_parts": [
+     "Where are you",
+     "from?"
+    ]
+   },
+   "accept": [
+    "where are you from",
+    "where you from",
+    "where are you from moa",
+    "where are you from tori",
+    "where do you come from"
+   ],
+   "tests": {
+    "ok": [
+     "Where are you from?",
+     "Where are you from, Moa?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "from"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m from ___.",
+   "ko": "저는 ___에서 왔어요.",
+   "help": {
+    "blank": "I’m from ___.",
+    "choices": [
+     "Seoul",
+     "Busan",
+     "Jeju"
+    ],
+    "listen_parts": [
+     "I’m from",
+     "{place}."
+    ]
+   },
+   "pattern": "^(?:im|i am) from (?<x>[a-z ]{2,30})$",
+   "partial_patterns": [
+    "^(?:from )?(?:seoul|busan|jeju|daegu|suwon|incheon|gwangju|daejeon|ulsan|[a-z]{3,15})$"
+   ],
+   "slot": {
+    "kind": "city",
+    "closed": false
+   },
+   "accept_note": "도시 이름은 열린 목록(여러 단어·영문 철자 차이 허용). 역할극 줄은 장면 도시(Busan)와 같은지 따로 기록. 숫자만이면 uncertain",
+   "tests": {
+    "ok": [
+     "I'm from Busan",
+     "Im from Busan",
+     "I’m from Busan.",
+     "i am from New York"
+    ],
+    "partial": [
+     "Busan"
+    ],
+    "form_only": [],
+    "no": [
+     "I'm from 123"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Nice to meet you.",
+   "ko": "만나서 반가워요.",
+   "help": {
+    "blank": "Nice to ___ you.",
+    "choices": [
+     "meet",
+     "see",
+     "eat"
+    ],
+    "listen_parts": [
+     "Nice to",
+     "meet you."
+    ]
+   },
+   "accept": [
+    "nice to meet you",
+    "nice to meet you too",
+    "you too nice to meet you",
+    "nice meeting you"
+   ],
+   "tests": {
+    "ok": [
+     "Nice to meet you, too!",
+     "Nice to meet you."
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "meet"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hi! I’m Tori. I’m from Seoul."
+  },
+  {
+   "who": "partner",
+   "en": "Hi, Tori! I’m Moa."
+  },
+  {
+   "who": "tori",
+   "en": "Where are you from, Moa?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m from Busan."
+  },
+  {
+   "who": "tori",
+   "en": "Nice to meet you!"
+  },
+  {
+   "who": "partner",
+   "en": "Nice to meet you, too!"
+  }
+ ],
+ "check": [
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "im from busan"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "nice to meet you too"
+   ]
+  }
+ ],
+ "story_notice_ko": "이제 진짜 내 이야기예요. 말하기 싫으면 장면 속 도시(부산)로 답해도 돼요.",
+ "story": [
+  {
+   "who": "tori",
+   "en": "Where are you from?",
+   "expect": "e2",
+   "model": "I’m from {x}.",
+   "model_with_fallback": "I’m from Busan.",
+   "screen_hint_ko": "고향(태어나거나 자란 도시)을 문장으로: I’m from ___.",
+   "screen_blank": "I’m from ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "{x}! Nice to meet you!"
+    }
+   ]
+  },
+  {
+   "who": "tori",
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "인사에 답해요: Nice to meet you, too!"
+  }
+ ],
+ "fallback": "Busan",
+ "korean_map": {
+  "부산": "Busan",
+  "서울": "Seoul",
+  "제주": "Jeju",
+  "대구": "Daegu",
+  "수원": "Suwon",
+  "인천": "Incheon",
+  "광주": "Gwangju",
+  "대전": "Daejeon",
+  "울산": "Ulsan"
+ },
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: Where are you from?"
+  },
+  {
+   "en": "I’m from Seoul!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 어디서 왔는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [],
+ "privacy_ko": "고향 도시 이름만 묻고 사는 곳·동네·주소는 묻지 않음.",
+ "partner_name": "Moa",
+ "credit_ko": "이 대화는 VOA Learning English(learningenglish.voanews.com)의 ‘Let’s Learn English’ 2과를 바탕으로 bilody가 새로 썼습니다.",
+ "topics_en": [
+  "where are you from",
+  "hometown",
+  "moved",
+  "neighbor",
+  "new apartment"
+ ],
+ "img": "lessons/img/L1-01.webp"
+}

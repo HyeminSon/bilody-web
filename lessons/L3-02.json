@@ -1,0 +1,237 @@
+{
+ "id": "L3-02",
+ "level": "L3",
+ "title_ko": "추천해 줄래요?",
+ "title_en": "You should try the noodles.",
+ "goal_ko": "추천을 부탁하고, 추천하고, 반응하기",
+ "partner": "nubi",
+ "offer_ko": "‘추천해 줄래요?’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Can you recommend a good ___?",
+   "ko": "괜찮은 ___ 추천해 줄래요?",
+   "help": {
+    "blank": "Can you ___ a good restaurant?",
+    "choices": [
+     "recommend",
+     "remember",
+     "return"
+    ]
+   },
+   "pattern": "^(?:can you|could you) recommend (?:a |an |some )?(?:good |nice )?(?<x>[a-z ]{2,25})$",
+   "tests": {
+    "ok": [
+     "Can you recommend a good restaurant?",
+     "could you recommend a movie"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "recommend",
+     "a good restaurant"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "You should try ___.",
+   "ko": "___ 꼭 해 봐요.",
+   "help": {
+    "blank": "You ___ try the noodles.",
+    "choices": [
+     "should",
+     "shoot",
+     "shall"
+    ]
+   },
+   "pattern": "^(?:you should|you have to|you must) (?:try|go to|eat|visit|watch|see|read) (?<x>[a-z ]{2,30})$",
+   "partial_patterns": [
+    "^try (?:the )?[a-z ]{3,25}$",
+    "^(?:the )?(?:noodles|noodle place|bibimbap|bulgogi|kimchi stew|tteokbokki|pork belly|cold noodles|galbi|knife cut noodles|korean fried chicken|rice soup)$"
+   ],
+   "tests": {
+    "ok": [
+     "You should try the noodles.",
+     "you should try knife-cut noodles",
+     "You have to try bibimbap"
+    ],
+    "partial": [
+     "the noodles"
+    ],
+    "form_only": [],
+    "no": [
+     "should"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That sounds great!",
+   "ko": "좋은데요!",
+   "help": {
+    "blank": "That ___ great!",
+    "choices": [
+     "sounds",
+     "sound",
+     "sands"
+    ]
+   },
+   "accept": [
+    "that sounds great",
+    "sounds great",
+    "that sounds good",
+    "sounds good",
+    "that sounds amazing",
+    "that sounds delicious",
+    "sounds delicious"
+   ],
+   "partial_patterns": [
+    "^(?:great|good|nice|okay)$"
+   ],
+   "tests": {
+    "ok": [
+     "That sounds great!",
+     "sounds good"
+    ],
+    "partial": [
+     "great"
+    ],
+    "form_only": [],
+    "no": [
+     "sounds"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Nubi, can you recommend a good restaurant here?"
+  },
+  {
+   "who": "partner",
+   "en": "Sure! You should try the noodle place."
+  },
+  {
+   "who": "tori",
+   "en": "What’s good there?"
+  },
+  {
+   "who": "partner",
+   "en": "You should try the spicy noodles. They’re amazing."
+  },
+  {
+   "who": "tori",
+   "en": "That sounds great! I’ll go tonight."
+  },
+  {
+   "who": "partner",
+   "en": "Let me know how it is!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "sure you should try the noodle place",
+    "you should try the noodle place"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "you should try the spicy noodles",
+    "you should try the spicy noodles theyre amazing"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내가 추천해요. 가게 이름 말고 음식 이름이면 돼요. 말하기 싫으면 장면 속 음식(the noodles)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "I want to try Korean food. What should I try?",
+   "expect": "e2",
+   "model": "You should try {x}.",
+   "screen_hint_ko": "음식을 추천해요: You should try ___.",
+   "screen_blank": "You should try ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Okay! I’ll try it."
+    }
+   ]
+  }
+ ],
+ "fallback": "the noodles",
+ "korean_map": {
+  "비빔밥": "bibimbap",
+  "불고기": "bulgogi",
+  "김치찌개": "kimchi stew",
+  "떡볶이": "tteokbokki",
+  "삼겹살": "pork belly",
+  "냉면": "cold noodles",
+  "국밥": "rice soup",
+  "치킨": "Korean fried chicken",
+  "갈비": "galbi",
+  "칼국수": "knife-cut noodles"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. A movie? A restaurant?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 추천을 부탁해요: Can you recommend a good movie?",
+   "branches": [
+    {
+     "when": "slot_in:movie|film",
+     "say": "Sure! You should watch a comedy."
+    },
+    {
+     "when": "slot_in:restaurant|place|food",
+     "say": "Sure! You should try the noodle place."
+    },
+    {
+     "when": "slot_in:book",
+     "say": "Sure! You should read a mystery."
+    },
+    {
+     "when": "default",
+     "say": "Hmm, ask Nubi! He knows a lot."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "좋다고 반응해요: That sounds great!",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Have fun!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 괜찮은 식당을 추천해 달라고 해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Okay! I’ll try it.",
+  "Have fun!"
+ ],
+ "privacy_ko": "추천은 기억에 남기지 않아요. 가게 이름·위치는 묻지 않아요. 토리 답은 부탁한 종류(영화·식당·책)에 맞춰요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "recommend",
+  "restaurant",
+  "good food",
+  "movie"
+ ],
+ "img": "lessons/img/L3-02.webp"
+}

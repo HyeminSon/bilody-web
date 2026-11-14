@@ -1,0 +1,233 @@
+{
+ "id": "L1-05",
+ "level": "L1",
+ "title_ko": "카페에서 주문",
+ "title_en": "Can I have tea, please?",
+ "goal_ko": "원하는 것을 공손하게 달라고 하고 고맙다고 말하기",
+ "partner": "moa",
+ "offer_ko": "‘카페에서 주문’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Can I have ___, please?",
+   "ko": "___ 주시겠어요?",
+   "help": {
+    "blank": "Can I ___ tea, please?",
+    "choices": [
+     "have",
+     "has",
+     "had"
+    ]
+   },
+   "pattern": "^can i (?:have|get) (?<x>[a-z ]{2,30}?)(?: please)?$",
+   "partial_patterns": [
+    "^(?:a |an )?[a-z ]{2,20} please$"
+   ],
+   "slot": {
+    "kind": "drink_or_food",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "Can I have tea, please?",
+     "can I get a coffee please",
+     "Can I have a cookie"
+    ],
+    "partial": [
+     "tea please"
+    ],
+    "form_only": [],
+    "no": [
+     "have tea"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Here you are.",
+   "ko": "여기 있어요.",
+   "help": {
+    "blank": "Here you ___.",
+    "choices": [
+     "are",
+     "is",
+     "am"
+    ]
+   },
+   "accept": [
+    "here you are",
+    "here you go",
+    "here it is",
+    "here"
+   ],
+   "tests": {
+    "ok": [
+     "Here you are.",
+     "here you go"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "you are"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Thank you!",
+   "ko": "고마워요!",
+   "help": {
+    "blank": "Thank ___!",
+    "choices": [
+     "you",
+     "me",
+     "it"
+    ]
+   },
+   "accept": [
+    "thank you",
+    "thanks",
+    "thank you so much",
+    "thanks a lot",
+    "thank you very much"
+   ],
+   "tests": {
+    "ok": [
+     "Thank you!",
+     "thanks"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "you"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hello! Coffee or tea?"
+  },
+  {
+   "who": "partner",
+   "en": "Can I have tea, please?"
+  },
+  {
+   "who": "tori",
+   "en": "Sure. Here you are."
+  },
+  {
+   "who": "partner",
+   "en": "Thank you!"
+  },
+  {
+   "who": "tori",
+   "en": "A cookie, too?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes! Can I have a cookie, please?"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "can i have tea please"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "thank you"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e1",
+   "line_accept": [
+    "can i have a cookie please",
+    "yes can i have a cookie please"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 이번엔 내가 카페 손님이에요. 메뉴판에서 골라도 돼요.",
+ "story": [
+  {
+   "en": "Hello! What would you like?",
+   "expect": "e1",
+   "model": "Can I have {x}, please?",
+   "screen_hint_ko": "메뉴에서 골라 주문해요: Can I have ___, please?",
+   "screen_blank": "Can I have ___, please?",
+   "role": true
+  },
+  {
+   "en": "Sure. Here you are.",
+   "expect": "e3",
+   "screen_hint_ko": "받았으면 고맙다고 해요: Thank you!",
+   "role": true
+  },
+  {
+   "en": "Have a nice day!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "fallback": "tea",
+ "korean_map": {
+  "커피": "coffee",
+  "아메리카노": "an americano",
+  "라떼": "a latte",
+  "차": "tea",
+  "녹차": "green tea",
+  "우유": "milk",
+  "물": "water",
+  "주스": "juice",
+  "쿠키": "a cookie"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now I’m the customer. You work here.",
+   "expect": null,
+   "screen_hint_ko": "역할극: 이번엔 내가 점원이에요.",
+   "role": true
+  },
+  {
+   "en": "Hello! Can I have tea, please?",
+   "expect": "e2",
+   "screen_hint_ko": "차를 건네며: Here you are.",
+   "role": true
+  },
+  {
+   "en": "Thank you!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Order something.",
+  "hint_ko": "카페에서 마실 것을 주문해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Now I’m the customer.",
+  "You work here.",
+  "Have a nice day!"
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요. 모두 역할극이에요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "coffee",
+  "cafe",
+  "latte",
+  "americano",
+  "tea"
+ ],
+ "img": "lessons/img/L1-05.webp"
+}

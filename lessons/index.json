@@ -1,0 +1,125 @@
+{
+ "version": 2,
+ "lessons": [
+  {
+   "id": "L1-01",
+   "level": "L1",
+   "title_ko": "새 이웃",
+   "title_en": "Nice to meet you!",
+   "partner": "moa"
+  },
+  {
+   "id": "L1-02",
+   "level": "L1",
+   "title_ko": "이름 묻기",
+   "title_en": "What’s your name?",
+   "partner": "nubi"
+  },
+  {
+   "id": "L1-05",
+   "level": "L1",
+   "title_ko": "카페에서 주문",
+   "title_en": "Can I have tea, please?",
+   "partner": "moa"
+  },
+  {
+   "id": "L2-04",
+   "level": "L2",
+   "title_ko": "이거 얼마예요?",
+   "title_en": "How much is this hat?",
+   "partner": "nubi"
+  },
+  {
+   "id": "L2-06",
+   "level": "L2",
+   "title_ko": "식당에서 주문",
+   "title_en": "I’d like the pasta.",
+   "partner": "sola"
+  },
+  {
+   "id": "L3-02",
+   "level": "L3",
+   "title_ko": "추천해 줄래요?",
+   "title_en": "You should try the noodles.",
+   "partner": "nubi"
+  },
+  {
+   "id": "L3-07",
+   "level": "L3",
+   "title_ko": "약속 바꾸기",
+   "title_en": "Can we change our plan?",
+   "partner": "sola"
+  }
+ ],
+ "sensitive": [
+  "sick",
+  "hospital",
+  "funeral",
+  "died",
+  "passed away",
+  "sad",
+  "depressed",
+  "lost my job",
+  "divorce",
+  "hurt",
+  "pain",
+  "accident",
+  "bullied",
+  "cancer",
+  "아파",
+  "아팠",
+  "병원",
+  "장례",
+  "돌아가",
+  "슬퍼",
+  "슬펐",
+  "힘들",
+  "우울",
+  "다쳤",
+  "실직",
+  "이혼",
+  "왕따",
+  "사고"
+ ],
+ "yes": [
+  "yes",
+  "yeah",
+  "okay",
+  "ok",
+  "sure",
+  "yep",
+  "lets do it",
+  "good",
+  "좋아",
+  "좋아요",
+  "응",
+  "네",
+  "그래",
+  "해 볼래",
+  "할래"
+ ],
+ "no": [
+  "no",
+  "not now",
+  "later",
+  "no thanks",
+  "nope",
+  "아니",
+  "아니요",
+  "다음에",
+  "나중에",
+  "싫어",
+  "괜찮아"
+ ],
+ "stop": [
+  "stop",
+  "enough",
+  "i want to stop",
+  "lets just talk",
+  "그만",
+  "그만할래",
+  "다른 얘기",
+  "나중에 할래"
+ ],
+ "help_request": "(what should i say|what can i say|i don'?t know what to say|nothing to say|teach me|i want to learn|할 말이 없|뭐라고 말해야|뭘 말해야|무슨 말을 해야|배우고 싶|가르쳐 줘)"
+}

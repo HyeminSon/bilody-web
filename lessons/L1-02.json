@@ -1,0 +1,210 @@
+{
+ "id": "L1-02",
+ "level": "L1",
+ "title_ko": "이름 묻기",
+ "title_en": "What’s your name?",
+ "goal_ko": "이름을 묻고 말하고, 헤어질 때 인사하기",
+ "partner": "nubi",
+ "offer_ko": "‘이름 묻기’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What’s your name?",
+   "ko": "이름이 뭐예요?",
+   "help": {
+    "blank": "What’s your ___?",
+    "choices": [
+     "name",
+     "game",
+     "day"
+    ]
+   },
+   "accept": [
+    "whats your name",
+    "what is your name",
+    "whats your name please",
+    "your name please"
+   ],
+   "partial_patterns": [
+    "^name$",
+    "^your name$"
+   ],
+   "tests": {
+    "ok": [
+     "What’s your name?",
+     "what is your name"
+    ],
+    "partial": [
+     "name"
+    ],
+    "form_only": [],
+    "no": [
+     "hello"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "My name is ___.",
+   "ko": "제 이름은 ___예요.",
+   "help": {
+    "blank": "My name is ___.",
+    "choices": [
+     "Nubi",
+     "Tori",
+     "Moa"
+    ]
+   },
+   "pattern": "^(?:my name is|my names|call me|im|i am) (?<x>.{1,30})$",
+   "partial_patterns": [
+    "^(?!my name$)(?!name$)\\S{2,15}(?: \\S{2,15})?$"
+   ],
+   "slot": {
+    "kind": "name",
+    "closed": false
+   },
+   "accept_note": "이름은 어떤 철자·한글·여러 단어든 인정(음성 인식이 이름을 틀리게 적는 경우가 많음). 이름만 말하면 부분.",
+   "tests": {
+    "ok": [
+     "My name is Hyemin.",
+     "my name's Jin Woo",
+     "I’m Sam",
+     "My name is 혜민"
+    ],
+    "partial": [
+     "Hyemin",
+     "Jin Woo"
+    ],
+    "form_only": [],
+    "no": [
+     "my name"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "See you later!",
+   "ko": "나중에 봐요!",
+   "help": {
+    "blank": "See you ___!",
+    "choices": [
+     "later",
+     "letter",
+     "lady"
+    ]
+   },
+   "accept": [
+    "see you later",
+    "see you",
+    "see ya later",
+    "bye see you later",
+    "see you soon",
+    "bye"
+   ],
+   "tests": {
+    "ok": [
+     "See you later!",
+     "Bye! See you later."
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "later"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hi! What’s your name?"
+  },
+  {
+   "who": "partner",
+   "en": "My name is Nubi."
+  },
+  {
+   "who": "tori",
+   "en": "Nice name! I’m Tori."
+  },
+  {
+   "who": "partner",
+   "en": "Nice to meet you, Tori."
+  },
+  {
+   "who": "tori",
+   "en": "Oh, my bus! See you later!"
+  },
+  {
+   "who": "partner",
+   "en": "See you later!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "my name is",
+    "my name is nubi"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "see you later"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내 이름으로 해요. 별명이나 영어 이름도 좋아요. 말하기 싫으면 Alex로 해도 돼요.",
+ "story": [
+  {
+   "en": "What’s your name?",
+   "expect": "e2",
+   "model": "My name is {x}.",
+   "screen_hint_ko": "이름이나 별명을 문장으로 말해 보세요.",
+   "screen_blank": "My name is ___."
+  },
+  {
+   "en": "Nice to meet you, {x}!",
+   "expect": null
+  },
+  {
+   "en": "Oh, my bus! See you later!",
+   "expect": "e3",
+   "screen_hint_ko": "헤어질 때 인사: See you later!",
+   "role": true
+  }
+ ],
+ "fallback": "Alex",
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 이름을 물어봐요: What’s your name?"
+  },
+  {
+   "en": "My name is Tori!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 이름을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [],
+ "privacy_ko": "이름은 이 연습에만 쓰고 기억에 남기지 않아요. 진짜 이름이 아니어도 돼요. 버스는 역할극이에요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "my name",
+  "your name",
+  "nickname"
+ ],
+ "img": "lessons/img/L1-02.webp"
+}

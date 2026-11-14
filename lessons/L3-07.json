@@ -1,0 +1,250 @@
+{
+ "id": "L3-07",
+ "level": "L3",
+ "title_ko": "약속 바꾸기",
+ "title_en": "Can we change our plan?",
+ "goal_ko": "약속을 바꾸자고 하고 다른 날을 제안하거나 거절하기",
+ "partner": "sola",
+ "offer_ko": "‘약속 바꾸기’ 표현을 잠깐 연습해 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Can we change our plan?",
+   "ko": "약속 바꿀 수 있을까요?",
+   "help": {
+    "blank": "Can we ___ our plan?",
+    "choices": [
+     "change",
+     "charge",
+     "chance"
+    ]
+   },
+   "accept": [
+    "can we change our plan",
+    "can we change the plan",
+    "can we change our plans",
+    "can we change plans",
+    "could we change our plan",
+    "could we change the plan",
+    "can we reschedule"
+   ],
+   "tests": {
+    "ok": [
+     "Can we change our plan?",
+     "could we change the plan"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "change"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "How about ___ instead?",
+   "ko": "대신 ___ 어때요?",
+   "help": {
+    "blank": "How ___ Saturday instead?",
+    "choices": [
+     "about",
+     "above",
+     "around"
+    ]
+   },
+   "pattern": "^(?:how about|what about) (?<x>(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|next week|(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?))(?: (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday))?)(?: instead)?$",
+   "partial_patterns": [
+    "^(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)$"
+   ],
+   "slot": {
+    "kind": "day_or_time",
+    "closed": true
+   },
+   "tests": {
+    "ok": [
+     "How about Saturday instead?",
+     "what about sunday",
+     "How about two o'clock",
+     "How about 2:30"
+    ],
+    "partial": [
+     "saturday"
+    ],
+    "form_only": [],
+    "no": [
+     "instead",
+     "how about banana"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That works for me.",
+   "ko": "저는 좋아요.",
+   "help": {
+    "blank": "That ___ for me.",
+    "choices": [
+     "works",
+     "walks",
+     "words"
+    ]
+   },
+   "accept": [
+    "that works for me",
+    "works for me",
+    "that works",
+    "that works for me too",
+    "sounds good",
+    "that sounds good",
+    "perfect"
+   ],
+   "tests": {
+    "ok": [
+     "That works for me.",
+     "works for me"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "for me"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, can we change our plan?"
+  },
+  {
+   "who": "tori",
+   "en": "Sure. What’s up?"
+  },
+  {
+   "who": "partner",
+   "en": "I have to work late on Friday. How about Saturday instead?"
+  },
+  {
+   "who": "tori",
+   "en": "Saturday works for me. What time?"
+  },
+  {
+   "who": "partner",
+   "en": "How about two o’clock?"
+  },
+  {
+   "who": "tori",
+   "en": "Perfect. See you then!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "can we change our plan",
+    "tori can we change our plan"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "how about saturday instead",
+    "i have to work late on friday how about saturday instead"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e2",
+   "line_accept": [
+    "how about two oclock"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "가상 약속이에요: 토리와 금요일 2시에 만나기로 했는데, 금요일에 바빠요.",
+ "story": [
+  {
+   "en": "See you on Friday at two!",
+   "expect": "e1",
+   "screen_hint_ko": "금요일이 안 돼요. 바꾸자고 해요: Can we change our plan?",
+   "role": true
+  },
+  {
+   "en": "Sure. What day is good?",
+   "expect": "e2",
+   "model": "How about {x} instead?",
+   "screen_hint_ko": "다른 요일을 제안해요(금요일 말고): How about ___ instead?",
+   "screen_blank": "How about ___ instead?",
+   "role": true,
+   "branches": [
+    {
+     "when": "slot_in:friday",
+     "say": "RETRY:But you’re busy on Friday! Another day?"
+    },
+    {
+     "when": "slot_in:thursday",
+     "say": "RETRY:Sorry, I’m busy on Thursday. Another day?"
+    },
+    {
+     "when": "default",
+     "say": "{x} works for me!"
+    }
+   ]
+  }
+ ],
+ "fallback": "Sunday",
+ "korean_map": {
+  "월요일": "Monday",
+  "화요일": "Tuesday",
+  "수요일": "Wednesday",
+  "목요일": "Thursday",
+  "토요일": "Saturday",
+  "일요일": "Sunday",
+  "내일": "tomorrow",
+  "다음주": "next week"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. Can we change our plan? How about Monday?",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "괜찮으면 That works for me. 안 되면 Sorry, I can’t. How about ___?",
+   "role": true,
+   "branches": [
+    {
+     "when": "matched:e2",
+     "say": "Okay, that works for me!"
+    },
+    {
+     "when": "default",
+     "say": "Great! See you Monday."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Change the plan.",
+  "hint_ko": "솔라에게 약속을 바꾸자고 해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "My turn.",
+  "Another day?"
+ ],
+ "privacy_ko": "실제 일정은 묻지 않아요. 요일은 기억에 남기지 않아요. 토리는 목요일만 바빠요(가상).",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [
+  "plan",
+  "schedule",
+  "busy",
+  "appointment",
+  "meet"
+ ],
+ "img": "lessons/img/L3-07.webp"
+}
