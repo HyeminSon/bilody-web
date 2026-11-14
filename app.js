@@ -242,15 +242,15 @@ function updateChat() {
   $("#lines").innerHTML = subs && u ? u.lines.slice(-8).map((l) => `<div class="bubble ${l.role === "user" ? "me" : ""}">${esc(l.text)}</div>`).join("") : "";
   if (chat) {
     const running = !["stopped", "disconnected"].includes(u.state);
-    const lessonBtn = !!S.lesson && running && !S.lesson.active;
-    const ctl = `${running}|${u.canRestart}|${lessonBtn}`;
+    const lessonBtn = !!S.lesson && running && (!S.lesson.active || (S.lesson.paused && !S.lesson.ui));
+    const ctl = `${running}|${u.canRestart}|${lessonBtn}|${!!S.lesson?.paused}`;
     if ($("#controls").dataset.k !== ctl) {
       $("#controls").dataset.k = ctl;
       $("#controls").innerHTML = `
       <button class="pill dark compact" data-act="pause" ${running ? "" : "disabled"}>${I("pause")}일시정지</button>
       <button class="pill primary compact" data-act="restart" ${u.canRestart && !running ? "" : "disabled"}>${I("refresh")}다시 시작</button>
       <button class="pill secondary compact narrow" data-act="exit">나가기</button>
-      ${lessonBtn ? `<button class="pill lesson-open" data-act="lessonOpen">${I("menu_book")}교재로 배우기</button>` : ""}`;
+      ${lessonBtn ? `<button class="pill lesson-open" data-act="lessonOpen">${I("menu_book")}${S.lesson?.paused ? "표현 익히기 이어 하기" : "표현 익히기"}</button>` : ""}`;
     }
     renderLesson();
     $("#inputbar").classList.remove("hidden");
@@ -269,7 +269,7 @@ function renderLesson() {
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   lessonImage(box, u);
-  box.querySelector(".lesson-body").innerHTML = lessonBody(u, mic, esc, I);
+  const body = box.querySelector(".lesson-body"); if (body) body.innerHTML = lessonBody(u, mic, esc, I);
 }
 
 /** 쉽게 다시 말한 카드에 붙일 단어 그림(앱과 같이 최대 3개). 그림 묶음이 아직 없으면 불러온 뒤 다시 그린다. */
@@ -628,12 +628,12 @@ function renderDialog() {
     const done = new Set(pref.get("lessonDone", []));
     const lv = d.level;
     const rb = d.lib.byId[d.resume]; const started = !!pref.get("lessonLast", null);
-    return box(`<h2>교재로 배우기</h2>
+    return box(`<h2>표현 익히기</h2>
     <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "이어서" : "처음부터"}: ${esc(rb?.title_ko ?? "")}</button>
-    <p class="muted tiny center">${started ? "마지막으로 한 교재에서 이어 가요. 끝낸 교재면 다음 교재로 가요." : "1과부터 차례대로 해요."}</p>
+    <p class="muted tiny center">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "1과부터 차례대로 해요."}</p>
     ${d.list ? `<div class="seg">${[["L1", "쉬움"], ["L2", "보통"], ["L3", "도전"]].map(([k, l]) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}">${l}</button>`).join("")}</div>
     <div class="lesson-list">${d.lib.lessons.filter((l) => l.level === lv).map((l) => `<button class="lesson-item" data-act="lessonPick" data-v="${l.id}">
-      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>` : `<button class="link" data-act="lessonList">다른 교재 고르기</button>`}
+      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>` : `<button class="link" data-act="lessonList">다른 과 고르기</button>`}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
@@ -730,7 +730,7 @@ app.addEventListener("click", async (e) => {
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
     case "exit": await endChat(); break;
-    case "lessonOpen": { const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
+    case "lessonOpen": { if (S.lesson?.paused) { S.lesson.resume(); break; } const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
     case "lessonList": if (S.dialog?.kind === "lessons") { S.dialog.list = true; render(); } break;
     case "lessonLevel": if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
     case "lessonPick": S.dialog = null; render(); S.lesson?.startNow(v); break;

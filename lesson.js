@@ -9,6 +9,7 @@ const NAMES = new Set(["tori", "moa", "nubi", "rino", "sola"]);
 const FILLERS = new Set(["yes", "yeah", "oh", "okay", "ok", "um", "uh", "well", "hmm", "sure", "wow", "hi", "hello", "so", "no", "really", "great"]);
 const NEGATIVE = /\b(no|not|never|cant|cannot|dont|busy|bad|terrible|boring|sorry)\b|아니|싫|안 돼|별로/;
 const STOP = Symbol("stop");
+const RESUME = /(let'?s (continue|go back|keep going|do it again|practice)|continue( the)? (practice|lesson|scene)|back to (the )?(practice|lesson|scene)|where were we|아까 (하던|그거)|다시 (하자|해|이어)|이어서 (하자|해)|계속 (하자|해)|표현 (익히기|연습))/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------- 판정(교재 공통 v2와 같은 규칙) ----------------
@@ -96,6 +97,7 @@ export class LessonManager {
 
   // ---------- 제안(도움 요청·긴 침묵 두 번·관련 화제, 대화당 한 번) ----------
   observe(t) {
+    if (this.paused) { if (/\p{L}/u.test(t) && ++this.pauseTurns >= 5) this.dismiss(); return; }   // 멈춘 뒤 다른 이야기가 길어지면 카드를 치움
     if (this.active || !lib) return;
     if (/\p{L}/u.test(t)) { this.learnerSaid++; this.silent = 0; }
     if (this.offered || this.declined) return;
@@ -110,7 +112,7 @@ export class LessonManager {
     }
   }
   friendDone() {
-    if (this.active) return;
+    if (this.active || this.paused) return;
     if (!this.recallTried) { this.recallTried = true; const r = this.store.get("lessonRecall", null); if (r && r.session !== this.chat.sessionId) return this.recall(r.id); }
     if (this.offered || this.declined) return;
     clearTimeout(this.silenceTimer);
@@ -204,6 +206,7 @@ export class LessonManager {
       for (;;) {
         const a = await this.wait(g, { kind: "read", line: l.en });
         if (a.type === "skip") { res = "skipped"; break; }
+        if (this.offTopic(a.text, l.en)) { await this.pause(a, g); this.mark(i, "now"); await this.speak("Your turn.", g); continue; }
         if (!chk) { res = "ok"; break; }
         const vs = variants(normalize(a.text));
         res = vs.some((v) => chk.line_accept.includes(v)) ? "ok" : judge(expr, a.text).result;
@@ -257,6 +260,12 @@ export class LessonManager {
         this.record(bestExpr.id, "partial", kind, tries > 0);
         if (t.model && known) await this.speak(`Okay! You can say, “${this.fill(t.model, true)}”`, g);
         return this.reply(les, t, g, { text: a.text, result: "partial", matched: bestExpr.id, unknown: !known });
+      }
+      // 정답과 상관없는 다른 이야기(질문·한국어 문장·긴 말): 잠시 멈추고 평소 대화로(11/14 실장님)
+      if (this.offTopic(a.text, this.target(les, t, exprs[0]))) {
+        await this.pause(a, g);
+        if (t.en) await this.speak(this.fill(t.en), g);
+        continue;
       }
       // 판정 안 됨: 한 번 들려주고, 두 번째는 받아 주고 넘어감
       tries++;
@@ -336,7 +345,7 @@ export class LessonManager {
     const done = new Set(this.done()); done.add(this.lesson.id); this.store.set("lessonDone", [...done]);
     this.store.set("lessonLast", { id: this.lesson.id, done: true, at: Date.now() });
     this.store.set("lessonRecall", { id: this.lesson.id, session: this.chat.sessionId, at: Date.now() });
-    this.finish({ say: this.hard ? "Thanks for practicing. Let’s just talk." : "That was fun! Let’s keep talking.", toast: "오늘 연습한 표현을 기록에 남겼어요", g });
+    this.finish({ say: this.hard ? "Thanks for practicing. Let’s just talk." : "That was fun! Let’s keep talking.", toast: "오늘 익힌 표현을 기록에 남겼어요", g });
   }
 
   async finish({ say, toast, reason, keepLast = false, note, g }) {
@@ -356,8 +365,9 @@ export class LessonManager {
 
   /** 대화가 멈추거나 끊김: 마지막으로 끝난 단계까지만 기록하고 닫는다(재접속 뒤 자동으로 다시 열지 않음). */
   abort() {
-    clearTimeout(this.silenceTimer);
+    clearTimeout(this.silenceTimer); clearTimeout(this.dismissTimer);
     if (!this.active) return;
+    if (this.paused) { this.paused = false; const pw = this.pauseWaiter; this.pauseWaiter = null; pw?.reject(STOP); }
     this.log("lesson_stop", { reason: "call_stopped", results: this.results ?? {} });
     this.active = false; this.gen++; this.items = [];
     const w = this.waiter; this.waiter = null; if (w) w.reject(STOP);
@@ -375,10 +385,68 @@ export class LessonManager {
     this.finish({ say: "Okay!", g: this.gen });
   }
 
+  // ---------- 잠시 멈춤·이어 하기(11/14 실장님) ----------
+  /** 정답과 상관없는 다른 이야기인지: 질문, 한국어 문장, 목표 문장과 거의 안 겹치는 긴 영어. 짧게 틀린 답은 아님. */
+  offTopic(text, target) {
+    const t = String(text ?? "").trim();
+    const hangul = (t.match(/[가-힣]/g) ?? []).length;
+    if (hangul >= 6 && !Object.keys(this.lesson?.korean_map ?? {}).some((k) => t.includes(k))) return true;
+    const w = normalize(t).split(" ").filter(Boolean);
+    const tw = new Set(normalize(target ?? "").split(" "));
+    const overlap = w.filter((x) => tw.has(x)).length / Math.max(1, w.length);
+    if (/\?$/.test(t) && w.length >= 3 && overlap < 0.5) return true;
+    return w.length >= 5 && overlap < 0.3;
+  }
+  /** 멈춤: 카드를 작게 접고, 방금 말은 평소 대화로 넘겨 친구가 대답하게 한다. 이어 하기 전까지 여기서 기다림. */
+  async pause(a, g) {
+    this.paused = true; this.pauseTurns = 1; this.savedUi = this.ui;
+    this.items = this.items.filter((id) => id !== a.itemId);
+    this.chat.persist("user", a.text); this.chat.addLine("user", a.text);
+    const del = this.items; this.items = [];
+    this.log("lesson_pause", {});
+    this.set({ phase: "paused" });
+    this.chat.endLessonHold({ deleteItems: del, respond: true,
+      note: "Note from the app: the learner paused the expression practice to talk about something else. Reply naturally to what they just said. Do not mention the practice unless they ask. Role-play names and facts in the practice are not about the learner." });
+    clearTimeout(this.dismissTimer);
+    this.dismissTimer = setTimeout(() => this.dismiss(), 120000);   // 약 2분 지나면 카드를 치움
+    await new Promise((resolve, reject) => { this.pauseWaiter = { resolve, reject }; });
+    if (g !== this.gen) throw STOP;
+    await this.speak("Okay! Where were we?", g);
+  }
+  /** 다른 이야기가 길어짐: 카드를 화면에서 치운다(‘표현 익히기’를 누르거나 다시 하자고 하면 돌아옴). */
+  dismiss() {
+    if (!this.paused || !this.ui) return;
+    clearTimeout(this.dismissTimer);
+    this.log("lesson_dismiss", { turns: this.pauseTurns });
+    this.set(null);
+  }
+  resume() {
+    if (!this.paused) return;
+    clearTimeout(this.dismissTimer);
+    this.paused = false;
+    this.chat.beginLessonHold();
+    this.log("lesson_resume", {});
+    this.ui = this.savedUi; this.set({ said: null });
+    const w = this.pauseWaiter; this.pauseWaiter = null; w?.resolve();
+  }
+  /** 멈춘 카드 닫기: 이번 표현 익히기를 끝낸다(대화는 그대로). */
+  closePaused() {
+    if (!this.paused) return;
+    clearTimeout(this.dismissTimer);
+    this.paused = false; this.active = false; this.gen++;
+    const w = this.pauseWaiter; this.pauseWaiter = null; w?.reject(STOP);
+    this.log("lesson_stop", { reason: "closed_while_paused", results: this.results ?? {} });
+    this.set(null);
+  }
+
   // ---------- 학습자 입력 ----------
   /** rt.js가 부름: 교재 중이면 true(기록하지 않고 여기서 처리). */
   onLearner(text, itemId) {
     if (!this.active) return false;
+    if (this.paused) {
+      if (RESUME.test(text) || RESUME.test(normalize(text))) { if (itemId) this.items.push(itemId); this.resume(); return true; }
+      return false;   // 평소 대화로(기록·친구 대답)
+    }
     if (itemId) this.items.push(itemId);
     const n = normalize(text);
     if (lib.stop.some((s) => ` ${n} `.includes(` ${normalize(s)} `))) { this.stopByUser(); return true; }
@@ -392,13 +460,15 @@ export class LessonManager {
       return this.resolve({ type: "no", text });
     }
     if (!/[\p{L}\p{N}]/u.test(text)) return true;   // 소리만(잡음): 기다림 계속
-    return this.resolve({ type: "speech", text });
+    return this.resolve({ type: "speech", text, itemId });
   }
   resolve(v) { const w = this.waiter; this.waiter = null; w?.resolve(v); return true; }
 
   button(act) {
     const w = this.waiter;
     if (act === "stop") return this.stopByUser();
+    if (act === "resume") return this.resume();
+    if (act === "close") return this.closePaused();
     if (act === "replay") { const t = this.ui?.lastTori; if (t && w) this.speak(t, this.gen).catch(() => {}); return; }
     if (!w) return;
     if (act === "yes" || act === "no") return this.resolve({ type: act, text: "" });
@@ -496,8 +566,10 @@ export class LessonManager {
 // 11/14 실장님: 대사가 넘어갈 때마다 카드가 통통 튐 → 겉틀(제목·그림)은 한 번만 그리고 안쪽만 바꾼다.
 /** 겉틀: 교재가 바뀌거나 제안→진행으로 넘어갈 때만 새로 그림. */
 export function lessonShell(u, esc, I, enter) {
+  if (u.phase === "paused") return `<div class="card lesson paused ${enter ? "enter" : ""}"><div class="lesson-h"><span class="tag">표현 익히기</span><b class="grow">${esc(u.title)} · 잠시 멈춤</b>
+    <button class="pill primary compact" data-act="lessonBtn" data-v="resume">이어 하기</button><button class="iconbtn sm" data-act="lessonBtn" data-v="close" aria-label="닫기">${I("close")}</button></div></div>`;
   return `<div class="card lesson ${u.phase} ${enter ? "enter" : ""}">
-    <div class="lesson-h"><span class="tag">교재</span><b class="grow">${esc(u.title)}</b><span class="lesson-role"></span>
+    <div class="lesson-h"><span class="tag">표현 익히기</span><b class="grow">${esc(u.title)}</b><span class="lesson-role"></span>
       <button class="iconbtn sm" data-act="lessonInfo" aria-label="출처">${I("info", "", true)}</button></div>
     <img class="lesson-img" alt="" hidden>
     <div class="lesson-body"></div></div>`;
