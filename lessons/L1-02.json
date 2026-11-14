@@ -206,5 +206,6 @@
   "your name",
   "nickname"
  ],
- "img": "lessons/img/L1-02.webp"
+ "img": "lessons/img/L1-02.webp",
+ "hint_delay": false
 }

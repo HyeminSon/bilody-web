@@ -1,0 +1,213 @@
+{
+ "id": "L3-10",
+ "level": "L3",
+ "title_ko": "축하와 위로",
+ "title_en": "Congratulations!",
+ "goal_ko": "좋은 소식에 축하하고 나쁜 소식에 위로하기",
+ "partner": "nubi",
+ "offer_ko": "‘축하와 위로’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Congratulations! I’m so happy for you.",
+   "ko": "축하해요! 정말 잘됐어요.",
+   "help": {
+    "blank": "I’m so happy ___ you.",
+    "choices": [
+     "for",
+     "four",
+     "far"
+    ]
+   },
+   "accept": [
+    "congratulations im so happy for you",
+    "congratulations",
+    "im so happy for you",
+    "congrats",
+    "congrats im so happy for you",
+    "congratulations im happy for you",
+    "wow congratulations"
+   ],
+   "tests": {
+    "ok": [
+     "Congratulations! I’m so happy for you.",
+     "congrats"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "happy"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "That’s too bad. I’m sorry to hear that.",
+   "ko": "안됐네요. 마음이 안 좋아요.",
+   "help": {
+    "blank": "I’m sorry to ___ that.",
+    "choices": [
+     "hear",
+     "here",
+     "hair"
+    ]
+   },
+   "accept": [
+    "thats too bad im sorry to hear that",
+    "thats too bad",
+    "im sorry to hear that",
+    "sorry to hear that",
+    "oh no thats too bad",
+    "oh no im sorry to hear that",
+    "that is too bad"
+   ],
+   "partial_patterns": [
+    "^(?:oh no|sorry|im sorry)$"
+   ],
+   "tests": {
+    "ok": [
+     "That’s too bad. I’m sorry to hear that.",
+     "sorry to hear that"
+    ],
+    "partial": [
+     "oh no"
+    ],
+    "form_only": [],
+    "no": [
+     "bad"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Guess what? ___!",
+   "ko": "있잖아요! ___!",
+   "help": {
+    "blank": "___ what? I got the job!",
+    "choices": [
+     "Guess",
+     "Guest",
+     "Get"
+    ]
+   },
+   "pattern": "^guess what (?<x>[a-z]+(?: [a-z]+){1,10})$",
+   "partial_patterns": [
+    "^guess what$"
+   ],
+   "accept_note": "Guess what 뒤에 소식(두 단어 이상)이 있어야 목표 수행.",
+   "tests": {
+    "ok": [
+     "Guess what? I got the job!",
+     "guess what i passed my test"
+    ],
+    "partial": [
+     "guess what"
+    ],
+    "form_only": [],
+    "no": [
+     "i got the job"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, guess what? I got the job!"
+  },
+  {
+   "who": "tori",
+   "en": "Really? Congratulations! I’m so happy for you."
+  },
+  {
+   "who": "partner",
+   "en": "Thanks! But my phone broke this morning."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no, that’s too bad. I’m sorry to hear that."
+  },
+  {
+   "who": "partner",
+   "en": "It’s okay. Let’s celebrate!"
+  },
+  {
+   "who": "tori",
+   "en": "Yes! Dinner is on me."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e3",
+   "line_accept": [
+    "guess what i got the job",
+    "tori guess what i got the job"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "상황 연습이에요. 가상의 친구 소식에 답해요. 내 이야기를 하지 않아도 돼요.",
+ "story": [
+  {
+   "en": "A friend says, “I passed my test!”",
+   "expect": "e1",
+   "screen_hint_ko": "축하해요: Congratulations! I’m so happy for you.",
+   "role": true
+  },
+  {
+   "en": "A friend says, “I lost my wallet.”",
+   "expect": "e2",
+   "screen_hint_ko": "위로해요: That’s too bad. I’m sorry to hear that.",
+   "role": true
+  },
+  {
+   "en": "Nice job!",
+   "expect": null
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now tell me some news. It can be made up.",
+   "expect": "e3",
+   "screen_hint_ko": "‘Guess what?’으로 시작해 소식을 말해요(꾸며 낸 소식도 괜찮아요).",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "matched_text:got|passed|won|new|bought|finished|married|promoted",
+     "say": "Wow, congratulations!"
+    },
+    {
+     "when": "matched_text:lost|broke|failed|sick|missed|late",
+     "say": "Oh no. I’m sorry to hear that."
+    },
+    {
+     "when": "default",
+     "say": "Really? Wow!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Your friend got a new job.",
+  "hint_ko": "새 직장을 구한 친구에게 축하해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Nice job!",
+  "Really? Wow!",
+  "It can be made up."
+ ],
+ "privacy_ko": "진짜 소식을 말하지 않아도 돼요. 소식은 기억에 남기지 않아요. 슬픈 소식이면 교정·평가를 멈추고 공통 민감 규칙(공감 + 계속할지 선택). 첫 시험에서는 후순위.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

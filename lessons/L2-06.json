@@ -230,5 +230,6 @@
   "menu",
   "order"
  ],
- "img": "lessons/img/L2-06.webp"
+ "img": "lessons/img/L2-06.webp",
+ "hint_delay": false
 }

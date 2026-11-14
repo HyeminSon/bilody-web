@@ -1,0 +1,208 @@
+{
+ "id": "L2-10",
+ "level": "L2",
+ "title_ko": "좋아하는 계절",
+ "title_en": "My favorite season is fall.",
+ "goal_ko": "좋아하는 것을 말하고 이유 대기",
+ "partner": "rino",
+ "offer_ko": "‘좋아하는 계절’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What’s your favorite season?",
+   "ko": "제일 좋아하는 계절이 뭐예요?",
+   "help": {
+    "blank": "What’s your ___ season?",
+    "choices": [
+     "favorite",
+     "flavor",
+     "famous"
+    ]
+   },
+   "accept": [
+    "whats your favorite season",
+    "what is your favorite season",
+    "which season do you like",
+    "what season do you like"
+   ],
+   "tests": {
+    "ok": [
+     "What’s your favorite season?",
+     "which season do you like"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "favorite season"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "My favorite season is ___.",
+   "ko": "제일 좋아하는 계절은 ___예요.",
+   "help": {
+    "blank": "My favorite season ___ fall.",
+    "choices": [
+     "is",
+     "are",
+     "am"
+    ]
+   },
+   "pattern": "^(?:my favorite season is|my favorite is|i like|i love) (?<x>spring|summer|fall|autumn|winter)(?: the best| most)?$",
+   "partial_patterns": [
+    "^(?:spring|summer|fall|autumn|winter)$",
+    "^i like (?:all|every) seasons?$"
+   ],
+   "tests": {
+    "ok": [
+     "My favorite season is fall.",
+     "I like summer"
+    ],
+    "partial": [
+     "fall",
+     "I like all seasons"
+    ],
+    "form_only": [],
+    "no": [
+     "I like banana"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Because it’s ___.",
+   "ko": "___해서요.",
+   "help": {
+    "blank": "Because it’s ___.",
+    "choices": [
+     "cool",
+     "coal",
+     "call"
+    ]
+   },
+   "pattern": "^(?:because|cause|cuz)(?: (?:its|it is|of|i))? (?<x>[a-z ]{2,30})$",
+   "partial_patterns": [
+    "^(?:its|it is) [a-z ]{2,20}$"
+   ],
+   "tests": {
+    "ok": [
+     "Because it’s cool.",
+     "because of the flowers",
+     "because I like snow"
+    ],
+    "partial": [
+     "it's warm"
+    ],
+    "form_only": [],
+    "no": [
+     "cool"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, what’s your favorite season?"
+  },
+  {
+   "who": "partner",
+   "en": "My favorite season is fall."
+  },
+  {
+   "who": "tori",
+   "en": "Why do you like it?"
+  },
+  {
+   "who": "partner",
+   "en": "Because it’s cool and beautiful."
+  },
+  {
+   "who": "tori",
+   "en": "I love spring. Because of the flowers!"
+  },
+  {
+   "who": "partner",
+   "en": "Spring is nice, too!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "my favorite season is fall"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "because its cool and beautiful"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 정답은 없어요.",
+ "story": [
+  {
+   "en": "What’s your favorite season?",
+   "expect": "e2",
+   "model": "My favorite season is {x}.",
+   "screen_hint_ko": "문장으로: My favorite season is ___. (spring, summer, fall, winter)",
+   "screen_blank": "My favorite season is ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Nice!"
+    }
+   ]
+  },
+  {
+   "en": "Why do you like it?",
+   "expect": "e3",
+   "screen_hint_ko": "이유: Because it’s ___. (warm, cool, beautiful)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good reason!"
+    }
+   ]
+  }
+ ],
+ "fallback": "fall",
+ "korean_map": {
+  "봄": "spring",
+  "여름": "summer",
+  "가을": "fall",
+  "겨울": "winter"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: What’s your favorite season?"
+  },
+  {
+   "en": "My favorite season is spring!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 좋아하는 계절을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Nice!",
+  "Good reason!"
+ ],
+ "privacy_ko": "좋아하는 계절은 기억에 남기지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

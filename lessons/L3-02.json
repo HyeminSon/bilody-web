@@ -233,5 +233,6 @@
   "good food",
   "movie"
  ],
- "img": "lessons/img/L3-02.webp"
+ "img": "lessons/img/L3-02.webp",
+ "hint_delay": false
 }

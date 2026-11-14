@@ -1,0 +1,233 @@
+{
+ "id": "L2-09",
+ "level": "L2",
+ "title_ko": "같이 갈래요?",
+ "title_en": "Do you want to see a movie?",
+ "goal_ko": "초대하고, 수락하거나 거절하기",
+ "partner": "sola",
+ "offer_ko": "‘같이 갈래요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Do you want to ___ with me?",
+   "ko": "저랑 ___ 할래요?",
+   "help": {
+    "blank": "Do you ___ to see a movie with me?",
+    "choices": [
+     "want",
+     "won’t",
+     "went"
+    ]
+   },
+   "pattern": "^(?:do you want to|do you wanna|would you like to|wanna) (?<x>[a-z]+(?: [a-z]+){0,6})$",
+   "tests": {
+    "ok": [
+     "Do you want to see a movie with me?",
+     "would you like to get coffee"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "see a movie",
+     "movie"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Sure, I’d love to!",
+   "ko": "좋아요, 그러고 싶어요!",
+   "help": {
+    "blank": "Sure, I’d ___ to!",
+    "choices": [
+     "love",
+     "live",
+     "leave"
+    ]
+   },
+   "accept": [
+    "sure id love to",
+    "id love to",
+    "yes id love to",
+    "i would love to",
+    "sure i would love to"
+   ],
+   "partial_patterns": [
+    "^(?:sure|yes|okay|ok|sounds good)$"
+   ],
+   "tests": {
+    "ok": [
+     "Sure, I’d love to!",
+     "I would love to"
+    ],
+    "partial": [
+     "sure",
+     "sounds good"
+    ],
+    "form_only": [],
+    "no": [
+     "love"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Sorry, I can’t. I’m busy.",
+   "ko": "미안, 안 돼요. 바빠요.",
+   "help": {
+    "blank": "Sorry, I can’t. I’m ___.",
+    "choices": [
+     "busy",
+     "bossy",
+     "bus"
+    ]
+   },
+   "pattern": "^(?:sorry )?(?:i cant|i cannot|i can not)(?: im busy| i am busy)?(?: [a-z ]{2,30})?$|^(?:sorry )?(?:im|i am) busy(?: [a-z ]{2,20})?$",
+   "partial_patterns": [
+    "^(?:sorry|no|busy)$"
+   ],
+   "tests": {
+    "ok": [
+     "Sorry, I can’t. I’m busy.",
+     "I can't. I'm busy tonight",
+     "sorry I'm busy"
+    ],
+    "partial": [
+     "sorry"
+    ],
+    "form_only": [],
+    "no": [
+     "busy friday please"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Sola, do you want to see a movie with me?"
+  },
+  {
+   "who": "partner",
+   "en": "Sure, I’d love to! When?"
+  },
+  {
+   "who": "tori",
+   "en": "How about Friday night?"
+  },
+  {
+   "who": "partner",
+   "en": "Sorry, I can’t. I’m busy on Friday."
+  },
+  {
+   "who": "tori",
+   "en": "No problem. How about Saturday?"
+  },
+  {
+   "who": "partner",
+   "en": "Saturday is perfect!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "id love to",
+    "id love to when",
+    "sure id love to",
+    "sure id love to when"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "sorry i cant",
+    "sorry i cant im busy on friday"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "가상 초대예요. 실제 약속이 아니니 하고 싶으면 수락, 아니면 거절해요.",
+ "story": [
+  {
+   "en": "Invite me! Movie? Coffee? A walk?",
+   "expect": "e1",
+   "model": "Do you want to {x} with me?",
+   "screen_hint_ko": "토리를 초대해요: Do you want to ___ with me?",
+   "screen_blank": "Do you want to ___ with me?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sure, I’d love to!"
+    }
+   ]
+  },
+  {
+   "en": "My turn. Do you want to go to the park?",
+   "expect": "e2",
+   "alt_expect": [
+    "e3"
+   ],
+   "screen_hint_ko": "가고 싶으면 Sure, I’d love to! 아니면 Sorry, I can’t. I’m busy.",
+   "role": true,
+   "branches": [
+    {
+     "when": "matched:e3",
+     "say": "No problem. Another time!"
+    },
+    {
+     "when": "default",
+     "say": "Yay! See you there."
+    }
+   ]
+  }
+ ],
+ "fallback": "see a movie",
+ "korean_map": {
+  "영화": "see a movie",
+  "밥": "have dinner",
+  "저녁": "have dinner",
+  "식사": "have lunch",
+  "커피": "get coffee",
+  "산책": "take a walk",
+  "운동": "work out",
+  "쇼핑": "go shopping",
+  "노래방": "go to karaoke",
+  "등산": "go hiking"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Practice saying no. Do you want to go hiking tonight?",
+   "expect": "e3",
+   "screen_hint_ko": "역할극: 거절 연습이에요: Sorry, I can’t. I’m busy.",
+   "role": true
+  },
+  {
+   "en": "Okay! Maybe next time.",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Invite Sola.",
+  "hint_ko": "솔라에게 같이 영화 보자고 해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Invite me!",
+  "My turn.",
+  "Another time!",
+  "Yay!",
+  "Practice saying no.",
+  "Maybe next time."
+ ],
+ "privacy_ko": "실제 약속이 아니에요. 친구 이름은 묻지 않아요. 수락·거절 둘 다 정답이고, 거절 연습은 화면에 역할극이라고 보여 줘요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

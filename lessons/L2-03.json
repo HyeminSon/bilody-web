@@ -1,0 +1,219 @@
+{
+ "id": "L2-03",
+ "level": "L2",
+ "title_ko": "어떻게 가요?",
+ "title_en": "I go by subway.",
+ "goal_ko": "가는 방법과 걸리는 시간 말하기",
+ "partner": "moa",
+ "offer_ko": "‘어떻게 가요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How do you get to ___?",
+   "ko": "___에 어떻게 가요?",
+   "help": {
+    "blank": "How do you ___ to work?",
+    "choices": [
+     "get",
+     "got",
+     "give"
+    ]
+   },
+   "pattern": "^how do you (?:get|go) (?:to )?(?<x>[a-z ]{3,20})$",
+   "slot": {
+    "kind": "place",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "How do you get to work?",
+     "how do you go to school"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "to work"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I go by ___. / I walk.",
+   "ko": "___로 가요. / 걸어가요.",
+   "help": {
+    "blank": "I go ___ subway.",
+    "choices": [
+     "by",
+     "buy",
+     "bye"
+    ]
+   },
+   "pattern": "^i (?:usually )?go by (?<x>bus|subway|car|bike|bicycle|taxi|train)$|^i (?:usually )?(?:walk|take the (?:bus|subway|train)|ride my bike|drive)$",
+   "partial_patterns": [
+    "^(?:by )?(?:bus|subway|car|bike|taxi|train)$",
+    "^i go by walk$"
+   ],
+   "slot": {
+    "kind": "transport",
+    "closed": true
+   },
+   "accept_note": "‘I go by walk’는 부분(뜻 전달). 차를 탄다고 운전자로 가정하지 않음(I go by car).",
+   "tests": {
+    "ok": [
+     "I go by subway.",
+     "I walk",
+     "I take the bus",
+     "I go by car"
+    ],
+    "partial": [
+     "subway",
+     "I go by walk"
+    ],
+    "form_only": [],
+    "no": [
+     "I go by banana"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It takes ___ minutes.",
+   "ko": "___분 걸려요.",
+   "help": {
+    "blank": "It ___ thirty minutes.",
+    "choices": [
+     "takes",
+     "makes",
+     "takes it"
+    ]
+   },
+   "pattern": "^(?:it takes|it takes about|about) (?<x>[a-z0-9 ]{1,20}) (?:minutes|minute|hours|hour|min)$",
+   "partial_patterns": [
+    "^[a-z0-9 ]{1,15} (?:minutes|minute|hours|hour|min)$"
+   ],
+   "tests": {
+    "ok": [
+     "It takes thirty minutes.",
+     "It takes about 20 minutes",
+     "it takes one hour"
+    ],
+    "partial": [
+     "thirty minutes"
+    ],
+    "form_only": [],
+    "no": [
+     "30"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, how do you get to work?"
+  },
+  {
+   "who": "partner",
+   "en": "I go by subway."
+  },
+  {
+   "who": "tori",
+   "en": "How long does it take?"
+  },
+  {
+   "who": "partner",
+   "en": "It takes thirty minutes."
+  },
+  {
+   "who": "tori",
+   "en": "Not bad! I go by bike."
+  },
+  {
+   "who": "partner",
+   "en": "By bike? That’s great exercise!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i go by subway"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "it takes thirty minutes"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 사는 곳은 말하지 않아도 돼요. 말하기 싫으면 장면 속 교통(subway)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "How do you get to the supermarket?",
+   "expect": "e2",
+   "model": "I go by {x}.",
+   "screen_hint_ko": "마트에 어떻게 가요? I go by ___. 걸어가면 I walk.",
+   "screen_blank": "I go by ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "I see!"
+    }
+   ]
+  },
+  {
+   "en": "How long does it take?",
+   "expect": "e3",
+   "screen_hint_ko": "걸리는 시간: It takes ___ minutes.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Not bad!"
+    }
+   ]
+  }
+ ],
+ "fallback": "subway",
+ "korean_map": {
+  "버스": "bus",
+  "지하철": "subway",
+  "차": "car",
+  "자동차": "car",
+  "자전거": "bike",
+  "택시": "taxi",
+  "걸어서": "walk",
+  "도보": "walk",
+  "기차": "train"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: How do you get to work?"
+  },
+  {
+   "en": "I go by bike. It takes ten minutes.",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 회사에 어떻게 가는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "I see!",
+  "Not bad!"
+ ],
+ "privacy_ko": "동네·회사 위치는 묻지 않아요. 교통수단과 시간은 기억에 남기지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

@@ -1,0 +1,227 @@
+{
+ "id": "L2-08",
+ "level": "L2",
+ "title_ko": "주말 계획",
+ "title_en": "I’m going to visit my grandma.",
+ "goal_ko": "계획을 묻고 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘주말 계획’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What are you going to do this weekend?",
+   "ko": "이번 주말에 뭐 할 거예요?",
+   "help": {
+    "blank": "What are you ___ to do this weekend?",
+    "choices": [
+     "going",
+     "go",
+     "gone"
+    ]
+   },
+   "accept": [
+    "what are you going to do this weekend",
+    "what are you gonna do this weekend",
+    "what are you doing this weekend",
+    "any plans this weekend",
+    "any plans for the weekend",
+    "what are your plans this weekend"
+   ],
+   "tests": {
+    "ok": [
+     "What are you going to do this weekend?",
+     "any plans for the weekend"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "this weekend"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m going to ___.",
+   "ko": "___ 할 거예요.",
+   "help": {
+    "blank": "I’m ___ to visit my grandma.",
+    "choices": [
+     "going",
+     "go",
+     "gone"
+    ]
+   },
+   "pattern": "^(?:im|i am) (?:going to|gonna) (?<x>[a-z]+(?: [a-z]+){0,6})$|^(?:im|i am) [a-z]+ing(?: [a-z]+){0,6}$|^i will [a-z]+(?: [a-z]+){0,6}$",
+   "partial_patterns": [
+    "^(?:going to )?(?:rest|meet|watch|work|take|clean|go|study|see|visit|stay|sleep|cook|read|play|bake)(?: [a-z]+){0,4}$"
+   ],
+   "accept_note": "‘I’m visiting …’, ‘I will …’도 인정.",
+   "tests": {
+    "ok": [
+     "I’m going to visit my grandma.",
+     "I'm gonna rest",
+     "I will meet friends"
+    ],
+    "partial": [
+     "rest"
+    ],
+    "form_only": [],
+    "no": [
+     "going to"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Have a good weekend!",
+   "ko": "주말 잘 보내요!",
+   "help": {
+    "blank": "Have a ___ weekend!",
+    "choices": [
+     "good",
+     "goat",
+     "gold"
+    ]
+   },
+   "accept": [
+    "have a good weekend",
+    "have a nice weekend",
+    "have a great weekend",
+    "enjoy your weekend",
+    "you too have a good weekend"
+   ],
+   "tests": {
+    "ok": [
+     "Have a good weekend!",
+     "Have a nice weekend"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "good weekend"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Nubi, what are you going to do this weekend?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m going to visit my grandma."
+  },
+  {
+   "who": "tori",
+   "en": "That’s nice! Where does she live?"
+  },
+  {
+   "who": "partner",
+   "en": "In Jeju. I’m going to take a plane."
+  },
+  {
+   "who": "tori",
+   "en": "Sounds fun! Have a good trip."
+  },
+  {
+   "who": "partner",
+   "en": "Thanks! Have a good weekend!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "im going to visit my grandma"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "have a good weekend",
+    "thanks have a good weekend"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "오늘을 금요일이라고 생각해요(가상). 진짜 계획이 아니어도 돼요.",
+ "story": [
+  {
+   "en": "What are you going to do this weekend?",
+   "expect": "e2",
+   "model": "I’m going to {x}.",
+   "screen_hint_ko": "주말 계획을 문장으로: I’m going to ___. (rest at home, meet my friends)",
+   "screen_blank": "I’m going to ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "slot_in:rest at home|meet my friends|watch a movie|take a trip|go shopping|go hiking|see my family",
+     "say": "Sounds fun!"
+    },
+    {
+     "when": "default",
+     "say": "I see."
+    }
+   ]
+  },
+  {
+   "en": "Okay! See you on Monday.",
+   "expect": "e3",
+   "screen_hint_ko": "주말 인사: Have a good weekend!"
+  },
+  {
+   "en": "You too!",
+   "expect": null
+  }
+ ],
+ "fallback": "visit my grandma",
+ "korean_map": {
+  "쉬기": "rest at home",
+  "쉴거야": "rest at home",
+  "휴식": "rest at home",
+  "친구": "meet my friends",
+  "영화": "watch a movie",
+  "운동": "work out",
+  "여행": "take a trip",
+  "청소": "clean my house",
+  "쇼핑": "go shopping",
+  "공부": "study",
+  "등산": "go hiking",
+  "가족": "see my family"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: What are you going to do this weekend?"
+  },
+  {
+   "en": "I’m going to bake cookies!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 주말 계획을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Sounds fun!",
+  "I see.",
+  "See you on Monday.",
+  "You too!"
+ ],
+ "privacy_ko": "계획은 이 연습에만 쓰고 기억에 남기지 않아요. 가는 곳·만나는 사람을 자세히 묻지 않아요. 병원·장례 같은 답에는 ‘Sounds fun’을 하지 않고 공통 민감 규칙.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

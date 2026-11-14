@@ -1,0 +1,242 @@
+{
+ "id": "L3-09",
+ "level": "L3",
+ "title_ko": "여행 이야기",
+ "title_en": "I went to Gyeongju.",
+ "goal_ko": "다녀온 여행을 말하고 어땠는지, 가장 좋았던 것 말하기",
+ "partner": "moa",
+ "offer_ko": "‘여행 이야기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Where did you go on your last trip?",
+   "ko": "지난 여행 어디 갔어요?",
+   "help": {
+    "blank": "Where did you ___ on your last trip?",
+    "choices": [
+     "go",
+     "goes",
+     "went"
+    ]
+   },
+   "accept": [
+    "where did you go on your last trip",
+    "where did you go last time",
+    "where was your last trip",
+    "where did you travel last",
+    "where did you go on vacation"
+   ],
+   "tests": {
+    "ok": [
+     "Where did you go on your last trip?",
+     "where was your last trip"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "last trip"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I went to ___.",
+   "ko": "___에 갔어요.",
+   "help": {
+    "blank": "I ___ to Gyeongju.",
+    "choices": [
+     "went",
+     "want",
+     "go"
+    ]
+   },
+   "pattern": "^i (?:went to|visited|traveled to) (?<x>[a-z ]{2,25}?)(?: it was [a-z ]{2,20})?$",
+   "partial_patterns": [
+    "^i go to [a-z ]{2,25}$",
+    "^[a-z]{3,15}$"
+   ],
+   "accept_note": "‘I go to …’는 뜻 전달(부분). 평가(It was …)는 학습자가 다음 질문에서 직접 고름.",
+   "tests": {
+    "ok": [
+     "I went to Gyeongju.",
+     "I visited Busan",
+     "i went to jeju it was great"
+    ],
+    "partial": [
+     "I go to Seoul",
+     "gyeongju"
+    ],
+    "form_only": [],
+    "no": [
+     "to jeju please now okay go"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "The best part was ___.",
+   "ko": "가장 좋았던 건 ___였어요.",
+   "help": {
+    "blank": "The best ___ was the food.",
+    "choices": [
+     "part",
+     "park",
+     "pat"
+    ]
+   },
+   "pattern": "^the best (?:part|thing) was (?<x>[a-z ]{2,30})$|^i (?:loved|liked) (?<y>[a-z ]{2,30})(?: the most)?$",
+   "partial_patterns": [
+    "^(?:the )?(?:food|beach|view|sea|people|hotel|weather|night view)$"
+   ],
+   "tests": {
+    "ok": [
+     "The best part was the food.",
+     "the best thing was the beach",
+     "I loved the night view"
+    ],
+    "partial": [
+     "the food"
+    ],
+    "form_only": [],
+    "no": [
+     "best part"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, where did you go on your last trip?"
+  },
+  {
+   "who": "partner",
+   "en": "I went to Gyeongju. It was beautiful."
+  },
+  {
+   "who": "tori",
+   "en": "Nice! What was the best part?"
+  },
+  {
+   "who": "partner",
+   "en": "The best part was the temples at night."
+  },
+  {
+   "who": "tori",
+   "en": "Sounds amazing. I want to go there!"
+  },
+  {
+   "who": "partner",
+   "en": "You should! Go in the fall."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i went to gyeongju",
+    "i went to gyeongju it was beautiful"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "the best part was the temples at night"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 여행이에요. 말하기 싫으면 장면 속 곳(Gyeongju)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "Where did you go on your last trip?",
+   "expect": "e2",
+   "model": "I went to {x}.",
+   "screen_hint_ko": "문장으로: I went to ___.",
+   "screen_blank": "I went to ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Oh, {x}!"
+    }
+   ]
+  },
+  {
+   "en": "How was it?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "어땠어요? It was ___. (great, okay, bad)",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "negative",
+     "say": "Oh no. Sorry to hear that."
+    },
+    {
+     "when": "default",
+     "say": "Nice!"
+    }
+   ]
+  },
+  {
+   "en": "What was the best part?",
+   "expect": "e3",
+   "only_if": "previous_not_negative",
+   "screen_hint_ko": "가장 좋았던 것: The best part was the ___. (food, beach, view)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sounds great!"
+    }
+   ]
+  }
+ ],
+ "fallback": "Gyeongju",
+ "korean_map": {
+  "부산": "Busan",
+  "제주": "Jeju",
+  "제주도": "Jeju",
+  "경주": "Gyeongju",
+  "강릉": "Gangneung",
+  "여수": "Yeosu",
+  "일본": "Japan",
+  "도쿄": "Tokyo",
+  "오사카": "Osaka",
+  "베트남": "Vietnam",
+  "태국": "Thailand",
+  "미국": "the US"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Where did you go on your last trip?"
+  },
+  {
+   "en": "I went to Jeju. The best part was the sea!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 지난 여행 어디 갔는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Oh no. Sorry to hear that.",
+  "Nice!",
+  "Sounds great!"
+ ],
+ "privacy_ko": "여행지는 이 연습에만 쓰고 기억에 남기지 않아요. 날짜·동행은 묻지 않아요. 나쁜 여행이었다면 가장 좋았던 것을 묻지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

@@ -1,0 +1,230 @@
+{
+ "id": "L3-08",
+ "level": "L3",
+ "title_ko": "어릴 때",
+ "title_en": "I used to climb trees.",
+ "goal_ko": "어릴 때 하던 일을 묻고 말하기",
+ "partner": "rino",
+ "offer_ko": "‘어릴 때’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What did you use to do as a kid?",
+   "ko": "어릴 때 뭐 하고 놀았어요?",
+   "help": {
+    "blank": "What did you ___ to do as a kid?",
+    "choices": [
+     "use",
+     "us",
+     "used"
+    ]
+   },
+   "accept": [
+    "what did you use to do as a kid",
+    "what did you used to do as a kid",
+    "what did you do as a kid",
+    "what did you use to do when you were a kid",
+    "what did you like as a kid"
+   ],
+   "tests": {
+    "ok": [
+     "What did you use to do as a kid?",
+     "what did you do as a kid"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "as a kid"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "When I was a kid, I used to ___.",
+   "ko": "어릴 때 ___하곤 했어요.",
+   "help": {
+    "blank": "When I was a kid, I ___ to climb trees.",
+    "choices": [
+     "used",
+     "use",
+     "us"
+    ]
+   },
+   "pattern": "^(?:when i was (?:a kid|young|little|a child) )?i (?:used to|use to) (?<x>(?:play|read|watch|draw|climb|ride|go|swim|collect|jump|sing|dance|make|run|build|cook|help|visit|eat|catch)(?: [a-z]+){0,5})$",
+   "partial_patterns": [
+    "^(?:when i was (?:a kid|young|little) )?i (?:liked|loved|played|watched|read|drew|went)(?: [a-z]+){0,5}$"
+   ],
+   "accept_note": "used to + 동사원형만 목표 수행. ‘I used to games’ 같은 명사는 불인정. ‘I liked games.’는 부분. use/used는 음성 인식 차이로 둘 다 받되 기록.",
+   "tests": {
+    "ok": [
+     "When I was a kid, I used to climb trees.",
+     "I used to play soccer",
+     "i use to draw pictures"
+    ],
+    "partial": [
+     "I liked games"
+    ],
+    "form_only": [],
+    "no": [
+     "I used to games",
+     "climb trees"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Did you use to ___?",
+   "ko": "___하곤 했어요?",
+   "help": {
+    "blank": "Did you ___ to watch cartoons?",
+    "choices": [
+     "use",
+     "used",
+     "us"
+    ]
+   },
+   "pattern": "^did you (?:use to|used to) (?<x>[a-z]+(?: [a-z]+){0,5})$",
+   "partial_patterns": [
+    "^did you (?:like|play|watch)(?: [a-z]+){0,5}$"
+   ],
+   "tests": {
+    "ok": [
+     "Did you use to watch cartoons?",
+     "did you used to play games"
+    ],
+    "partial": [
+     "did you like cartoons"
+    ],
+    "form_only": [],
+    "no": [
+     "cartoons"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, what did you use to do as a kid?"
+  },
+  {
+   "who": "partner",
+   "en": "When I was a kid, I used to climb trees."
+  },
+  {
+   "who": "tori",
+   "en": "Really? I used to collect stickers."
+  },
+  {
+   "who": "partner",
+   "en": "Cute! Did you use to watch cartoons?"
+  },
+  {
+   "who": "tori",
+   "en": "Every day! I used to love them."
+  },
+  {
+   "who": "partner",
+   "en": "Me too!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "when i was a kid i used to climb trees"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "cute did you use to watch cartoons",
+    "did you use to watch cartoons"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내 어린 시절 이야기예요. 말하고 싶지 않으면 장면 속 일(climb trees)로 해도 돼요.",
+ "story": [
+  {
+   "en": "What did you use to do as a kid?",
+   "expect": "e2",
+   "model": "When I was a kid, I used to {x}.",
+   "screen_hint_ko": "문장으로: When I was a kid, I used to ___. (play games, draw pictures)",
+   "screen_blank": "When I was a kid, I used to ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "unknown_slot",
+     "say": "Okay! You can try: “I used to play games.”"
+    },
+    {
+     "when": "default",
+     "say": "Oh, nice!"
+    }
+   ]
+  }
+ ],
+ "fallback": "climb trees",
+ "korean_map": {
+  "그림": "draw pictures",
+  "게임": "play games",
+  "축구": "play soccer",
+  "만화": "watch cartoons",
+  "책": "read books",
+  "놀이터": "play outside",
+  "줄넘기": "jump rope",
+  "자전거": "ride my bike",
+  "피아노": "play the piano",
+  "레고": "play with Lego",
+  "games": "play games",
+  "drawing": "draw pictures",
+  "soccer": "play soccer",
+  "cartoons": "watch cartoons",
+  "books": "read books"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What did you use to do as a kid?"
+  },
+  {
+   "en": "I used to collect stickers. Ask me more.",
+   "expect": "e3",
+   "screen_hint_ko": "더 물어봐요: Did you use to ___? (예: watch cartoons)",
+   "branches": [
+    {
+     "when": "slot_in:watch cartoons|collect stickers|play games|read books|draw pictures",
+     "say": "Yes, I did! Every day."
+    },
+    {
+     "when": "default",
+     "say": "No, I didn’t. But it sounds fun!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 어릴 때 뭐 하고 놀았는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Oh, nice!",
+  "You can try",
+  "Ask me more."
+ ],
+ "privacy_ko": "어린 시절 이야기는 기억에 남기지 않아요. 가족·학교 이름은 묻지 않아요. 힘든 기억(따돌림·상실 등)에는 공통 민감 규칙. 부담이 커서 A2 후순위.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

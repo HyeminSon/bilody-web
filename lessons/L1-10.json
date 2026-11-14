@@ -1,0 +1,229 @@
+{
+ "id": "L1-10",
+ "level": "L1",
+ "title_ko": "시간 돼요?",
+ "title_en": "Are you free on Saturday?",
+ "goal_ko": "시간이 되는지 묻고 답하기(가상 약속)",
+ "partner": "nubi",
+ "offer_ko": "‘시간 돼요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Are you free on ___?",
+   "ko": "___에 시간 돼요?",
+   "help": {
+    "blank": "Are you ___ on Saturday?",
+    "choices": [
+     "free",
+     "three",
+     "tree"
+    ]
+   },
+   "pattern": "^are you free(?: on| this)? (?<x>monday|tuesday|wednesday|thursday|friday|saturday|sunday|weekend|tomorrow|today|tonight)$",
+   "slot": {
+    "kind": "day",
+    "closed": true
+   },
+   "tests": {
+    "ok": [
+     "Are you free on Saturday?",
+     "are you free this weekend"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "saturday",
+     "are you free on banana"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Yes, I’m free. / Sorry, I’m busy.",
+   "ko": "네, 시간 돼요. / 미안해요, 바빠요.",
+   "help": {
+    "blank": "Yes, I’m ___.",
+    "choices": [
+     "free",
+     "three",
+     "fine"
+    ]
+   },
+   "accept": [
+    "yes im free",
+    "im free",
+    "yes i am free",
+    "i am free",
+    "no im busy",
+    "sorry im busy",
+    "im busy",
+    "no sorry im busy"
+   ],
+   "partial_patterns": [
+    "^(?:yes|no|free|busy)$"
+   ],
+   "accept_note": "안 되면 ‘Sorry, I’m busy.’도 정답.",
+   "tests": {
+    "ok": [
+     "Yes, I’m free.",
+     "Sorry, I'm busy."
+    ],
+    "partial": [
+     "yes",
+     "busy"
+    ],
+    "form_only": [],
+    "no": [
+     "saturday"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "See you on ___!",
+   "ko": "___에 봐요!",
+   "help": {
+    "blank": "See you ___ Saturday!",
+    "choices": [
+     "on",
+     "in",
+     "at"
+    ]
+   },
+   "pattern": "^see you(?: on| this)? (?<x>monday|tuesday|wednesday|thursday|friday|saturday|sunday|then|weekend|tomorrow)$",
+   "partial_patterns": [
+    "^see you$"
+   ],
+   "tests": {
+    "ok": [
+     "See you on Saturday!",
+     "see you saturday",
+     "see you then"
+    ],
+    "partial": [
+     "see you"
+    ],
+    "form_only": [],
+    "no": [
+     "saturday"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Nubi, are you free on Saturday?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes, I’m free."
+  },
+  {
+   "who": "tori",
+   "en": "Let’s go to the park!"
+  },
+  {
+   "who": "partner",
+   "en": "Sounds good!"
+  },
+  {
+   "who": "tori",
+   "en": "See you on Saturday!"
+  },
+  {
+   "who": "partner",
+   "en": "See you on Saturday!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "im free",
+    "yes im free"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "see you on saturday"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "가상 약속이에요. 실제 약속이 아니니 편하게 답해요. 안 되면 ‘Sorry, I’m busy.’라고 해도 돼요.",
+ "story": [
+  {
+   "en": "Are you free on Saturday?",
+   "expect": "e2",
+   "screen_hint_ko": "되면 Yes, I’m free. 안 되면 Sorry, I’m busy.",
+   "role": true,
+   "branches": [
+    {
+     "when": "negative",
+     "say": "Okay! Another time."
+    },
+    {
+     "when": "default",
+     "say": "Great! See you on Saturday!"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "only_if": "previous_default",
+   "screen_hint_ko": "같이 인사해요: See you on Saturday!",
+   "role": true
+  }
+ ],
+ "fallback": null,
+ "korean_map": {
+  "월요일": "Monday",
+  "화요일": "Tuesday",
+  "수요일": "Wednesday",
+  "목요일": "Thursday",
+  "금요일": "Friday",
+  "토요일": "Saturday",
+  "일요일": "Sunday"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Are you free on Sunday? (다른 요일도 좋아요)",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Yes, I’m free! See you then."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "인사해요: See you on ___! (방금 말한 요일)",
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 토요일에 시간 되는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Another time.",
+  "See you then."
+ ],
+ "privacy_ko": "가상 약속이에요. 요일은 기억에 남기지 않아요. 기능 부담이 커서 Pre-A1 마지막 과로 둠(시험 뒤 A1 앞쪽으로 옮길지 판단).",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

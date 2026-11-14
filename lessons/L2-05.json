@@ -1,0 +1,204 @@
+{
+ "id": "L2-05",
+ "level": "L2",
+ "title_ko": "길 묻기",
+ "title_en": "Where is the bank?",
+ "goal_ko": "길을 묻고 간단히 알려 주기",
+ "partner": "rino",
+ "offer_ko": "‘길 묻기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Excuse me. Where is the ___?",
+   "ko": "실례지만 ___가 어디예요?",
+   "help": {
+    "blank": "Excuse me. ___ is the bank?",
+    "choices": [
+     "Where",
+     "What",
+     "When"
+    ]
+   },
+   "pattern": "^(?:excuse me )?(?:where is|wheres) (?:the |a )?(?<x>[a-z ]{3,25})$",
+   "partial_patterns": [
+    "^(?:the )?[a-z ]{3,20} where$"
+   ],
+   "tests": {
+    "ok": [
+     "Excuse me. Where is the bank?",
+     "where's the subway station"
+    ],
+    "partial": [
+     "bank where"
+    ],
+    "form_only": [],
+    "no": [
+     "bank"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Go straight and turn ___.",
+   "ko": "쭉 가서 ___으로 도세요.",
+   "help": {
+    "blank": "Go straight and turn ___.",
+    "choices": [
+     "left",
+     "lift",
+     "last"
+    ]
+   },
+   "pattern": "^(?:go straight(?: and)? )?turn (?<x>left|right)$",
+   "partial_patterns": [
+    "^go straight$",
+    "^(?:left|right)$"
+   ],
+   "slot": {
+    "kind": "direction",
+    "closed": true,
+    "lexicon": [
+     "left",
+     "right"
+    ]
+   },
+   "accept_note": "문형 수행과 지도에 맞는 방향인지 따로 기록(direction_correct).",
+   "tests": {
+    "ok": [
+     "Go straight and turn right.",
+     "turn left"
+    ],
+    "partial": [
+     "go straight",
+     "right"
+    ],
+    "form_only": [],
+    "no": [
+     "straight left please now"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It’s next to the ___.",
+   "ko": "___ 옆에 있어요.",
+   "help": {
+    "blank": "It’s ___ to the cafe.",
+    "choices": [
+     "next",
+     "near",
+     "nice"
+    ]
+   },
+   "pattern": "^(?:its|it is) (?:next to|near|across from|behind|in front of) (?:the |a )?(?<x>[a-z ]{3,20})$",
+   "partial_patterns": [
+    "^next to (?:the )?[a-z ]{3,20}$"
+   ],
+   "tests": {
+    "ok": [
+     "It’s next to the cafe.",
+     "it's next to the school"
+    ],
+    "partial": [
+     "next to the cafe"
+    ],
+    "form_only": [],
+    "no": [
+     "cafe"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Excuse me. Where is the bank?"
+  },
+  {
+   "who": "tori",
+   "en": "Go straight and turn left."
+  },
+  {
+   "who": "partner",
+   "en": "Turn left? Okay."
+  },
+  {
+   "who": "tori",
+   "en": "It’s next to the cafe."
+  },
+  {
+   "who": "partner",
+   "en": "Thank you so much!"
+  },
+  {
+   "who": "tori",
+   "en": "No problem!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "excuse me where is the bank",
+    "where is the bank"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 지도를 보며 길을 묻고 알려 줘요.",
+ "story": [
+  {
+   "en": "You need the bank. Ask me.",
+   "expect": "e1",
+   "model": "Excuse me. Where is the bank?",
+   "screen_hint_ko": "은행이 어디 있는지 물어봐요: Excuse me. Where is the bank?",
+   "role": true
+  },
+  {
+   "en": "Go straight and turn left. It’s next to the cafe.",
+   "expect": null,
+   "role": true,
+   "map_answer": "bank: left, next to the cafe"
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. Excuse me, where is the park?",
+   "expect": "e2",
+   "screen_hint_ko": "지도: 쭉 가서 오른쪽 → Go straight and turn right.",
+   "role": true,
+   "map_answer": "right"
+  },
+  {
+   "en": "Next to what?",
+   "expect": "e3",
+   "screen_hint_ko": "지도: 학교 옆 → It’s next to the school.",
+   "role": true,
+   "map_answer": "school"
+  },
+  {
+   "en": "Thank you so much!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Ask the way to the bank.",
+  "hint_ko": "은행이 어디 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "My turn.",
+  "Next to what?"
+ ],
+ "privacy_ko": "사는 동네·주소는 묻지 않아요. 지도 읽기+방향 말이 A1 초반에 부담이라 첫 시험에서는 뺌.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

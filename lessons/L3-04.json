@@ -1,0 +1,213 @@
+{
+ "id": "L3-04",
+ "level": "L3",
+ "title_ko": "부탁하기",
+ "title_en": "Could you help me, please?",
+ "goal_ko": "공손하게 부탁하고, 들어주고, 고마워하기",
+ "partner": "rino",
+ "offer_ko": "‘부탁하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Could you ___, please?",
+   "ko": "___ 해 주시겠어요?",
+   "help": {
+    "blank": "___ you open the door, please?",
+    "choices": [
+     "Could",
+     "Cold",
+     "Good"
+    ]
+   },
+   "pattern": "^(?:could you|can you|would you)(?: please)? (?<x>[a-z]+(?: [a-z]+){0,6}?)(?: please)?$",
+   "partial_patterns": [
+    "^(?:help me|help)(?: please)?$"
+   ],
+   "tests": {
+    "ok": [
+     "Could you open the door, please?",
+     "can you help me with this box"
+    ],
+    "partial": [
+     "help me please"
+    ],
+    "form_only": [],
+    "no": [
+     "open the door"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Sure, no problem.",
+   "ko": "그럼요, 문제없어요.",
+   "help": {
+    "blank": "Sure, no ___.",
+    "choices": [
+     "problem",
+     "probably",
+     "program"
+    ]
+   },
+   "accept": [
+    "sure no problem",
+    "no problem",
+    "of course",
+    "sure of course",
+    "of course no problem",
+    "sure thing"
+   ],
+   "partial_patterns": [
+    "^(?:sure|okay|ok|yes)$"
+   ],
+   "tests": {
+    "ok": [
+     "Sure, no problem.",
+     "of course"
+    ],
+    "partial": [
+     "sure"
+    ],
+    "form_only": [],
+    "no": [
+     "problem"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Thanks a lot. I owe you one.",
+   "ko": "정말 고마워요. 신세 졌어요.",
+   "help": {
+    "blank": "Thanks a lot. I ___ you one.",
+    "choices": [
+     "owe",
+     "own",
+     "know"
+    ]
+   },
+   "accept": [
+    "thanks a lot i owe you one",
+    "i owe you one",
+    "thanks i owe you one",
+    "thank you i owe you one",
+    "thank you so much i owe you one"
+   ],
+   "partial_patterns": [
+    "^(?:thanks a lot|thank you|thanks|thank you so much)$"
+   ],
+   "tests": {
+    "ok": [
+     "Thanks a lot. I owe you one.",
+     "I owe you one"
+    ],
+    "partial": [
+     "thanks a lot"
+    ],
+    "form_only": [],
+    "no": [
+     "owe"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, could you help me with this box, please?"
+  },
+  {
+   "who": "partner",
+   "en": "Sure, no problem."
+  },
+  {
+   "who": "tori",
+   "en": "Could you open the door, too?"
+  },
+  {
+   "who": "partner",
+   "en": "Of course. Here you go."
+  },
+  {
+   "who": "tori",
+   "en": "Thanks a lot, Rino. I owe you one!"
+  },
+  {
+   "who": "partner",
+   "en": "Anytime!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "no problem",
+    "sure no problem"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "of course",
+    "of course here you go"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 이삿날, 내가 상자를 옮겨요.",
+ "story": [
+  {
+   "en": "Your box is heavy. Ask me for help.",
+   "expect": "e1",
+   "model": "Could you help me with this box, please?",
+   "screen_hint_ko": "공손하게 부탁해요: Could you help me with this box, please?",
+   "role": true
+  },
+  {
+   "en": "Sure, no problem!",
+   "expect": "e3",
+   "screen_note_ko": "(상자를 같이 들었어요)",
+   "screen_hint_ko": "고맙다고 해요: Thanks a lot. I owe you one.",
+   "role": true
+  },
+  {
+   "en": "Anytime!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. Could you open the door, please?",
+   "expect": "e2",
+   "screen_hint_ko": "역할극: 들어줘요: Sure, no problem.",
+   "role": true
+  },
+  {
+   "en": "Thanks a lot!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino for help.",
+  "hint_ko": "리노에게 상자를 들어 달라고 부탁해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Ask me for help.",
+  "My turn.",
+  "Anytime!"
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요. 모두 같은 이삿날 역할극이고, 토리가 실제로 무언가를 해 준다고 말하지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

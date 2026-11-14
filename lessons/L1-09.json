@@ -1,0 +1,230 @@
+{
+ "id": "L1-09",
+ "level": "L1",
+ "title_ko": "할 수 있어요",
+ "title_en": "I can swim!",
+ "goal_ko": "할 수 있는 것과 없는 것을 묻고 말하기",
+ "partner": "moa",
+ "offer_ko": "‘할 수 있어요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Can you ___?",
+   "ko": "___ 할 수 있어요?",
+   "help": {
+    "blank": "___ you swim?",
+    "choices": [
+     "Can",
+     "Are",
+     "Is"
+    ]
+   },
+   "pattern": "^can you (?<x>[a-z ]{2,20})$",
+   "slot": {
+    "kind": "verb",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "Can you swim?",
+     "can you cook"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "swim",
+     "you swim"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I can ___.",
+   "ko": "저는 ___ 할 수 있어요.",
+   "help": {
+    "blank": "I ___ swim.",
+    "choices": [
+     "can",
+     "cat",
+     "car"
+    ]
+   },
+   "pattern": "^(?:yes )?i can (?<x>[a-z ]{2,20})$",
+   "partial_patterns": [
+    "^yes(?: i can)?$"
+   ],
+   "slot": {
+    "kind": "verb",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "I can swim.",
+     "Yes I can sing",
+     "I can cook well"
+    ],
+    "partial": [
+     "yes i can"
+    ],
+    "form_only": [],
+    "no": [
+     "swim"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I can’t ___.",
+   "ko": "저는 ___ 못 해요.",
+   "help": {
+    "blank": "I ___ cook.",
+    "choices": [
+     "can’t",
+     "can",
+     "cat"
+    ]
+   },
+   "pattern": "^(?:no )?(?:i cant|i cannot|i can not)(?: (?<x>[a-z ]{2,20}))?$",
+   "partial_patterns": [
+    "^no$"
+   ],
+   "tests": {
+    "ok": [
+     "No, I can’t.",
+     "I can't cook",
+     "i cannot fly"
+    ],
+    "partial": [
+     "no"
+    ],
+    "form_only": [],
+    "no": [
+     "cook"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, can you swim?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes! I can swim fast."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! Can you cook?"
+  },
+  {
+   "who": "partner",
+   "en": "No, I can’t. I can’t cook."
+  },
+  {
+   "who": "tori",
+   "en": "That’s okay! I can cook."
+  },
+  {
+   "who": "partner",
+   "en": "Great! Cook for me!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i can swim fast",
+    "yes i can swim fast"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "i cant",
+    "i cant i cant cook",
+    "no i cant",
+    "no i cant i cant cook"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 말하기 싫으면 장면 속 것(swim)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "What can you do? Sing? Cook? Swim?",
+   "expect": "e2",
+   "model": "I can {x}.",
+   "screen_hint_ko": "할 수 있는 것을 문장으로: I can ___.",
+   "screen_blank": "I can ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Cool!"
+    }
+   ]
+  },
+  {
+   "en": "Can you fly?",
+   "expect": "e3",
+   "screen_hint_ko": "날 수는 없죠? No, I can’t."
+  },
+  {
+   "en": "Ha ha. Me neither!",
+   "expect": null
+  }
+ ],
+ "fallback": "swim",
+ "korean_map": {
+  "노래": "sing",
+  "요리": "cook",
+  "수영": "swim",
+  "춤": "dance",
+  "운전": "drive",
+  "달리기": "run",
+  "그림": "draw",
+  "기타": "play the guitar",
+  "피아노": "play the piano",
+  "자전거": "ride a bike"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. Can I cook?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Can you cook? (다른 것도 좋아요)",
+   "branches": [
+    {
+     "when": "slot_in:cook|sing|dance|swim|draw|run",
+     "say": "Yes, I can!"
+    },
+    {
+     "when": "slot_in:fly|drive",
+     "say": "No, I can’t."
+    },
+    {
+     "when": "default",
+     "say": "Hmm, a little!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 수영할 수 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Cool!",
+  "Me neither!",
+  "Hmm, a little!"
+ ],
+ "privacy_ko": "잘하는 것은 이 연습에만 쓰고 기억에 남기지 않아요. 토리는 가상 캐릭터라 실제로 해 줄 수 있는 일을 약속하지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

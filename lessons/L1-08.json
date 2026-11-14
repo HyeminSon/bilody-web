@@ -1,0 +1,246 @@
+{
+ "id": "L1-08",
+ "level": "L1",
+ "title_ko": "어디 있어요?",
+ "title_en": "Where is my phone?",
+ "goal_ko": "물건이 어디 있는지 묻고 위치(on·under)를 말하기",
+ "partner": "rino",
+ "offer_ko": "‘어디 있어요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Where is my ___?",
+   "ko": "제 ___ 어디 있어요?",
+   "help": {
+    "blank": "___ is my phone?",
+    "choices": [
+     "Where",
+     "What",
+     "Who"
+    ]
+   },
+   "pattern": "^(?:where is|wheres|where are) (?:my|the) (?<x>[a-z ]{2,20})$",
+   "partial_patterns": [
+    "^(?:my )?[a-z]{2,15} where$",
+    "^where my [a-z ]{2,15}$"
+   ],
+   "slot": {
+    "kind": "thing",
+    "closed": false
+   },
+   "accept_note": "복수형이면 Where are my keys?(둘 다 인정)",
+   "tests": {
+    "ok": [
+     "Where is my phone?",
+     "where are my keys",
+     "Where's the bag"
+    ],
+    "partial": [
+     "where my phone"
+    ],
+    "form_only": [],
+    "no": [
+     "phone"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It’s on / under the ___.",
+   "ko": "___ 위에 / 밑에 있어요.",
+   "help": {
+    "blank": "It’s ___ the table.",
+    "choices": [
+     "on",
+     "under",
+     "at"
+    ]
+   },
+   "pattern": "^(?:its|it is|theyre|they are) (?<prep>on|under) the (?<x>[a-z ]{2,20})$",
+   "partial_patterns": [
+    "^(?:on|under) the [a-z ]{2,20}$",
+    "^(?:its|it is) (?:in|next to|by) the [a-z ]{2,20}$"
+   ],
+   "slot": {
+    "kind": "place_in_scene",
+    "closed": true,
+    "lexicon": [
+     "table",
+     "chair",
+     "sofa",
+     "bed",
+     "desk",
+     "bag"
+    ]
+   },
+   "accept_note": "이 과의 목표는 on·under 두 개. in·next to는 부분(뜻 전달).",
+   "tests": {
+    "ok": [
+     "It’s on the table.",
+     "it's under the chair",
+     "They're on the sofa"
+    ],
+    "partial": [
+     "on the table",
+     "It's in the bag"
+    ],
+    "form_only": [
+     "It's on the moon"
+    ],
+    "no": [
+     "table"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "You’re welcome!",
+   "ko": "천만에요!",
+   "help": {
+    "blank": "You’re ___!",
+    "choices": [
+     "welcome",
+     "well",
+     "wonderful"
+    ]
+   },
+   "accept": [
+    "youre welcome",
+    "you are welcome",
+    "no problem",
+    "my pleasure"
+   ],
+   "tests": {
+    "ok": [
+     "You’re welcome!",
+     "no problem"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "welcome"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, where is my phone?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s on the table."
+  },
+  {
+   "who": "tori",
+   "en": "Where is my bag?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s under the chair."
+  },
+  {
+   "who": "tori",
+   "en": "Thanks, Rino!"
+  },
+  {
+   "who": "partner",
+   "en": "You’re welcome!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "its on the table"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "its under the chair"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "youre welcome"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 말하기 싫으면 장면 속 물건(phone)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "What do you lose a lot?",
+   "expect": "slot",
+   "screen_hint_ko": "자주 잃어버리는 물건 한 단어(휴대폰, 지갑, 열쇠…)"
+  },
+  {
+   "en": "Ask me where it is.",
+   "expect": "e1",
+   "model": "Where is my {x}?",
+   "screen_hint_ko": "어디 있는지 물어봐요: Where is my ___?",
+   "screen_blank": "Where is my ___?",
+   "branches": [
+    {
+     "when": "plural",
+     "say": "They’re on the table!"
+    },
+    {
+     "when": "default",
+     "say": "It’s on the table!"
+    }
+   ]
+  }
+ ],
+ "fallback": "phone",
+ "korean_map": {
+  "열쇠": "keys",
+  "키": "keys",
+  "휴대폰": "phone",
+  "핸드폰": "phone",
+  "폰": "phone",
+  "안경": "glasses",
+  "지갑": "wallet",
+  "리모컨": "remote",
+  "가방": "bag",
+  "우산": "umbrella",
+  "카드": "card"
+ },
+ "plural_words": [
+  "keys",
+  "glasses"
+ ],
+ "ask_me": [
+  {
+   "en": "My turn. Where is my bag?",
+   "expect": "e2",
+   "screen_hint_ko": "장면을 보세요. 가방은 의자 밑: It’s under the chair."
+  },
+  {
+   "en": "Thanks!",
+   "expect": "e3",
+   "screen_hint_ko": "고맙다는 말에 답해요: You’re welcome!"
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 휴대폰이 어디 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "My turn.",
+  "Ask me where it is."
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

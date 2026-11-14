@@ -1,0 +1,265 @@
+{
+ "id": "L1-03",
+ "level": "L1",
+ "title_ko": "오늘 기분",
+ "title_en": "How are you?",
+ "goal_ko": "안부를 묻고 내 기분을 말하기",
+ "partner": "sola",
+ "offer_ko": "‘오늘 기분’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How are you?",
+   "ko": "어떻게 지내요?",
+   "help": {
+    "blank": "How ___ you?",
+    "choices": [
+     "are",
+     "is",
+     "do"
+    ]
+   },
+   "accept": [
+    "how are you",
+    "how are you today",
+    "how are you doing",
+    "hows it going",
+    "good morning how are you",
+    "hi how are you",
+    "hello how are you"
+   ],
+   "tests": {
+    "ok": [
+     "How are you?",
+     "Good morning! How are you?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "how"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m ___.",
+   "ko": "저는 ___해요.",
+   "help": {
+    "blank": "I’m ___.",
+    "choices": [
+     "good",
+     "tired",
+     "hungry"
+    ]
+   },
+   "pattern": "^(?:im|i am|i feel)(?: a little| a bit| very| so| really| pretty)? (?<x>[a-z ]{2,20})$",
+   "partial_patterns": [
+    "^(?:good|fine|great|okay|ok|tired|hungry|happy|sleepy|busy|bored|so so|not bad)$"
+   ],
+   "slot": {
+    "kind": "feeling",
+    "closed": true,
+    "lexicon": [
+     "good",
+     "great",
+     "fine",
+     "okay",
+     "ok",
+     "tired",
+     "hungry",
+     "happy",
+     "sleepy",
+     "busy",
+     "bored",
+     "excited",
+     "not bad",
+     "so so",
+     "sad",
+     "sick",
+     "stressed",
+     "cold",
+     "hot",
+     "well",
+     "nervous"
+    ]
+   },
+   "tests": {
+    "ok": [
+     "I’m tired.",
+     "I am a little tired",
+     "i'm good",
+     "I feel great"
+    ],
+    "partial": [
+     "tired"
+    ],
+    "form_only": [
+     "I’m banana"
+    ],
+    "no": [
+     "hello"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "What about you?",
+   "ko": "당신은요?",
+   "help": {
+    "blank": "What ___ you?",
+    "choices": [
+     "about",
+     "above",
+     "after"
+    ]
+   },
+   "accept": [
+    "what about you",
+    "and you",
+    "how about you"
+   ],
+   "tests": {
+    "ok": [
+     "What about you?",
+     "and you?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "you"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Good morning, Sola!"
+  },
+  {
+   "who": "partner",
+   "en": "Good morning! How are you?"
+  },
+  {
+   "who": "tori",
+   "en": "I’m good! What about you?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m a little tired."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no! Coffee time?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes, please!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "good morning how are you",
+    "how are you"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "im a little tired"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 기분이에요. 말하기 싫으면 장면 속 기분(tired)으로 답해도 돼요.",
+ "story": [
+  {
+   "en": "How are you today?",
+   "expect": "e2",
+   "model": "I’m {x}.",
+   "screen_hint_ko": "지금 기분을 문장으로: I’m ___. (good, tired, hungry)",
+   "screen_blank": "I’m ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "slot_in:good|great|fine|okay|ok|happy|excited|well|not bad",
+     "say": "Great!"
+    },
+    {
+     "when": "default",
+     "say": "Oh, I see."
+    }
+   ]
+  },
+  {
+   "en": "Now ask me back.",
+   "expect": "e3",
+   "screen_hint_ko": "토리에게 되물어 봐요: What about you?"
+  },
+  {
+   "en": "I’m good, thanks!",
+   "expect": null
+  }
+ ],
+ "fallback": "tired",
+ "korean_map": {
+  "좋아": "good",
+  "좋아요": "good",
+  "괜찮아": "okay",
+  "피곤해": "tired",
+  "피곤": "tired",
+  "배고파": "hungry",
+  "행복해": "happy",
+  "졸려": "sleepy",
+  "바빠": "busy",
+  "심심해": "bored"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you start. Say hi and ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "내가 먼저 인사하고 물어봐요: Good morning! How are you?"
+  },
+  {
+   "en": "I’m good, thanks. What about you?",
+   "expect": "e2",
+   "screen_hint_ko": "내 기분으로 답해요: I’m ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Okay! Have a nice day!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Say hi to Sola.",
+  "hint_ko": "솔라에게 안부를 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Great!",
+  "Oh, I see.",
+  "Now ask me back.",
+  "Now you start.",
+  "Have a nice day!"
+ ],
+ "privacy_ko": "기분은 그날 연습에만 쓰고 기억에 남기지 않아요. 아파요·슬퍼요 같은 답은 공통 ‘민감한 답’ 규칙대로: 짧게 공감하고 계속할지 고르게 해요. 모르는 한국어 답을 다른 기분으로 바꾸지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

@@ -1,0 +1,238 @@
+{
+ "id": "L1-04",
+ "level": "L1",
+ "title_ko": "좋아하는 음식",
+ "title_en": "I like kimchi!",
+ "goal_ko": "좋아하는 음식을 묻고 말하고, 맞장구치기",
+ "partner": "rino",
+ "offer_ko": "‘좋아하는 음식’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Do you like ___?",
+   "ko": "___ 좋아해요?",
+   "help": {
+    "blank": "Do you ___ pizza?",
+    "choices": [
+     "like",
+     "live",
+     "look"
+    ]
+   },
+   "pattern": "^do you like (?<x>[a-z ]{2,30})$",
+   "slot": {
+    "kind": "food",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "Do you like pizza?",
+     "do you like spicy food"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "pizza",
+     "you like pizza"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I like ___.",
+   "ko": "저는 ___를 좋아해요.",
+   "help": {
+    "blank": "I like ___.",
+    "choices": [
+     "kimchi",
+     "pizza",
+     "noodles"
+    ]
+   },
+   "pattern": "^i (?:really |also )?(?:like|love) (?<x>[a-z ]{2,30})$",
+   "partial_patterns": [
+    "^(?:like )?[a-z]{2,15}$"
+   ],
+   "slot": {
+    "kind": "food",
+    "closed": false
+   },
+   "tests": {
+    "ok": [
+     "I like kimchi.",
+     "I really like pizza",
+     "i love noodles"
+    ],
+    "partial": [
+     "kimchi"
+    ],
+    "form_only": [],
+    "no": [
+     "hello how are you today friend"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Me too!",
+   "ko": "저도요!",
+   "help": {
+    "blank": "Me ___!",
+    "choices": [
+     "too",
+     "two",
+     "to"
+    ]
+   },
+   "accept": [
+    "me too",
+    "me to",
+    "me two",
+    "me too i like it",
+    "same",
+    "me too i love it",
+    "not me",
+    "i dont",
+    "no i dont"
+   ],
+   "accept_note": "좋아하지 않으면 ‘Not me.’, ‘I don’t.’도 정답(맞장구를 강요하지 않음).",
+   "tests": {
+    "ok": [
+     "Me too!",
+     "Not me.",
+     "I don’t."
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "too"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "I like pizza. Do you like pizza?"
+  },
+  {
+   "who": "partner",
+   "en": "Me too! I like pizza."
+  },
+  {
+   "who": "tori",
+   "en": "Do you like kimchi?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes! I like kimchi."
+  },
+  {
+   "who": "tori",
+   "en": "Me too! Let’s eat together!"
+  },
+  {
+   "who": "partner",
+   "en": "Okay!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e3",
+   "line_accept": [
+    "me too",
+    "me too i like pizza"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "i like kimchi",
+    "yes i like kimchi"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 좋아하지 않으면 그렇게 말해도 돼요.",
+ "story": [
+  {
+   "en": "What food do you like?",
+   "expect": "e2",
+   "model": "I like {x}.",
+   "screen_hint_ko": "좋아하는 음식을 문장으로: I like ___.",
+   "screen_blank": "I like ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "{x}! Yum."
+    }
+   ]
+  },
+  {
+   "en": "I like pizza.",
+   "expect": "e3",
+   "screen_hint_ko": "피자를 좋아하면 Me too! 아니면 Not me.",
+   "branches": [
+    {
+     "when": "matched_text:not me|i dont|no i dont",
+     "say": "That’s okay!"
+    },
+    {
+     "when": "default",
+     "say": "Great!"
+    }
+   ]
+  }
+ ],
+ "fallback": "kimchi",
+ "korean_map": {
+  "김치": "kimchi",
+  "피자": "pizza",
+  "라면": "ramen",
+  "치킨": "chicken",
+  "비빔밥": "bibimbap",
+  "떡볶이": "tteokbokki",
+  "국수": "noodles",
+  "빵": "bread",
+  "과일": "fruit",
+  "고기": "meat",
+  "초밥": "sushi"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: Do you like kimchi? (다른 음식도 좋아요)",
+   "branches": [
+    {
+     "when": "slot_in:pizza|kimchi|noodles|bread|fruit|chicken|ramen|bibimbap",
+     "say": "Yes, I do!"
+    },
+    {
+     "when": "default",
+     "say": "Hmm, not really. I like pizza!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 김치를 좋아하는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Yum.",
+  "That’s okay!",
+  "Great!",
+  "Hmm, not really."
+ ],
+ "privacy_ko": "좋아하는 음식은 이 연습에만 쓰고 기억에 남기지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

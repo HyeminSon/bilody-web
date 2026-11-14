@@ -1,0 +1,216 @@
+{
+ "id": "L1-07",
+ "level": "L1",
+ "title_ko": "몇 시예요?",
+ "title_en": "What time is it?",
+ "goal_ko": "시계를 보고 시간을 묻고 말하기",
+ "partner": "sola",
+ "offer_ko": "‘몇 시예요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What time is it?",
+   "ko": "몇 시예요?",
+   "help": {
+    "blank": "What ___ is it?",
+    "choices": [
+     "time",
+     "day",
+     "name"
+    ]
+   },
+   "accept": [
+    "what time is it",
+    "what time is it now",
+    "do you know what time it is",
+    "excuse me what time is it"
+   ],
+   "tests": {
+    "ok": [
+     "What time is it?",
+     "what time is it now"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "time"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It’s ___ o’clock.",
+   "ko": "___시예요.",
+   "help": {
+    "blank": "It’s ___ o’clock.",
+    "choices": [
+     "eight",
+     "nine",
+     "ten"
+    ]
+   },
+   "pattern": "^(?:its|it is) (?<x>(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?)(?: now)?$",
+   "partial_patterns": [
+    "^(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?)$"
+   ],
+   "slot": {
+    "kind": "time",
+    "closed": true,
+    "lexicon_note": "숫자(단어·아라비아 숫자) + o’clock/분. 시간 패턴 자체가 닫힌 목록"
+   },
+   "accept_note": "정규화 때 숫자 사이 콜론은 공백으로(7:30 → 7 30). ‘It’s eight thirty.’도 인정.",
+   "tests": {
+    "ok": [
+     "It’s eight o’clock.",
+     "it's 8 o'clock",
+     "It is nine thirty",
+     "It's 7:30"
+    ],
+    "partial": [
+     "eight",
+     "three o'clock"
+    ],
+    "form_only": [],
+    "no": [
+     "It is banana",
+     "eight oclock please"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Hurry up!",
+   "ko": "서둘러요!",
+   "help": {
+    "blank": "Hurry ___!",
+    "choices": [
+     "up",
+     "on",
+     "in"
+    ]
+   },
+   "accept": [
+    "hurry up",
+    "hurry",
+    "hurry up tori",
+    "quick hurry up",
+    "run"
+   ],
+   "tests": {
+    "ok": [
+     "Hurry up!",
+     "Hurry up, Tori!"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "up"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Sola, what time is it?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s eight o’clock."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no! I’m late!"
+  },
+  {
+   "who": "partner",
+   "en": "Hurry up!"
+  },
+  {
+   "who": "tori",
+   "en": "Bye, Sola!"
+  },
+  {
+   "who": "partner",
+   "en": "Bye! Run, Tori!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "its eight oclock"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "hurry up"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "화면의 시계(3:00)를 보고 답해요. 진짜 지금 시간이 아니어도 돼요.",
+ "story": [
+  {
+   "en": "Look at the clock. What time is it?",
+   "expect": "e2",
+   "model": "It’s three o’clock.",
+   "screen_hint_ko": "시계를 보고 문장으로: It’s ___ o’clock.",
+   "screen_blank": "It’s ___ o’clock.",
+   "clock": "3:00",
+   "expect_slot": "three|3",
+   "branches": [
+    {
+     "when": "slot_mismatch",
+     "say": "Look again. It’s three o’clock."
+    },
+    {
+     "when": "default",
+     "say": "Yes! Three o’clock."
+    }
+   ]
+  },
+  {
+   "en": "Oh no, I’m late!",
+   "expect": "e3",
+   "screen_hint_ko": "토리를 재촉해요: Hurry up!",
+   "role": true
+  }
+ ],
+ "fallback": null,
+ "korean_map": {
+  "세시": "three",
+  "3시": "three"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 시간을 물어봐요: What time is it?"
+  },
+  {
+   "en": "It’s three o’clock. Time for tea!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola.",
+  "hint_ko": "솔라에게 몇 시인지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Look at the clock.",
+  "Look again.",
+  "Time for tea!"
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요. 시계는 가상(3:00)이에요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

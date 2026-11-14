@@ -1,0 +1,361 @@
+{
+ "style": {
+  "L8": {
+   "cefr": "C1",
+   "friend_style": [
+    "Use natural, idiomatic English at a clear pace the learner can adjust with the speed setting.",
+    "Ask why and how; ask for an example or the other side once per topic.",
+    "Offer a different view now and then (politely), so the learner has to defend or adjust their opinion.",
+    "Correct at most once every four learner turns: choose precision, collocation, or a more natural phrase, not basic grammar."
+   ],
+   "screen_ko": "고급 대화: 토리가 이유·예·다른 의견을 더 묻고, 더 자연스러운 표현을 가끔 알려 줘요."
+  },
+  "L9": {
+   "cefr": "C2",
+   "friend_style": [
+    "Talk like a close friend: idioms, light humor, irony when it fits and the learner enjoys it. Never joke about groups of people.",
+    "Notice tone: if the learner’s phrase is correct but sounds too formal, too direct, or a little odd, suggest a more natural one.",
+    "Play with words now and then and invite the learner to do the same.",
+    "Correct at most once every five learner turns, only for nuance, register, or idiom."
+   ],
+   "screen_ko": "최고급 대화: 맞지만 어색한 말투·뉘앙스를 다듬고, 관용 표현과 농담도 주고받아요."
+  },
+  "both": {
+   "avoid": [
+    "정치·선거·정당",
+    "종교",
+    "성별·특정 집단 비하",
+    "의료·법률·투자 조언"
+   ],
+   "how": "자유 대화와 같은 연결·안전 규칙. 주제 카드는 대화를 여는 제안일 뿐 학습자가 다른 이야기를 하면 따라감.",
+   "privacy": [
+    "가상·일반 사례로 답해도 됨을 먼저 알림(‘Real or made-up examples are both fine.’)",
+    "실명·회사 이름·금액·건강 정보를 묻거나 캐묻지 않음",
+    "반대편 변호·입장 바꾸기·말투 연습에서 한 말은 실제 신념·사실로 기록하지 않음",
+    "유머·비꼼·말장난은 학습자가 원할 때만, 집단 비하·조롱 없음"
+   ],
+   "memory": "첫 시험에서는 주제 카드 대화의 개인 장기 기억 추출을 끔(헤니 검토 10). 운영 결정 뒤 바꿀 수 있음"
+  }
+ },
+ "topics": {
+  "L8": [
+   {
+    "id": "L8-01",
+    "title_ko": "AI가 만든 그림도 예술일까",
+    "opener_en": "Can a picture made by AI be real art?",
+    "follow_ups_en": [
+     "Who should own it?",
+     "Would you hang one in your home?"
+    ]
+   },
+   {
+    "id": "L8-02",
+    "title_ko": "관광객 수 제한",
+    "opener_en": "Should popular cities limit the number of tourists?",
+    "follow_ups_en": [
+     "What problems do tourists cause?",
+     "Who would lose money?"
+    ]
+   },
+   {
+    "id": "L8-03",
+    "title_ko": "전문가 vs 다재다능",
+    "opener_en": "Is it better to be a specialist or a generalist?",
+    "follow_ups_en": [
+     "Which are you?",
+     "Which will matter more with AI?"
+    ]
+   },
+   {
+    "id": "L8-04",
+    "title_ko": "실패의 가치",
+    "opener_en": "What can we learn from failure?",
+    "follow_ups_en": [
+     "Any small example is fine, real or made-up.",
+     "Do schools teach this well?"
+    ]
+   },
+   {
+    "id": "L8-05",
+    "title_ko": "편리함과 개인정보",
+    "opener_en": "How much privacy would people give up for convenience?",
+    "follow_ups_en": [
+     "What kinds of apps ask for the most data?",
+     "Where should the line be?"
+    ]
+   },
+   {
+    "id": "L8-06",
+    "title_ko": "패스트 패션",
+    "opener_en": "Is fast fashion worth the low price?",
+    "follow_ups_en": [
+     "How often do you buy clothes?",
+     "Would you pay more for slow fashion?"
+    ]
+   },
+   {
+    "id": "L8-07",
+    "title_ko": "우주 탐사",
+    "opener_en": "Is space exploration worth the money?",
+    "follow_ups_en": [
+     "Would you go to Mars?",
+     "What should we spend it on instead?"
+    ]
+   },
+   {
+    "id": "L8-08",
+    "title_ko": "돈과 행복",
+    "opener_en": "Can money buy happiness?",
+    "follow_ups_en": [
+     "What’s the best thing money can buy?",
+     "When does more money stop helping?"
+    ]
+   },
+   {
+    "id": "L8-09",
+    "title_ko": "야망",
+    "opener_en": "Is ambition always a good thing?",
+    "follow_ups_en": [
+     "Can you think of a famous example?",
+     "Can ambition hurt relationships?"
+    ]
+   },
+   {
+    "id": "L8-10",
+    "title_ko": "긱 경제",
+    "opener_en": "Is freelance or gig work the future of jobs?",
+    "follow_ups_en": [
+     "What are the risks?",
+     "Would you choose it?"
+    ]
+   },
+   {
+    "id": "L8-11",
+    "title_ko": "고기 덜 먹기",
+    "opener_en": "Should people eat less meat?",
+    "follow_ups_en": [
+     "Have you tried a meat-free day?",
+     "What would make it easier?"
+    ]
+   },
+   {
+    "id": "L8-12",
+    "title_ko": "온라인 수업",
+    "opener_en": "Is online learning as good as classroom learning?",
+    "follow_ups_en": [
+     "What can’t a screen teach?",
+     "What works better online?"
+    ]
+   },
+   {
+    "id": "L8-13",
+    "title_ko": "도시 설계",
+    "opener_en": "What makes a city a great place to live?",
+    "follow_ups_en": [
+     "Which city does it best?",
+     "What would you change in yours?"
+    ]
+   },
+   {
+    "id": "L8-14",
+    "title_ko": "일과 의미",
+    "opener_en": "Should a job be meaningful, or is a good salary enough?",
+    "follow_ups_en": [
+     "What makes work meaningful for most people?",
+     "Would people take less pay for it?"
+    ]
+   },
+   {
+    "id": "L8-15",
+    "title_ko": "기술과 외로움",
+    "opener_en": "Does technology make us more connected or more lonely?",
+    "follow_ups_en": [
+     "How do people keep in touch these days?",
+     "What did people do before phones?"
+    ]
+   },
+   {
+    "id": "L8-16",
+    "title_ko": "자동화",
+    "opener_en": "Which jobs should never be done by robots?",
+    "follow_ups_en": [
+     "Why those?",
+     "Would you trust a robot doctor?"
+    ]
+   },
+   {
+    "id": "L8-17",
+    "title_ko": "교육",
+    "opener_en": "What should schools teach that they don’t?",
+    "follow_ups_en": [
+     "What did you wish you had learned?",
+     "Who should decide?"
+    ]
+   },
+   {
+    "id": "L8-18",
+    "title_ko": "소비 습관",
+    "opener_en": "Do we buy too many things we don’t need?",
+    "follow_ups_en": [
+     "What kinds of things do people buy and never use?",
+     "How do ads change us?"
+    ]
+   },
+   {
+    "id": "L8-19",
+    "title_ko": "세대 차이",
+    "opener_en": "What do different generations misunderstand about each other?",
+    "follow_ups_en": [
+     "Give me an example.",
+     "What can each side learn?"
+    ]
+   },
+   {
+    "id": "L8-20",
+    "title_ko": "미래의 일",
+    "opener_en": "What will a normal workday look like in 2040?",
+    "follow_ups_en": [
+     "What will disappear?",
+     "What will stay the same?"
+    ]
+   }
+  ],
+  "L9": [
+   {
+    "id": "L9-01",
+    "title_ko": "말투 바꾸기",
+    "opener_en": "Say the same thing to a boss, a friend, and a child.",
+    "follow_ups_en": [
+     "Which version sounds most like you?",
+     "What changed in each?"
+    ]
+   },
+   {
+    "id": "L9-02",
+    "title_ko": "관용 표현",
+    "opener_en": "Let’s swap idioms: tell me a Korean saying, and I’ll find an English match.",
+    "follow_ups_en": [
+     "Is the meaning exactly the same?",
+     "When would you use it?"
+    ]
+   },
+   {
+    "id": "L9-03",
+    "title_ko": "농담 설명",
+    "opener_en": "Explain a Korean pun or wordplay in English. Only if you like jokes!",
+    "follow_ups_en": [
+     "Why doesn’t it work in translation?",
+     "Can we make an English version?"
+    ]
+   },
+   {
+    "id": "L9-04",
+    "title_ko": "반대편 변호",
+    "opener_en": "Just for practice: argue that cereal is a soup.",
+    "follow_ups_en": [
+     "What was the hardest part?",
+     "Now argue the other side."
+    ]
+   },
+   {
+    "id": "L9-05",
+    "title_ko": "스포일러 없이",
+    "opener_en": "Describe a film’s ending without spoiling it.",
+    "follow_ups_en": [
+     "What words did you avoid?",
+     "Would I like it?"
+    ]
+   },
+   {
+    "id": "L9-06",
+    "title_ko": "완곡하게 말하기",
+    "opener_en": "Turn down an invitation without sounding rude.",
+    "follow_ups_en": [
+     "Now do it more firmly.",
+     "How would you say it in Korean?"
+    ]
+   },
+   {
+    "id": "L9-07",
+    "title_ko": "뉘앙스 차이",
+    "opener_en": "What’s the difference between ‘I’m fine’, ‘I’m okay’, and ‘I’m good’?",
+    "follow_ups_en": [
+     "When would each sound strange?",
+     "Any Korean pairs like this?"
+    ]
+   },
+   {
+    "id": "L9-08",
+    "title_ko": "이야기로 긴장감",
+    "opener_en": "Tell a short story with a twist at the end.",
+    "follow_ups_en": [
+     "Where did you build the tension?",
+     "Can you tell it in half the words?"
+    ]
+   },
+   {
+    "id": "L9-09",
+    "title_ko": "말장난",
+    "opener_en": "Let’s make puns about food.",
+    "follow_ups_en": [
+     "Which one is the worst?",
+     "Why are puns funny at all?"
+    ]
+   },
+   {
+    "id": "L9-10",
+    "title_ko": "비꼼 알아듣기",
+    "opener_en": "‘Oh, great. Another Monday.’ What does that really mean?",
+    "follow_ups_en": [
+     "How do you show sarcasm in Korean?",
+     "When is it risky?"
+    ]
+   },
+   {
+    "id": "L9-11",
+    "title_ko": "정중한 반대",
+    "opener_en": "Made-up meeting: your manager wants meetings at 7 a.m. Disagree politely but clearly.",
+    "follow_ups_en": [
+     "Too soft or too strong?",
+     "How else could you say it?"
+    ]
+   },
+   {
+    "id": "L9-12",
+    "title_ko": "설명 압축",
+    "opener_en": "Explain your job, or a hobby, in one sentence, then in three words.",
+    "follow_ups_en": [
+     "What did you cut?",
+     "Which version is clearer?"
+    ]
+   },
+   {
+    "id": "L9-13",
+    "title_ko": "격식 바꾸기",
+    "opener_en": "Say ‘Can’t come tomorrow, sorry!’ like a formal email, out loud.",
+    "follow_ups_en": [
+     "Which words changed most?",
+     "What sounds too stiff?"
+    ]
+   },
+   {
+    "id": "L9-14",
+    "title_ko": "영어 속 문화",
+    "opener_en": "In English, ‘sorry’ isn’t always an apology. Like ‘Sorry, can you repeat that?’ What else?",
+    "follow_ups_en": [
+     "Is it the same in Korean?",
+     "When does it sound strange?"
+    ]
+   },
+   {
+    "id": "L9-15",
+    "title_ko": "말 많은 토론",
+    "opener_en": "Is a hot dog a sandwich? Defend your answer.",
+    "follow_ups_en": [
+     "Can you use a funny example?",
+     "Want to switch sides? Only if you like."
+    ]
+   }
+  ]
+ }
+}

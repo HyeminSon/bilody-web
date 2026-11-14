@@ -1,0 +1,401 @@
+{
+ "level": "L7",
+ "markers": {
+  "position": {
+   "ko": "입장",
+   "patterns": [
+    "\\bi (?:completely |totally |partly |partially |kind of )?agree\\b",
+    "\\bim not sure i agree\\b",
+    "\\bi (?:dont|do not) (?:really )?agree\\b",
+    "\\bi disagree\\b",
+    "\\bin my opinion\\b",
+    "\\bi (?:really |honestly )?think\\b",
+    "\\bi (?:strongly )?(?:feel|believe)\\b"
+   ]
+  },
+  "reason": {
+   "ko": "이유",
+   "patterns": [
+    "\\bbecause\\b",
+    "\\bthe main reason is\\b",
+    "\\bmainly because\\b",
+    "\\bthats why\\b",
+    "\\bso that\\b"
+   ]
+  },
+  "example": {
+   "ko": "예",
+   "patterns": [
+    "\\bfor example\\b",
+    "\\bfor instance\\b",
+    "\\blike when\\b",
+    "\\bin my case\\b"
+   ]
+  },
+  "contrast": {
+   "ko": "반대쪽",
+   "patterns": [
+    "\\bon the other hand\\b",
+    "\\bhowever\\b",
+    "\\bi see your point but\\b",
+    "\\bthats true but\\b",
+    "\\bi partly agree but\\b",
+    "\\beven so\\b",
+    "\\bthen again\\b"
+   ]
+  },
+  "conclusion": {
+   "ko": "정리",
+   "patterns": [
+    "\\boverall\\b",
+    "\\ball in all\\b",
+    "\\bon the whole\\b",
+    "\\bin the end\\b",
+    "\\bso basically\\b",
+    "\\bit depends on\\b"
+   ]
+  }
+ },
+ "flow": [
+  {
+   "id": "t0",
+   "who": "tori",
+   "say": "Want to talk about this together? I can take the other side, or just chat.",
+   "screen_ko": "오늘의 질문: {claim_ko} · [토리가 반대편] [같은 편으로] [그냥 이야기] [다음에]",
+   "note": "토론 방식은 학습자가 고름(헤니 검토 9). 반대편이 기본이 아님."
+  },
+  {
+   "id": "t1",
+   "who": "tori",
+   "say": "Today’s question: {claim_en} What do you think?",
+   "screen_ko": "오늘의 질문: {claim_ko}"
+  },
+  {
+   "id": "t2",
+   "who": "learner",
+   "goal_ko": "내 생각 + 이유",
+   "practice_markers": [
+    "position",
+    "reason"
+   ],
+   "hint_ko": "도움 표현(선택): I partly agree, but… / The main reason is that…",
+   "tori_after": "I see. Here’s another way to look at it."
+  },
+  {
+   "id": "t3",
+   "who": "tori",
+   "say": "{counter}",
+   "note": "‘반대편’을 골랐을 때만 학습자 생각의 반대쪽 논거 하나. ‘같은 편’이면 같은 쪽 논거, ‘그냥 이야기’면 열린 질문 하나. 학습자가 실제 사정(건강·알레르기·돈·가족 등)을 이유로 말하면 반론하지 않고 ‘That makes sense.’ 뒤 열린 질문으로."
+  },
+  {
+   "id": "t4",
+   "who": "learner",
+   "goal_ko": "토리 말에 답하기(인정·반박·예 중 자유)",
+   "practice_markers": [
+    "contrast",
+    "example"
+   ],
+   "hint_ko": "도움 표현(선택): I see your point, but… / For example, …",
+   "tori_after": "Good point. So what’s your final answer?"
+  },
+  {
+   "id": "t5",
+   "who": "learner",
+   "goal_ko": "정리",
+   "practice_markers": [
+    "conclusion"
+   ],
+   "hint_ko": "도움 표현(선택): Overall, I think… / It depends on…"
+  },
+  {
+   "id": "t6",
+   "who": "tori",
+   "say": "Great talk! {tip}",
+   "note": "tip = 이번 과제에서 가장 쓸모 있는 표현 하나(친구 대화 교정 규칙과 같음: We usually say, \"…\"). 없으면 생략."
+  }
+ ],
+ "tasks": [
+  {
+   "id": "L7-01",
+   "title_ko": "재택근무",
+   "claim_en": "Working from home is better than working at the office.",
+   "claim_ko": "재택근무가 사무실 근무보다 낫다.",
+   "counter_for_agree": [
+    "But at the office, it can be easier to share ideas quickly.",
+    "Some people feel lonely or work too late at home."
+   ],
+   "counter_for_disagree": [
+    "But you save hours of commuting every week.",
+    "At home, you can focus without noisy coworkers."
+   ],
+   "words": [
+    [
+     "commute",
+     "출퇴근(하다)"
+    ],
+    [
+     "productive",
+     "생산적인"
+    ],
+    [
+     "work-life balance",
+     "일과 삶의 균형"
+    ]
+   ]
+  },
+  {
+   "id": "L7-02",
+   "title_ko": "AI 시대의 외국어",
+   "claim_en": "We still need to learn foreign languages, even with AI translators.",
+   "claim_ko": "AI 번역기가 있어도 외국어는 배워야 한다.",
+   "counter_for_agree": [
+    "But AI translators are fast, and many are getting better.",
+    "Some people only need a language for short trips."
+   ],
+   "counter_for_disagree": [
+    "But talking without a translator can feel closer and more natural.",
+    "Translators can miss jokes and feelings."
+   ],
+   "words": [
+    [
+     "translator",
+     "번역기"
+    ],
+    [
+     "nuance",
+     "미묘한 차이"
+    ],
+    [
+     "rely on",
+     "~에 의존하다"
+    ]
+   ]
+  },
+  {
+   "id": "L7-03",
+   "title_ko": "주 4일 근무",
+   "claim_en": "A four-day work week is a good idea.",
+   "claim_ko": "주 4일 근무는 좋은 생각이다.",
+   "counter_for_agree": [
+    "But some places need people every day, so schedules can get tricky.",
+    "People might work longer hours on the other four days."
+   ],
+   "counter_for_disagree": [
+    "But rested workers often do better work.",
+    "A long weekend gives time for family and hobbies."
+   ],
+   "words": [
+    [
+     "burnout",
+     "번아웃"
+    ],
+    [
+     "efficient",
+     "효율적인"
+    ],
+    [
+     "schedule",
+     "일정"
+    ]
+   ]
+  },
+  {
+   "id": "L7-04",
+   "title_ko": "현금 없는 생활",
+   "claim_en": "We won’t need cash in ten years.",
+   "claim_ko": "10년 뒤에는 현금이 필요 없을 것이다.",
+   "counter_for_agree": [
+    "But some older people still feel safer with cash.",
+    "If the network goes down, some card payments may not work."
+   ],
+   "counter_for_disagree": [
+    "But most people already pay with phones and cards.",
+    "Cash is slow and easy to lose."
+   ],
+   "words": [
+    [
+     "contactless",
+     "비접촉(결제)"
+    ],
+    [
+     "convenient",
+     "편리한"
+    ],
+    [
+     "backup",
+     "대비책"
+    ]
+   ]
+  },
+  {
+   "id": "L7-05",
+   "title_ko": "패키지 vs 자유 여행",
+   "claim_en": "Package tours are better than planning your own trip.",
+   "claim_ko": "패키지여행이 자유 여행보다 낫다.",
+   "counter_for_agree": [
+    "But on a package tour, you can’t choose where to stay longer.",
+    "You often spend time in shops you don’t need."
+   ],
+   "counter_for_disagree": [
+    "But planning everything yourself takes a lot of time.",
+    "A guide can explain history you would miss."
+   ],
+   "words": [
+    [
+     "itinerary",
+     "여행 일정"
+    ],
+    [
+     "flexible",
+     "유연한"
+    ],
+    [
+     "hassle",
+     "번거로움"
+    ]
+   ]
+  },
+  {
+   "id": "L7-06",
+   "title_ko": "온라인 리뷰",
+   "claim_en": "You can trust online reviews.",
+   "claim_ko": "온라인 리뷰는 믿을 만하다.",
+   "counter_for_agree": [
+    "But some shops pay people to write good reviews.",
+    "Angry customers write reviews more often than happy ones."
+   ],
+   "counter_for_disagree": [
+    "But reading many reviews together can show a pattern.",
+    "Reviews can help you avoid really bad places."
+   ],
+   "words": [
+    [
+     "fake",
+     "가짜의"
+    ],
+    [
+     "rating",
+     "별점"
+    ],
+    [
+     "reliable",
+     "믿을 만한"
+    ]
+   ]
+  },
+  {
+   "id": "L7-07",
+   "title_ko": "시골에서 노후",
+   "claim_en": "It’s better to live in the countryside when you get older.",
+   "claim_ko": "나이 들면 시골에 사는 게 낫다.",
+   "counter_for_agree": [
+    "But hospitals and shops are far away in the countryside.",
+    "It can feel lonely without friends nearby."
+   ],
+   "counter_for_disagree": [
+    "But the air is cleaner and life is slower.",
+    "Houses are cheaper, and you can grow vegetables."
+   ],
+   "words": [
+    [
+     "retire",
+     "은퇴하다"
+    ],
+    [
+     "peaceful",
+     "평화로운"
+    ],
+    [
+     "access",
+     "접근(성)"
+    ]
+   ]
+  },
+  {
+   "id": "L7-08",
+   "title_ko": "아이와 스마트폰",
+   "claim_en": "Children under twelve shouldn’t have smartphones.",
+   "claim_ko": "12살 미만 아이는 스마트폰이 없어야 한다.",
+   "counter_for_agree": [
+    "But parents can call them anytime with a phone.",
+    "Kids can learn a lot from good apps."
+   ],
+   "counter_for_disagree": [
+    "But many kids spend too many hours on screens.",
+    "Without phones, they play outside more."
+   ],
+   "words": [
+    [
+     "screen time",
+     "화면 보는 시간"
+    ],
+    [
+     "addicted",
+     "중독된"
+    ],
+    [
+     "supervise",
+     "지켜보다"
+    ]
+   ],
+   "note_ko": "육아 방식을 평가하지 않아요. 학습자가 부모인지 묻지 않아요."
+  },
+  {
+   "id": "L7-09",
+   "title_ko": "SNS와 행복",
+   "claim_en": "Social media makes people less happy.",
+   "claim_ko": "SNS는 사람들을 덜 행복하게 만든다.",
+   "counter_for_agree": [
+    "But social media helps us keep in touch with old friends.",
+    "You can find people with the same hobbies."
+   ],
+   "counter_for_disagree": [
+    "But people compare their lives with others’ best moments.",
+    "Scrolling for hours can make you feel tired."
+   ],
+   "words": [
+    [
+     "compare",
+     "비교하다"
+    ],
+    [
+     "scroll",
+     "화면을 넘기다"
+    ],
+    [
+     "connected",
+     "연결된"
+    ]
+   ]
+  },
+  {
+   "id": "L7-10",
+   "title_ko": "반려동물",
+   "claim_en": "Everyone should try having a pet at least once.",
+   "claim_ko": "누구나 한 번쯤은 반려동물을 키워 봐야 한다.",
+   "counter_for_agree": [
+    "But pets need a lot of time and money.",
+    "Some people are allergic or live in small homes."
+   ],
+   "counter_for_disagree": [
+    "But pets can make people calmer and happier.",
+    "Caring for an animal teaches responsibility."
+   ],
+   "words": [
+    [
+     "responsibility",
+     "책임"
+    ],
+    [
+     "commitment",
+     "꾸준히 돌볼 각오"
+    ],
+    [
+     "companion",
+     "친구, 동반자"
+    ]
+   ],
+   "note_ko": "알레르기·돈·집 사정 같은 실제 이유를 말하면 토리는 반론하지 않아요. 건강 이야기는 기억에 남기지 않아요."
+  }
+ ]
+}

@@ -1,0 +1,243 @@
+{
+ "id": "L2-01",
+ "level": "L2",
+ "title_ko": "무슨 일 해요?",
+ "title_en": "What do you do?",
+ "goal_ko": "하는 일을 묻고 말하기",
+ "partner": "sola",
+ "offer_ko": "‘무슨 일 해요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What do you do?",
+   "ko": "무슨 일 해요?",
+   "help": {
+    "blank": "What do you ___?",
+    "choices": [
+     "do",
+     "doing",
+     "did"
+    ]
+   },
+   "accept": [
+    "what do you do",
+    "what do you do for work",
+    "what do you do for a living",
+    "whats your job",
+    "what is your job"
+   ],
+   "tests": {
+    "ok": [
+     "What do you do?",
+     "what's your job"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "job"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m a ___.",
+   "ko": "저는 ___예요.",
+   "help": {
+    "blank": "I’m a ___.",
+    "choices": [
+     "nurse",
+     "teacher",
+     "student"
+    ]
+   },
+   "pattern": "^(?:im|i am) (?:a |an )?(?<x>[a-z ]{3,25})$|^i (?:work|study)(?: (?:at|in|from) (?:a |an |the )?[a-z ]{2,20})?$|^i dont work(?: right now| now)?$|^im retired$",
+   "partial_patterns": [
+    "^(?:a |an )?(?:student|college student|teacher|nurse|doctor|office worker|homemaker|developer|designer|cook|engineer|freelancer|business owner|retired)$"
+   ],
+   "slot": {
+    "kind": "job",
+    "closed": false
+   },
+   "accept_note": "a/an 없이 말해도 인정(관사는 교정하지 않음). ‘I don’t work right now.’, ‘I’m retired.’도 정답.",
+   "tests": {
+    "ok": [
+     "I’m a nurse.",
+     "I am an office worker",
+     "im student",
+     "I don't work right now"
+    ],
+    "partial": [
+     "nurse"
+    ],
+    "form_only": [],
+    "no": [
+     "hello"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I work at a ___.",
+   "ko": "___에서 일해요.",
+   "help": {
+    "blank": "I work ___ a hospital.",
+    "choices": [
+     "at",
+     "on",
+     "to"
+    ]
+   },
+   "pattern": "^i (?:work|study) (?:at|in|from) (?:a |an |the )?(?<x>[a-z ]{3,25})$",
+   "partial_patterns": [
+    "^(?:at |in )?(?:a |an |the )?(?:hospital|office|school|store|home|university|restaurant|bank|factory|cafe)$"
+   ],
+   "slot": {
+    "kind": "place_type",
+    "closed": false
+   },
+   "accept_note": "회사 이름 말고 장소 종류로.",
+   "tests": {
+    "ok": [
+     "I work at a hospital.",
+     "I work from home",
+     "I study at a university"
+    ],
+    "partial": [
+     "at a hospital"
+    ],
+    "form_only": [],
+    "no": [
+     "hello"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hi, Sola! What do you do?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m a nurse. I work at a hospital."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! Do you like your job?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes, I love it. What do you do?"
+  },
+  {
+   "who": "tori",
+   "en": "I’m a teacher. I work at a school."
+  },
+  {
+   "who": "partner",
+   "en": "Cool! Teachers are amazing."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "im a nurse",
+    "im a nurse i work at a hospital"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "i love it what do you do",
+    "what do you do",
+    "yes i love it what do you do"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내 이야기예요. 회사 이름은 말하지 않아도 돼요. 말하기 싫으면 장면 속 솔라(간호사)가 되어 답해도 돼요.",
+ "story": [
+  {
+   "en": "What do you do?",
+   "expect": "e2",
+   "model": "I’m a {x}.",
+   "screen_hint_ko": "하는 일을 문장으로: I’m a ___. (학생이면 I’m a student, 쉬고 있으면 I don’t work right now.)",
+   "screen_blank": "I’m a ___.",
+   "branches": [
+    {
+     "when": "slot_in:student|college student|university student",
+     "say": "Oh, I see! Where do you study?"
+    },
+    {
+     "when": "matched_text:i dont work|im retired|homemaker|housewife",
+     "say": "Oh, I see. Thanks for telling me."
+    },
+    {
+     "when": "default",
+     "say": "Oh, I see! Where do you work?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "only_if": "asked_where",
+   "screen_hint_ko": "장소 종류로: I work at a ___. / I study at a ___. (office, store, school, university)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sounds good!"
+    }
+   ]
+  }
+ ],
+ "fallback": "nurse",
+ "korean_map": {
+  "학생": "student",
+  "대학생": "college student",
+  "회사원": "office worker",
+  "직장인": "office worker",
+  "선생님": "teacher",
+  "교사": "teacher",
+  "간호사": "nurse",
+  "주부": "homemaker",
+  "개발자": "developer",
+  "디자이너": "designer",
+  "요리사": "cook",
+  "의사": "doctor",
+  "사장": "business owner",
+  "프리랜서": "freelancer"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: What do you do?"
+  },
+  {
+   "en": "I’m a teacher. I love my job!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola.",
+  "hint_ko": "솔라에게 무슨 일을 하는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Oh, I see!",
+  "Thanks for telling me.",
+  "Sounds good!"
+ ],
+ "privacy_ko": "직업은 이 연습에만 쓰고 기억에 남기지 않아요. 회사 이름·주소는 묻지 않아요. 일을 쉬거나 은퇴한 답에는 중립으로 반응하고 직장 질문을 건너뛰어요.",
+ "model_an": true,
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

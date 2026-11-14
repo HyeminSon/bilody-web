@@ -1,0 +1,243 @@
+{
+ "id": "L2-07",
+ "level": "L2",
+ "title_ko": "지난 주말",
+ "title_en": "I went hiking.",
+ "goal_ko": "지난 주말에 한 일을 말하고 어땠는지 답하기",
+ "partner": "moa",
+ "offer_ko": "‘지난 주말’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What did you do last weekend?",
+   "ko": "지난 주말에 뭐 했어요?",
+   "help": {
+    "blank": "What ___ you do last weekend?",
+    "choices": [
+     "did",
+     "do",
+     "does"
+    ]
+   },
+   "accept": [
+    "what did you do last weekend",
+    "what did you do this weekend",
+    "what did you do on the weekend",
+    "how was your weekend"
+   ],
+   "tests": {
+    "ok": [
+     "What did you do last weekend?",
+     "how was your weekend"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "last weekend"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I ___.(지난 일)",
+   "ko": "___했어요.",
+   "help": {
+    "blank": "I ___ hiking.",
+    "choices": [
+     "went",
+     "go",
+     "goes"
+    ]
+   },
+   "pattern": "^i (?:just )?(?<x>(?:went|watched|stayed|met|cleaned|worked|slept|cooked|took|played|visited|saw|ate|had|did|read|bought|made|studied|walked|rested|relaxed|[a-z]+ed)(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^i (?:go|watch|stay|meet|clean|work|sleep|cook|take|play|visit|see|eat|have|do|read|buy|make|study|walk|rest)(?: [a-z]+){0,6}$"
+   ],
+   "accept_note": "과거형이면 목표 수행, 현재형이면 부분(뜻 전달).",
+   "tests": {
+    "ok": [
+     "I went hiking.",
+     "I just stayed home",
+     "I watched a movie"
+    ],
+    "partial": [
+     "I go hiking",
+     "I watch a movie"
+    ],
+    "form_only": [],
+    "no": [
+     "I am happy",
+     "hiking"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It was ___.",
+   "ko": "___했어요.",
+   "help": {
+    "blank": "It ___ great.",
+    "choices": [
+     "was",
+     "is",
+     "were"
+    ]
+   },
+   "pattern": "^it was(?: really| very| so| pretty)? (?<x>[a-z ]{2,15})$",
+   "partial_patterns": [
+    "^(?:its|it is) [a-z ]{2,15}$",
+    "^(?:great|fun|good|okay|bad|boring|nice|relaxing)$"
+   ],
+   "tests": {
+    "ok": [
+     "It was great.",
+     "it was really fun"
+    ],
+    "partial": [
+     "It is fun",
+     "great"
+    ],
+    "form_only": [],
+    "no": [
+     "Its was fun please now okay"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hi, Moa! What did you do last weekend?"
+  },
+  {
+   "who": "partner",
+   "en": "I went hiking with my friends."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! How was it?"
+  },
+  {
+   "who": "partner",
+   "en": "It was great. But I’m tired now."
+  },
+  {
+   "who": "tori",
+   "en": "Ha ha. I just watched movies at home."
+  },
+  {
+   "who": "partner",
+   "en": "That sounds relaxing!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i went hiking with my friends"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "it was great",
+    "it was great but im tired now"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 주말이에요. 말하기 싫으면 장면 속 일(I went hiking.)로 해도 돼요.",
+ "story": [
+  {
+   "en": "What did you do last weekend?",
+   "expect": "e2",
+   "model": "I {x}.",
+   "screen_hint_ko": "지난 주말에 한 일을 문장으로: I ___. (went hiking, stayed home)",
+   "screen_blank": "I ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "unknown_slot",
+     "say": "Okay! You can try: “I stayed home.”"
+    },
+    {
+     "when": "default",
+     "say": "Oh, okay!"
+    }
+   ]
+  },
+  {
+   "en": "How was it?",
+   "expect": "e3",
+   "screen_hint_ko": "어땠어요? It was ___. (great, fun, okay, bad)",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "slot_in:bad|terrible|boring|sad|tiring|hard|not good",
+     "say": "Oh no. Sorry."
+    },
+    {
+     "when": "default",
+     "say": "Nice!"
+    }
+   ]
+  }
+ ],
+ "fallback": "went hiking",
+ "korean_map": {
+  "영화": "watched a movie",
+  "등산": "went hiking",
+  "쇼핑": "went shopping",
+  "집": "stayed home",
+  "쉬었어": "stayed home",
+  "휴식": "stayed home",
+  "친구": "met my friends",
+  "청소": "cleaned the house",
+  "운동": "worked out",
+  "잠": "slept a lot",
+  "요리": "cooked",
+  "여행": "took a trip",
+  "산책": "took a walk",
+  "movie": "watched a movie",
+  "hiking": "went hiking",
+  "shopping": "went shopping",
+  "rest": "stayed home"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: What did you do last weekend?"
+  },
+  {
+   "en": "I stayed home and watched movies. It was relaxing!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 지난 주말에 뭐 했는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Oh, okay!",
+  "Oh no. Sorry.",
+  "Nice!",
+  "You can try"
+ ],
+ "privacy_ko": "주말에 한 일은 이 연습에만 쓰고 기억에 남기지 않아요. 지도에 없는 말(예: 병원)을 ‘I + 그 말’로 만들지 않고, 민감한 답은 공통 규칙대로.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

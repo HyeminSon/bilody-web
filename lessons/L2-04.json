@@ -266,5 +266,6 @@
   "price",
   "buy"
  ],
- "img": "lessons/img/L2-04.webp"
+ "img": "lessons/img/L2-04.webp",
+ "hint_delay": false
 }

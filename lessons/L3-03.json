@@ -1,0 +1,224 @@
+{
+ "id": "L3-03",
+ "level": "L3",
+ "title_ko": "뭐가 더 좋아요?",
+ "title_en": "I think the countryside is better.",
+ "goal_ko": "둘을 비교하고 내 생각과 이유 말하기",
+ "partner": "sola",
+ "offer_ko": "‘뭐가 더 좋아요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Which is better, ___ or ___?",
+   "ko": "___와 ___ 중 뭐가 더 좋아요?",
+   "help": {
+    "blank": "___ is better, the city or the countryside?",
+    "choices": [
+     "Which",
+     "Witch",
+     "What"
+    ]
+   },
+   "pattern": "^(?:which is better|which do you like better|which one is better|whats better|what is better) (?<a>[a-z ]{2,25}) or (?<b>[a-z ]{2,25})$",
+   "tests": {
+    "ok": [
+     "Which is better, cats or dogs?",
+     "which do you like better summer or winter"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "cats or dogs"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I think ___ is better.",
+   "ko": "___가 더 좋은 것 같아요.",
+   "help": {
+    "blank": "I ___ the countryside is better.",
+    "choices": [
+     "think",
+     "thing",
+     "sink"
+    ]
+   },
+   "pattern": "^i think (?<x>[a-z ]{2,25}) (?:is|are) better$|^i (?:prefer|like) (?<y>[a-z ]{2,25}?)(?: better| more)?$",
+   "partial_patterns": [
+    "^(?:i like )?both$",
+    "^[a-z ]{2,20}$"
+   ],
+   "accept_note": "Both, 다른 답은 오답이 아니라 부분(비목표).",
+   "tests": {
+    "ok": [
+     "I think the countryside is better.",
+     "I think dogs are better",
+     "i prefer summer"
+    ],
+    "partial": [
+     "both",
+     "summer"
+    ],
+    "form_only": [],
+    "no": [
+     "better better better better better better better"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It’s ___er than ___.",
+   "ko": "___보다 더 ___해요.",
+   "help": {
+    "blank": "It’s quieter ___ the city.",
+    "choices": [
+     "than",
+     "then",
+     "that"
+    ]
+   },
+   "pattern": "^(?:its|it is|theyre|they are)(?: much| a lot)? (?<x>warmer|cooler|colder|hotter|bigger|smaller|quieter|busier|cleaner|cheaper|faster|easier|friendlier|happier|better|nicer|safer|healthier|longer|shorter|more [a-z]+|less [a-z]+) than (?<b>[a-z ]{2,25})$",
+   "partial_patterns": [
+    "^(?:because )?(?:its|it is) (?:warm|cool|cold|hot|big|small|quiet|busy|clean|cheap|fast|easy|friendly|happy|good|nice|safe|fun|beautiful|exciting)$"
+   ],
+   "accept_note": "비교급은 완성된 목록에서만 인정(gooder 등 만들지 않음). ‘It’s warm.’은 부분.",
+   "tests": {
+    "ok": [
+     "It’s quieter than the city.",
+     "it's warmer than winter",
+     "they are more friendly than cats"
+    ],
+    "partial": [
+     "it's warm"
+    ],
+    "form_only": [],
+    "no": [
+     "it is gooder than tea"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Which is better, the city or the countryside?"
+  },
+  {
+   "who": "partner",
+   "en": "I think the countryside is better."
+  },
+  {
+   "who": "tori",
+   "en": "Really? Why?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s quieter than the city. And the air is cleaner."
+  },
+  {
+   "who": "tori",
+   "en": "True. But the city is more exciting!"
+  },
+  {
+   "who": "partner",
+   "en": "That’s true, too."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i think the countryside is better"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "its quieter than the city",
+    "its quieter than the city and the air is cleaner"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 생각이에요. 정답은 없어요.",
+ "story": [
+  {
+   "en": "Which is better, summer or winter?",
+   "expect": "e2",
+   "model": "I think {x} is better.",
+   "screen_hint_ko": "‘I think’로: I think ___ is better.",
+   "screen_blank": "I think ___ is better.",
+   "branches": [
+    {
+     "when": "matched_text:both",
+     "say": "Both! Okay."
+    },
+    {
+     "when": "default",
+     "say": "Okay!"
+    }
+   ]
+  },
+  {
+   "en": "Why?",
+   "expect": "e3",
+   "screen_hint_ko": "이유: It’s warmer than winter. / It’s cooler than summer.",
+   "model_map": {
+    "summer": "It’s warmer than winter.",
+    "winter": "It’s cooler than summer."
+   },
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good point!"
+    }
+   ]
+  }
+ ],
+ "fallback": "summer",
+ "korean_map": {
+  "여름": "summer",
+  "겨울": "winter"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. Cats or dogs?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Which is better, cats or dogs?",
+   "branches": [
+    {
+     "when": "slot_pair:cats|dogs",
+     "say": "I think dogs are better. They’re friendlier than cats!"
+    },
+    {
+     "when": "slot_pair:summer|winter",
+     "say": "I think summer is better. It’s warmer than winter!"
+    },
+    {
+     "when": "default",
+     "say": "Hmm, I like both!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola.",
+  "hint_ko": "솔라에게 도시와 시골 중 뭐가 더 좋은지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Why?",
+  "Good point!",
+  "Hmm, I like both!"
+ ],
+ "privacy_ko": "개인 정보를 묻지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

@@ -1,0 +1,244 @@
+{
+ "id": "L3-05",
+ "level": "L3",
+ "title_ko": "어떻게 생각해요?",
+ "title_en": "I think so, too.",
+ "goal_ko": "생각을 묻고, 말하고, 동의하거나 반대하기",
+ "partner": "moa",
+ "offer_ko": "‘어떻게 생각해요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What do you think about ___?",
+   "ko": "___에 대해 어떻게 생각해요?",
+   "help": {
+    "blank": "What do you ___ about homework?",
+    "choices": [
+     "think",
+     "thing",
+     "sink"
+    ]
+   },
+   "pattern": "^(?:what do you think (?:about|of)|how do you feel about) (?<x>[a-z ]{2,30})$",
+   "tests": {
+    "ok": [
+     "What do you think about homework?",
+     "what do you think of rainy days"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "homework"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I think ___.",
+   "ko": "저는 ___라고 생각해요.",
+   "help": {
+    "blank": "I ___ it’s helpful.",
+    "choices": [
+     "think",
+     "thing",
+     "sink"
+    ]
+   },
+   "pattern": "^(?:i think|in my opinion|i feel)(?: that)? (?<x>[a-z ]{3,40})$",
+   "partial_patterns": [
+    "^(?:good|bad|great|okay|helpful|boring|fun|delicious|nice)$"
+   ],
+   "tests": {
+    "ok": [
+     "I think it’s helpful.",
+     "I think they are convenient but boring"
+    ],
+    "partial": [
+     "good"
+    ],
+    "form_only": [],
+    "no": [
+     "hello"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I think so, too. / I don’t think so.",
+   "ko": "저도 그렇게 생각해요. / 저는 아닌 것 같아요.",
+   "help": {
+    "blank": "I think so, ___.",
+    "choices": [
+     "too",
+     "two",
+     "to"
+    ]
+   },
+   "accept": [
+    "i think so too",
+    "i think so to",
+    "i dont think so",
+    "i do not think so",
+    "i agree",
+    "i dont agree",
+    "i disagree",
+    "hmm i dont think so"
+   ],
+   "partial_patterns": [
+    "^(?:me too|yes|no|same)$"
+   ],
+   "tests": {
+    "ok": [
+     "I think so, too.",
+     "I don’t think so.",
+     "I agree"
+    ],
+    "partial": [
+     "me too"
+    ],
+    "form_only": [],
+    "no": [
+     "so"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, what do you think about online classes?"
+  },
+  {
+   "who": "partner",
+   "en": "I think they’re convenient, but a little boring."
+  },
+  {
+   "who": "tori",
+   "en": "I think so, too. I like real classrooms."
+  },
+  {
+   "who": "partner",
+   "en": "Me too. What do you think about homework?"
+  },
+  {
+   "who": "tori",
+   "en": "I think homework is helpful."
+  },
+  {
+   "who": "partner",
+   "en": "Hmm, I don’t think so!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i think theyre convenient but a little boring"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "me too what do you think about homework",
+    "what do you think about homework"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "hmm i dont think so",
+    "i dont think so"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 생각이에요. 정답은 없어요.",
+ "story": [
+  {
+   "en": "What do you think about coffee?",
+   "expect": "e2",
+   "model": "I think it’s {x}.",
+   "screen_hint_ko": "‘I think’로: I think it’s ___. (great, bitter, too strong)",
+   "screen_blank": "I think it’s ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Interesting!"
+    }
+   ]
+  },
+  {
+   "en": "I think coffee is great.",
+   "expect": "e3",
+   "screen_hint_ko": "같은 생각이면 I think so, too. 아니면 I don’t think so.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Fair enough!"
+    }
+   ]
+  }
+ ],
+ "fallback": "great",
+ "korean_map": {
+  "좋아": "great",
+  "좋다": "great",
+  "써": "bitter",
+  "맛있어": "delicious",
+  "별로": "not great",
+  "싫어": "not for me"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. Homework? Rainy days?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What do you think about ___?",
+   "branches": [
+    {
+     "when": "slot_in:homework",
+     "say": "I think homework is helpful."
+    },
+    {
+     "when": "slot_in:rainy days|rain",
+     "say": "I think rainy days are cozy!"
+    },
+    {
+     "when": "slot_in:online classes|online class",
+     "say": "I think they’re convenient."
+    },
+    {
+     "when": "slot_in:coffee",
+     "say": "I think coffee is great!"
+    },
+    {
+     "when": "default",
+     "say": "Hmm, good question! I’m not sure."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 온라인 수업을 어떻게 생각하는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Interesting!",
+  "Fair enough!",
+  "I’m not sure."
+ ],
+ "privacy_ko": "정치·종교·건강 같은 민감한 주제는 다루지 않아요. 생각은 기억에 남기지 않아요. 토리 답은 물어본 주제에 맞춰요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

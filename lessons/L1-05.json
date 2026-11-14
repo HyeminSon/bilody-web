@@ -229,5 +229,6 @@
   "americano",
   "tea"
  ],
- "img": "lessons/img/L1-05.webp"
+ "img": "lessons/img/L1-05.webp",
+ "hint_delay": false
 }

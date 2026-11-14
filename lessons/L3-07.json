@@ -250,5 +250,6 @@
   "appointment",
   "meet"
  ],
- "img": "lessons/img/L3-07.webp"
+ "img": "lessons/img/L3-07.webp",
+ "hint_delay": false
 }

@@ -1,0 +1,218 @@
+{
+ "id": "L2-02",
+ "level": "L2",
+ "title_ko": "아침 일과",
+ "title_en": "I get up at seven.",
+ "goal_ko": "일어나는 시간과 아침에 보통 하는 일 말하기",
+ "partner": "rino",
+ "offer_ko": "‘아침 일과’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What time do you get up?",
+   "ko": "몇 시에 일어나요?",
+   "help": {
+    "blank": "What time do you ___ up?",
+    "choices": [
+     "get",
+     "got",
+     "go"
+    ]
+   },
+   "accept": [
+    "what time do you get up",
+    "when do you get up",
+    "what time do you usually get up"
+   ],
+   "tests": {
+    "ok": [
+     "What time do you get up?",
+     "when do you get up"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "get up"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I get up at ___.",
+   "ko": "___에 일어나요.",
+   "help": {
+    "blank": "I get up ___ seven.",
+    "choices": [
+     "at",
+     "on",
+     "in"
+    ]
+   },
+   "pattern": "^i (?:usually )?(?:get up|wake up) (?:at |around )?(?<x>(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?)$",
+   "partial_patterns": [
+    "^(?:at )?(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?)$"
+   ],
+   "slot": {
+    "kind": "time",
+    "closed": true
+   },
+   "accept_note": "wake up도 인정(뜻이 거의 같아 기록만 구분).",
+   "tests": {
+    "ok": [
+     "I get up at seven.",
+     "I usually wake up at 6",
+     "i get up around eight thirty",
+     "I get up at 7:30"
+    ],
+    "partial": [
+     "seven",
+     "at 7:30"
+    ],
+    "form_only": [],
+    "no": [
+     "I hate you",
+     "I get up at banana"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I usually ___.",
+   "ko": "보통 ___해요.",
+   "help": {
+    "blank": "I ___ drink coffee.",
+    "choices": [
+     "usually",
+     "use",
+     "us"
+    ]
+   },
+   "pattern": "^i (?:usually|often|always|sometimes) (?<x>[a-z]+(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^i (?:drink|eat|read|walk|take|have|make|check|watch|listen|go|do|exercise|shower|cook|work|study|run)(?: [a-z]+){0,6}$"
+   ],
+   "accept_note": "usually 같은 빈도 말이 있으면 목표 수행, 없이 ‘I drink coffee.’면 부분.",
+   "tests": {
+    "ok": [
+     "I usually drink coffee.",
+     "I always take a shower"
+    ],
+    "partial": [
+     "I read the news",
+     "I drink coffee"
+    ],
+    "form_only": [],
+    "no": [
+     "I hate you",
+     "coffee"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, what time do you get up?"
+  },
+  {
+   "who": "partner",
+   "en": "I get up at seven."
+  },
+  {
+   "who": "tori",
+   "en": "Wow, early! What do you do then?"
+  },
+  {
+   "who": "partner",
+   "en": "I usually drink coffee and read."
+  },
+  {
+   "who": "tori",
+   "en": "Nice. I usually go for a walk."
+  },
+  {
+   "who": "partner",
+   "en": "That sounds healthy!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i get up at seven"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "i usually drink coffee and read"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 아침이에요. 말하기 싫으면 장면 속 시간(seven)으로 해도 돼요.",
+ "story": [
+  {
+   "en": "What time do you get up?",
+   "expect": "e2",
+   "model": "I get up at {x}.",
+   "screen_hint_ko": "일어나는 시간을 문장으로: I get up at ___.",
+   "screen_blank": "I get up at ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Okay!"
+    }
+   ]
+  },
+  {
+   "en": "What do you usually do in the morning?",
+   "expect": "e3",
+   "screen_hint_ko": "아침에 보통 하는 일: I usually ___. (drink coffee, take a shower)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sounds nice!"
+    }
+   ]
+  }
+ ],
+ "fallback": "seven",
+ "korean_map": {
+  "다섯시": "five",
+  "여섯시": "six",
+  "일곱시": "seven",
+  "여덟시": "eight",
+  "아홉시": "nine",
+  "열시": "ten"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 물어봐요: What time do you get up?"
+  },
+  {
+   "en": "I get up at six. I usually walk.",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 몇 시에 일어나는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Okay!",
+  "Sounds nice!"
+ ],
+ "privacy_ko": "생활 시간은 이 연습에만 쓰고 기억에 남기지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

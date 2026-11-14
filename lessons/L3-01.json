@@ -1,0 +1,225 @@
+{
+ "id": "L3-01",
+ "level": "L3",
+ "title_ko": "해 본 적 있어요?",
+ "title_en": "Have you ever tried surfing?",
+ "goal_ko": "경험을 묻고 해 봤다·안 해 봤다고 말하기",
+ "partner": "moa",
+ "offer_ko": "‘해 본 적 있어요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Have you ever tried ___?",
+   "ko": "___ 해 본 적 있어요?",
+   "help": {
+    "blank": "Have you ___ tried surfing?",
+    "choices": [
+     "ever",
+     "every",
+     "even"
+    ]
+   },
+   "pattern": "^have you ever (?:tried|been to|eaten|seen|played|visited) (?<x>[a-z ]{2,25})$",
+   "tests": {
+    "ok": [
+     "Have you ever tried surfing?",
+     "have you ever been to Japan"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "surfing",
+     "you ever tried"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Yes, I have.",
+   "ko": "네, 해 봤어요.",
+   "help": {
+    "blank": "Yes, I ___.",
+    "choices": [
+     "have",
+     "has",
+     "had"
+    ]
+   },
+   "pattern": "^(?:yes i have|yes i did|yes once|yes i have once)(?: [a-z ]{2,40})?$",
+   "partial_patterns": [
+    "^yes$"
+   ],
+   "tests": {
+    "ok": [
+     "Yes, I have.",
+     "Yes, I have. I tried it last year"
+    ],
+    "partial": [
+     "yes"
+    ],
+    "form_only": [],
+    "no": [
+     "no"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "No, I’ve never tried ___.",
+   "ko": "아니요, ___는 안 해 봤어요.",
+   "help": {
+    "blank": "No, I’ve ___ tried skiing.",
+    "choices": [
+     "never",
+     "ever",
+     "not"
+    ]
+   },
+   "pattern": "^(?:no )?(?:ive|i have|i) never (?:tried|been to|eaten|seen|played|done|visited)(?: (?<x>[a-z ]{2,25}))?$|^no i havent$|^no i have not$",
+   "partial_patterns": [
+    "^no(?: never)?$"
+   ],
+   "accept_note": "‘No, I haven’t.’도 정답.",
+   "tests": {
+    "ok": [
+     "No, I’ve never tried skiing.",
+     "No, I haven’t.",
+     "i never tried sushi"
+    ],
+    "partial": [
+     "no"
+    ],
+    "form_only": [],
+    "no": [
+     "yes"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, have you ever tried surfing?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes, I have! I tried it last summer."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! Was it hard?"
+  },
+  {
+   "who": "partner",
+   "en": "Very hard. Have you ever tried skiing?"
+  },
+  {
+   "who": "tori",
+   "en": "No, I’ve never tried skiing."
+  },
+  {
+   "who": "partner",
+   "en": "You should try it! It’s fun."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i have",
+    "i have i tried it last summer",
+    "yes i have",
+    "yes i have i tried it last summer"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "have you ever tried skiing",
+    "very hard have you ever tried skiing"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 경험이에요. 해 봤으면 Yes, 안 해 봤으면 No로 답해요.",
+ "story": [
+  {
+   "en": "Have you ever tried skiing?",
+   "expect": "e2",
+   "alt_expect": [
+    "e3"
+   ],
+   "screen_hint_ko": "해 봤으면 Yes, I have. 아니면 No, I’ve never tried skiing.",
+   "branches": [
+    {
+     "when": "matched:e3",
+     "say": "Okay!"
+    },
+    {
+     "when": "default",
+     "say": "Cool!"
+    }
+   ]
+  },
+  {
+   "en": "Have you ever tried kimchi?",
+   "expect": "e2",
+   "alt_expect": [
+    "e3"
+   ],
+   "screen_hint_ko": "먹어 봤으면 Yes, I have. 아니면 No, I’ve never tried kimchi.",
+   "branches": [
+    {
+     "when": "matched:e3",
+     "say": "Okay! It’s spicy."
+    },
+    {
+     "when": "default",
+     "say": "Me too! I love it."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. Surfing? Skiing? Kimchi?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Have you ever tried ___?",
+   "branches": [
+    {
+     "when": "slot_in:kimchi|sushi|surfing|camping|hiking|yoga",
+     "say": "Yes, I have! It was fun."
+    },
+    {
+     "when": "slot_in:skiing|japan|bungee jumping|scuba diving|golf",
+     "say": "No, I haven’t. Maybe someday!"
+    },
+    {
+     "when": "default",
+     "say": "No, I haven’t. Have you?"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 서핑을 해 본 적 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Cool!",
+  "Okay!",
+  "Maybe someday!"
+ ],
+ "privacy_ko": "경험은 이 연습에만 쓰고 기억에 남기지 않아요. Yes·No 둘 다 정답이고 토리 답은 질문한 것에 따라 달라져요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}

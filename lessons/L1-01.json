@@ -223,5 +223,6 @@
   "neighbor",
   "new apartment"
  ],
- "img": "lessons/img/L1-01.webp"
+ "img": "lessons/img/L1-01.webp",
+ "hint_delay": false
 }

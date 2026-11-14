@@ -1,0 +1,233 @@
+{
+ "id": "L1-06",
+ "level": "L1",
+ "title_ko": "오늘 날씨",
+ "title_en": "It’s rainy today.",
+ "goal_ko": "날씨를 묻고 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘오늘 날씨’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How’s the weather today?",
+   "ko": "오늘 날씨 어때요?",
+   "help": {
+    "blank": "How’s the ___ today?",
+    "choices": [
+     "weather",
+     "water",
+     "winter"
+    ]
+   },
+   "accept": [
+    "hows the weather today",
+    "how is the weather today",
+    "hows the weather",
+    "how is the weather",
+    "whats the weather like"
+   ],
+   "tests": {
+    "ok": [
+     "How’s the weather today?",
+     "how is the weather"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "weather"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It’s ___ today.",
+   "ko": "오늘은 ___이에요.",
+   "help": {
+    "blank": "It’s ___ today.",
+    "choices": [
+     "rainy",
+     "sunny",
+     "cold"
+    ]
+   },
+   "pattern": "^(?:its|it is)(?: very| so| really| a little)? (?<x>[a-z]{3,12})(?: today| now| outside)?$",
+   "partial_patterns": [
+    "^(?:sunny|rainy|cloudy|cold|hot|snowy|windy|warm|cool)$"
+   ],
+   "slot": {
+    "kind": "weather",
+    "closed": true,
+    "lexicon": [
+     "sunny",
+     "rainy",
+     "cloudy",
+     "cold",
+     "hot",
+     "snowy",
+     "windy",
+     "warm",
+     "cool",
+     "nice",
+     "foggy",
+     "raining",
+     "snowing"
+    ]
+   },
+   "tests": {
+    "ok": [
+     "It’s rainy today.",
+     "it is sunny",
+     "It's very cold now"
+    ],
+    "partial": [
+     "rainy"
+    ],
+    "form_only": [
+     "It is banana"
+    ],
+    "no": [
+     "today"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Take an umbrella!",
+   "ko": "우산 가져가요!",
+   "help": {
+    "blank": "Take an ___!",
+    "choices": [
+     "umbrella",
+     "apple",
+     "elephant"
+    ]
+   },
+   "accept": [
+    "take an umbrella",
+    "take my umbrella",
+    "take your umbrella",
+    "take umbrella",
+    "take this umbrella"
+   ],
+   "tests": {
+    "ok": [
+     "Take my umbrella!",
+     "take an umbrella"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "umbrella"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Nubi, how’s the weather today?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s rainy today."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no! I have no umbrella."
+  },
+  {
+   "who": "partner",
+   "en": "Take my umbrella!"
+  },
+  {
+   "who": "tori",
+   "en": "Thank you, Nubi!"
+  },
+  {
+   "who": "partner",
+   "en": "You’re welcome!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "its rainy today"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "take my umbrella"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 지금 날씨예요. 잘 모르면 장면 속 날씨(rainy)로 답해도 돼요.",
+ "story": [
+  {
+   "en": "Look outside. How’s the weather?",
+   "expect": "e2",
+   "model": "It’s {x} today.",
+   "screen_hint_ko": "지금 날씨를 문장으로: It’s ___ today. (sunny, rainy, cold)",
+   "screen_blank": "It’s ___ today.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks!"
+    }
+   ]
+  }
+ ],
+ "fallback": "rainy",
+ "korean_map": {
+  "맑음": "sunny",
+  "맑아": "sunny",
+  "해": "sunny",
+  "비": "rainy",
+  "비와": "rainy",
+  "흐림": "cloudy",
+  "흐려": "cloudy",
+  "추워": "cold",
+  "추움": "cold",
+  "더워": "hot",
+  "더움": "hot",
+  "눈": "snowy",
+  "바람": "windy",
+  "따뜻해": "warm"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 토리에게 날씨를 물어봐요: How’s the weather today?"
+  },
+  {
+   "en": "It’s rainy here.",
+   "expect": "e3",
+   "screen_hint_ko": "토리에게 우산을 챙기라고 해요: Take an umbrella!"
+  },
+  {
+   "en": "Good idea! Thanks.",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 오늘 날씨를 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Thanks!",
+  "Good idea!"
+ ],
+ "privacy_ko": "사는 곳은 묻지 않아요. 토리가 있는 곳 날씨는 늘 비(가상)예요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": false
+}
