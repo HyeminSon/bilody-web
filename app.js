@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.9";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.9";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.9";
-import { GUIDE } from "./guide.js?v=0.8.9";
-import { Player } from "./audio.js?v=0.8.9";
-import { Chat } from "./rt.js?v=0.8.9";
-import * as story from "./story.js?v=0.8.9";
-import * as push from "./push.js?v=0.8.9";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.9";
+import * as api from "./api.js?v=0.8.10";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.10";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.10";
+import { GUIDE } from "./guide.js?v=0.8.10";
+import { Player } from "./audio.js?v=0.8.10";
+import { Chat } from "./rt.js?v=0.8.10";
+import * as story from "./story.js?v=0.8.10";
+import * as push from "./push.js?v=0.8.10";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.10";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -636,11 +636,11 @@ function renderDialog() {
     const L = d.lib.levels ?? {}; const info = L[lv] ?? {};
     const tabs = `<div class="lv-tabs">${Object.keys(L).map((k) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}" aria-label="${k[1]}단계 ${esc(L[k].name_ko)}">${k[1]}</button>`).join("")}</div>
       <p class="lv-name"><b>${lv[1]}단계 · ${esc(info.name_ko ?? "")}</b> <span class="muted tiny">${esc(info.cefr ?? "")} 참고${info.kind === "opinion_task" ? " · 의견 과제" : info.kind === "talk_topics" ? " · 교재 없이 대화 주제" : ""}</span></p>`;
-    const item = (act, v, title, sub, img, check) => `<button class="lesson-item" data-act="${act}" data-v="${esc(v)}">${img ? `<img src="${img}" alt="">` : `<span class="lesson-noimg">${I(act === "lessonPick" ? "menu_book" : "forum")}</span>`}<span class="grow"><b>${esc(title)}</b><span class="muted small">${esc(sub)}</span></span>${check ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`;
+    const item = (act, v, title, sub, img, check, ex) => `<button class="lesson-item" data-act="${act}" data-v="${esc(v)}">${img ? `<img src="${img}" alt="">` : `<span class="lesson-noimg">${I(act === "lessonPick" ? "menu_book" : "forum")}</span>`}<span class="grow"><b>${esc(title)}</b><span class="muted small">${esc(sub)}</span>${ex ? `<span class="lesson-ex">${esc(ex)}</span>` : ""}</span>${check ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`;
     let list = "";
     if (info.kind === "opinion_task") list = d.lib.tasks.map((t) => item("lessonPick", `task:${t.id}`, t.title_ko, t.claim_en, null, false)).join("");
     else if (info.kind === "talk_topics") list = (d.lib.topics[lv] ?? []).map((t) => item("lessonPick", `topic:${t.id}`, t.title_ko, t.opener_en, null, false)).join("");
-    else list = d.lib.lessons.filter((l) => l.level === lv).map((l) => item("lessonPick", l.id, l.title_ko, l.title_en, l.img, done.has(l.id))).join("");
+    else list = d.lib.lessons.filter((l) => l.level === lv).map((l, n) => item("lessonPick", l.id, `${n + 1}과 · ${l.title_ko}`, l.goal_ko ?? l.title_en, l.img, done.has(l.id), l.ex_en)).join("");
     const note = info.kind === "opinion_task" ? `<p class="muted tiny">토리가 반대편·같은 편·그냥 이야기 중 고른 방식으로 이야기해요. 이 연습은 기록·기억에 남기지 않아요.</p>`
       : info.kind === "talk_topics" ? `<p class="muted tiny">고르면 토리가 이 주제로 대화를 시작해요. 이번 통화가 끝날 때까지 기록·기억에 남기지 않아요.</p>` : "";
     return tabs + note + `<div class="lesson-list">${list}</div>`;
@@ -651,7 +651,7 @@ function renderDialog() {
     const rb = d.lib.byId[d.resume]; const started = !!pref.get("lessonLast", null);
     return box(`<h2>표현 익히기</h2>
     <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "차례대로 이어서" : "1과부터 차례대로"}: ${esc(rb?.title_ko ?? "")}</button>
-    <p class="muted tiny center">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "처음이라면 여기서 시작해요."}</p>
+    <p class="muted tiny center-text">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "처음이라면 여기서 시작해요."}</p>
     <p class="lesson-pick-h"><b>익히고 싶은 표현 고르기</b></p>
     ${lessonPicker(d, lv, done)}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);

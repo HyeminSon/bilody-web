@@ -335,7 +335,6 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .card.lesson { animation: none; } .card.lesson.enter { animation: rise .35s cubic-bezier(.2, .9, .3, 1); }
 .lesson-img { margin-top: 8px; } .lesson-img[hidden] { display: none; }
 .pill.lesson-resume { width: 100%; margin-top: 4px; font-size: 16px; }
-.center { text-align: center; }
 .card.lesson.paused { padding: 8px 10px 8px 14px; border-width: 1.5px; }
 .card.lesson.paused .pill { min-height: 38px; font-size: 13px; padding: 0 14px; }
 /* 11/14 실장님: 카드가 화면 밖으로 밀림 → 표현 익히기 중에는 큰 토리 그림·안내 글을 접는다 */
@@ -352,7 +351,9 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .lv-tabs button.on { background: #fff; color: var(--purple); box-shadow: 0 1px 4px rgba(139, 92, 246, .15); }
 .lv-name { margin: 8px 2px 4px; } .lv-name b { font-size: 15px; }
 .lesson-noimg { width: 72px; height: 48px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--lilac); color: var(--purple); }
-.lesson-list { max-height: 46vh; overflow-y: auto; }
+/* 11/14 고르기 창: .dialog가 flex라 목록이 0높이로 줄던 문제 → 창 자체가 스크롤 */
+.dialog > * { flex-shrink: 0; }
+.dialog .lesson-list { max-height: none; overflow: visible; }
 .lesson-ask .row.wrap { flex-wrap: wrap; } .lesson-ask .row.wrap .pill { flex: 1 1 40%; }
 
 /* 11/14 첫 화면 세 갈래(운영자 계정): 대화 시작 · 표현 익히기 · 그림책 보기 */
@@ -361,3 +362,6 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .controls.home3 .pill .mi { font-size: 20px; }
 @media (max-width: 420px) { .controls.home3 .pill { flex-direction: column; font-size: 13px; min-height: 68px; gap: 2px; } }
 .lesson-pick-h { margin: 14px 2px 6px; font-size: 15px; }
+.lesson-item .muted.small { display: block; line-height: 1.35; margin-top: 2px; }
+.lesson-ex { display: block; margin-top: 4px; font-size: 12.5px; line-height: 1.35; color: var(--purple); font-weight: 600; }
+.lesson-item img, .lesson-noimg { align-self: flex-start; margin-top: 2px; }
