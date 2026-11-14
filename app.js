@@ -1,12 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.3";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.3";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.3";
-import { GUIDE } from "./guide.js?v=0.8.3";
-import { Player } from "./audio.js?v=0.8.3";
-import { Chat } from "./rt.js?v=0.8.3";
-import * as story from "./story.js?v=0.8.3";
-import * as push from "./push.js?v=0.8.3";
+import * as api from "./api.js?v=0.8.4";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.4";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.4";
+import { GUIDE } from "./guide.js?v=0.8.4";
+import { Player } from "./audio.js?v=0.8.4";
+import { Chat } from "./rt.js?v=0.8.4";
+import * as story from "./story.js?v=0.8.4";
+import * as push from "./push.js?v=0.8.4";
+import { LessonManager, loadLib as loadLessons, lessonCard } from "./lesson.js?v=0.8.4";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -182,6 +183,7 @@ function renderChat() {
       <div id="photo"></div>
     </div>
     <div id="webPic"></div>
+    <div id="lesson"></div>
     <div id="card"></div>
     <div id="lines" class="lines"></div>
     ${guide}
@@ -240,16 +242,29 @@ function updateChat() {
   $("#lines").innerHTML = subs && u ? u.lines.slice(-8).map((l) => `<div class="bubble ${l.role === "user" ? "me" : ""}">${esc(l.text)}</div>`).join("") : "";
   if (chat) {
     const running = !["stopped", "disconnected"].includes(u.state);
-    const ctl = `${running}|${u.canRestart}`;
+    const lessonBtn = !!S.lesson && running && !S.lesson.active;
+    const ctl = `${running}|${u.canRestart}|${lessonBtn}`;
     if ($("#controls").dataset.k !== ctl) {
       $("#controls").dataset.k = ctl;
       $("#controls").innerHTML = `
       <button class="pill dark compact" data-act="pause" ${running ? "" : "disabled"}>${I("pause")}일시정지</button>
       <button class="pill primary compact" data-act="restart" ${u.canRestart && !running ? "" : "disabled"}>${I("refresh")}다시 시작</button>
-      <button class="pill secondary compact narrow" data-act="exit">나가기</button>`;
+      <button class="pill secondary compact narrow" data-act="exit">나가기</button>
+      ${lessonBtn ? `<button class="pill lesson-open" data-act="lessonOpen">${I("menu_book")}교재로 배우기</button>` : ""}`;
     }
+    renderLesson();
     $("#inputbar").classList.remove("hidden");
   }
+}
+
+// ---------------- 교재 카드(11/14): 그림은 lesson.js lessonCard ----------------
+function renderLesson() {
+  const box = $("#lesson"); if (!box) return;
+  const u = S.lesson?.ui; const mic = !!S.chat?.ui.micOn;
+  const key = u ? JSON.stringify(u) + (mic ? "|m" : "") : "";
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.innerHTML = u ? lessonCard(u, mic, esc, I) : "";
 }
 
 /** 쉽게 다시 말한 카드에 붙일 단어 그림(앱과 같이 최대 3개). 그림 묶음이 아직 없으면 불러온 뒤 다시 그린다. */
@@ -370,12 +385,15 @@ async function startChat() {
   const p = S.profile; const c = byId(p?.character);
   player.setVolume(pref.get("volume", 1));
   S.chat = new Chat({ voiceId: c.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat() });
+  // 교재로 배우기(11/14): 운영자 계정에서만 먼저 켠다
+  S.lesson = p?.is_staff === true ? new LessonManager({ chat: S.chat, player, speed: pref.get("speed", 1), store: pref, onChange: () => updateChat(), toast }) : null;
+  S.lesson?.preload().catch(() => {});
   render();
   await S.chat.start();
 }
 
 async function endChat() {
-  const c = S.chat; S.chat = null;
+  const c = S.chat; S.chat = null; S.lesson = null;
   const said = c ? c.ui.lines.filter((l) => l.role === "user").length : 0;
   const sid = c?.sessionId ?? null;
   render();
@@ -601,6 +619,16 @@ function renderDialog() {
         <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>`).join("")}</div>
       <div class="row end"><button class="link" data-act="closeDialog">닫기</button><button class="link" data-act="credits">그림 출처</button></div>`);
   }
+  if (d.kind === "lessons") {
+    const done = new Set(pref.get("lessonDone", []));
+    const lv = d.level;
+    return box(`<h2>교재로 배우기</h2>
+    <p class="muted small">고른 수준의 교재를 토리가 먼저 제안해요. 아래에서 바로 골라도 돼요.</p>
+    <div class="seg">${[["L1", "쉬움"], ["L2", "보통"], ["L3", "도전"]].map(([k, l]) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}">${l}</button>`).join("")}</div>
+    <div class="lesson-list">${d.lib.lessons.filter((l) => l.level === lv).map((l) => `<button class="lesson-item" data-act="lessonPick" data-v="${l.id}">
+      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>
+    <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
+  }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
     <p class="muted small">단어 그림 대부분은 Microsoft Fluent Emoji(3D)를 썼어요. Copyright (c) Microsoft Corporation, MIT License — github.com/microsoft/fluentui-emoji. 배경 카드를 더하고 빨간 모자는 색을 바꿨어요. 벌집·탁자·베개·그네·모래성·풀 그림은 bilody가 직접 그렸어요.</p>
     ${(d.lib.photoCredits ?? []).map((c) => `<p class="tiny">${esc(c.word)} · ${esc(c.title)}${c.creator ? ` · ${esc(c.creator)}` : ""} · ${esc(c.license)} · ${esc(c.url)}</p>`).join("")}
@@ -695,6 +723,11 @@ app.addEventListener("click", async (e) => {
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
     case "exit": await endChat(); break;
+    case "lessonOpen": { const lib = await loadLessons(); S.dialog = { kind: "lessons", lib, level: pref.get("lessonLevel", "L1") }; render(); break; }
+    case "lessonLevel": pref.set("lessonLevel", v); if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
+    case "lessonPick": S.dialog = null; render(); S.lesson?.startNow(v); break;
+    case "lessonBtn": S.lesson?.button(v); break;
+    case "lessonInfo": toast(S.lesson?.lesson?.credit_ko ?? "bilody가 만든 대화예요"); break;
     case "send": { const i = $("#say"); if (!i.value.trim()) break; S.chat?.sendText(i.value); i.value = ""; el.disabled = true; break; }
     case "dismissCard": S.chat?.dismissCard(); break;
     case "dismissWebPicture": S.chat?.dismissWebPicture(); break;

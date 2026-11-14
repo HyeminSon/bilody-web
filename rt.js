@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.3";
-import { PRESET } from "./config.js?v=0.8.3";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.3";
+import * as api from "./api.js?v=0.8.4";
+import { PRESET } from "./config.js?v=0.8.4";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.4";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -127,7 +127,7 @@ export class Chat {
     switch (ev.type) {
       case "input_audio_buffer.speech_started": {
         this.lastSpeechStart = Date.now();
-        clearTimeout(this.idleTimer);
+        clearTimeout(this.idleTimer); this.onSpeechStart?.();
         this.startedDuringPlayback = this.player.isPlaying || !!this.story?.isNarrating();
         if (this.story) { this.story.onSpeechStart(); this.interruptReply(); }
         else if (this.player.isPlaying && this.resp) this.startSoft();
@@ -159,12 +159,14 @@ export class Chat {
           return;
         }
         this.startedDuringPlayback = false;
+        if (t && this.lessonHook?.(t, ev.item_id)) break;   // 교재 중: 기록·자막에 남기지 않고 교재가 처리(11/14)
+        if (t && !this.story) this.onLearnerText?.(t);
         if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
         break;
       }
       case "response.created": {
         const rid = ev.response?.id;
-        if (this.soft || Date.now() < this.ignoreUntil) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
+        if (this.soft || Date.now() < this.ignoreUntil || this.lessonHold) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
         clearTimeout(this.idleTimer);
         if (this.resp) this.finishReply(this.resp, false);
         if (this.announceAt && Date.now() > this.announceAt) this.announceAt = 0;   // 검색 결과가 들어간 뒤의 대답이 결과를 전한다
@@ -411,6 +413,7 @@ export class Chat {
     if (this.limitReached) { this.stopInternal("DAILY_LIMIT", "오늘 대화 시간을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요."); this.set({ canRestart: false }); return; }
     clearTimeout(this.idleTimer);
     this.afterReplyNotes();
+    this.onFriendDone?.();
     this.idleTimer = setTimeout(() => {
       if (this.closed || !this.pc || this.player.isPlaying || this.ui.speech || this.resp) return;
       this.stopInternal("IDLE_PAUSE", "한동안 대답이 없어서 잠시 멈췄어요. 이어서 하려면 다시 시작을 눌러 주세요.");
@@ -471,6 +474,8 @@ export class Chat {
   // ---------------- 글·사진 ----------------
   sendText(text) {
     const t = text.trim(); if (!t || !this.pc) return;
+    if (this.lessonHook?.(t, null)) return;   // 교재 중 글 입력도 교재가 받는다
+    this.onLearnerText?.(t);
     clearTimeout(this.idleTimer);
     this.interruptReply();
     this.send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: t }] } });
@@ -496,6 +501,31 @@ export class Chat {
     this.log("photo_sent", { kb: Math.round(dataUrl.length / 1024), max_msg: this.maxMsg });
   }
   clearPhoto() { this.set({ photo: null }); }
+
+  // ---------------- 교재로 배우기(11/14, 운영자 계정만) ----------------
+  /** 교재 시작: 친구 AI의 대답을 막고(만들어지면 바로 취소), 하던 말·카드·쉬는 시간 타이머를 멈춘다. */
+  beginLessonHold() {
+    this.lessonHold = true;
+    clearTimeout(this.idleTimer);
+    this.interruptReply(); this.send({ type: "response.cancel" });
+    this.player.stop();
+    this.set({ card: null, state: "listening" });
+    this.log("lesson_hold", { on: true });
+  }
+  /** 교재 끝: 교재 중 학습자 말을 서버 문맥에서 지우고(기억·역할극 내용이 섞이지 않게), 메모를 넣고 친구가 이어 말하게 한다. */
+  endLessonHold({ deleteItems = [], note = null, respond = true } = {}) {
+    this.lessonHold = false;
+    deleteItems.forEach((id) => this.send({ type: "conversation.item.delete", item_id: id }));
+    if (note) this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
+    if (respond && this.pc && !this.closed) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
+    this.log("lesson_hold", { on: false, deleted: deleteItems.length });
+  }
+  /** 교재: 토리가 말하는 동안 마이크를 끄고, 학습자 차례에 켠다. */
+  setLessonMic(on) {
+    if (!this.track || this.cameraHold || !this.pc) return;
+    this.track.enabled = !!on && this.greeted;
+    this.set({ micOn: !!on && this.greeted });
+  }
 
   /** 사진을 고르러 가는 동안: 마이크를 끄고 화면이 가려져도 대화를 끊지 않는다. */
   holdForCamera(on) {
@@ -534,6 +564,7 @@ export class Chat {
     if (this.resp) { this.epoch++; this.finishReply(this.resp, false); this.resp = null; }
     clearTimeout(this.idleTimer); clearTimeout(this.softTimer); this.soft = false;
     this.flushMeter(); clearInterval(this.meter);
+    this.lessonHold = false; this.onStopped?.(reason);
     this.teardown();
     this.set({ state: "stopped", micOn: false, canRestart: true, speech: false, notice });
     this.log("stop", { reason });
