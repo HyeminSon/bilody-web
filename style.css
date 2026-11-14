@@ -338,3 +338,10 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .center { text-align: center; }
 .card.lesson.paused { padding: 8px 10px 8px 14px; border-width: 1.5px; }
 .card.lesson.paused .pill { min-height: 38px; font-size: 13px; padding: 0 14px; }
+/* 11/14 실장님: 카드가 화면 밖으로 밀림 → 표현 익히기 중에는 큰 토리 그림·안내 글을 접는다 */
+.chat.lesson-on .stage, .chat.lesson-on .ai-note, .chat.lesson-on #latency { display: none; }
+.chat.lesson-on .chat-top { flex: 0; padding: 2px 0; }
+.card.lesson { scroll-margin-top: 8px; }
+.lesson-img { max-height: 170px; } .lesson-img.small { height: 96px; }
+.ln { padding: 5px 10px; font-size: 14.5px; }
+.lesson-tip { margin: 6px 0 0; text-align: center; }

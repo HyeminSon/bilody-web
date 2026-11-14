@@ -1,10 +1,13 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.4";
-import { CHARACTERS } from "./characters.js?v=0.8.4";
+import * as api from "./api.js?v=0.8.5";
+import { CHARACTERS } from "./characters.js?v=0.8.5";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
+/** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
+const voiceOf = (who) => CHARACTERS.find((c) => c.id === who)?.voice ?? TORI_VOICE;
+const KO_NAME = Object.fromEntries(CHARACTERS.map((c) => [c.id, c.ko]));
 const NAMES = new Set(["tori", "moa", "nubi", "rino", "sola"]);
 const FILLERS = new Set(["yes", "yeah", "oh", "okay", "ok", "um", "uh", "well", "hmm", "sure", "wow", "hi", "hello", "so", "no", "really", "great"]);
 const NEGATIVE = /\b(no|not|never|cant|cannot|dont|busy|bad|terrible|boring|sorry)\b|아니|싫|안 돼|별로/;
@@ -58,7 +61,11 @@ export async function loadLib() {
 }
 async function loadLesson(id) {
   const l = await loadLib();
-  if (!l.cache[id]) l.cache[id] = await fetch(`lessons/${id}.json?v=0.8.4`).then((r) => r.json());
+  if (!l.cache[id]) {
+    const les = await fetch(`lessons/${id}.json?v=0.8.4`).then((r) => r.json());
+    les.scene = les.scene.map((x) => ({ ...x, who: x.who === "tori" ? "tori" : les.partner }));   // 상대 줄은 상대 캐릭터 id(목소리)
+    l.cache[id] = les;
+  }
   return l.cache[id];
 }
 
@@ -107,7 +114,7 @@ export class LessonManager {
       for (const l of lib.lessons) {
         if (this.done().includes(l.id)) continue;
         const c = lib.cache[l.id]; if (!c) continue;
-        if (c.topics_en.some((k) => ` ${n} `.includes(` ${k} `))) return this.offer(l.id, "topic");
+        if (c.topics_en.some((k) => ` ${n} `.includes(` ${k} `))) return this.suggest(l.id);
       }
     }
   }
@@ -154,6 +161,9 @@ export class LessonManager {
     if (this.active) return;
     this.offered = true; this.active = true; this.items = [];
     const les = await loadLesson(id); this.lesson = les;
+    this.set({ phase: "starting", title: les.title_ko });
+    await this.friendIdle();   // 친구 인사·대답을 문장 중간에 끊지 않는다
+    if (!this.active) return;
     this.chat.beginLessonHold();
     this.log("lesson_start", { via: "button" });
     try { await this.run(les, ++this.gen, "Okay!"); } catch (e) { if (e !== STOP) throw e; }
@@ -166,20 +176,27 @@ export class LessonManager {
     const lines = les.scene.map((l) => ({ who: l.who === "tori" ? "Tori" : P, en: l.en, mine: false, st: "" }));
     this.store.set("lessonLast", { id: les.id, done: false, at: Date.now() });
     // 11/14 실장님: 바로 ‘Okay! Listen.’ 하면 어색함 → 친구처럼 오늘 할 표현을 먼저 말하고 시작
-    const intro = [`${opener} Let’s practice together!`, `Today’s expression: “${les.title_en}”`, `First, listen to me and ${P}.`];
-    this.set({ phase: "lesson", title: les.title_ko, step: "오늘의 표현", img: les.img, lines: null, hint: null, blank: null, choices: null, role: false, notice: null, timeSkip: les.time_skip_before ?? null, ask: null, said: null });
-    this.prefetch([...intro, ...les.scene.map((l) => l.en)]);
-    for (const t of intro) await this.speak(t, g);
-    // 1. 토리가 먼저 읽기
-    this.set({ step: "토리가 먼저 읽기", lines });
-    for (let i = 0; i < lines.length; i++) { this.mark(i, "now"); await this.speak(les.scene[i].en, g); this.mark(i, "done"); }
-    // 2. 번갈아 읽기(한 바퀴) + 역할 바꾸기(선택)
-    await this.readRound(les, g, "partner");
-    this.set({ ask: { text: "역할을 바꿔 토리 줄도 읽어 볼까요? (선택)", yes: "바꿔서 읽기", no: "넘어가기" } });
-    await this.speak("Want to switch? You read Tori.", g);
-    const sw = await this.wait(g, { kind: "yesno" });
+    // 11/14 실장님: 친구처럼 짧게 운을 떼고 바로 장면(말할 기회를 늘리려고 시작 말은 한 문장)
+    const intro = `${opener} Let’s practice “${les.title_en}” together. Listen!`;
+    this.set({ phase: "lesson", title: les.title_ko, step: "장면 듣기", img: les.img, lines, hint: null, blank: null, choices: null, role: false, notice: null, timeSkip: les.time_skip_before ?? null, ask: null, said: null });
+    this.prefetch([[intro, "tori"], ...les.scene.map((l) => [l.en, l.who])]);
+    await this.speak(intro, g);
+    // 1. 장면 듣기: 토리와 상대가 각자 목소리로
+    for (let i = 0; i < lines.length; i++) { this.mark(i, "now"); await this.speak(les.scene[i].en, g, les.scene[i].who); this.mark(i, "done"); }
+    // 2. 역할 맡아 읽기: 학습자를 상대 이름으로 부르지 않고 “○○ 역할을 해 볼래?” 묻고 기다린다
+    const Pko = KO_NAME[les.partner] ?? P;
+    this.set({ ask: { text: `${Pko} 역할을 맡아 읽어 볼래요?`, yes: "좋아요", no: "듣기만 할래요" } });
+    await this.speak(`Can you be ${P}? You say ${P}’s lines.`, g);
+    const be = await this.wait(g, { kind: "yesno" });
     this.set({ ask: null });
-    if (sw.type === "yes") await this.readRound(les, g, "tori");
+    if (be.type === "yes") {
+      await this.readRound(les, g, "partner");
+      this.set({ ask: { text: "이번엔 토리 역할도 해 볼래요? (선택)", yes: "해 볼래요", no: "넘어가기" } });
+      await this.speak("Now can you be Tori?", g);
+      const sw = await this.wait(g, { kind: "yesno" });
+      this.set({ ask: null });
+      if (sw.type === "yes") await this.readRound(les, g, "tori");
+    }
     // 3. 내 이야기
     this.set({ step: "내 이야기", lines: null, notice: les.story_notice_ko, hint: null, blank: null });
     for (const t of les.story) await this.turn(les, t, g, "transfer");
@@ -193,19 +210,20 @@ export class LessonManager {
   async readRound(les, g, learnerSide) {
     const P = les.partner_name;
     this.set({ step: learnerSide === "partner" ? `번갈아 읽기 · 나는 ${P}` : "역할 바꿔 읽기 · 나는 Tori",
-      lines: les.scene.map((l) => ({ who: l.who === "tori" ? (learnerSide === "tori" ? "나" : "Tori") : (learnerSide === "partner" ? "나" : P), en: l.en, mine: (l.who === "tori") === (learnerSide === "tori"), st: "" })) });
-    await this.speak(learnerSide === "partner" ? `Now you read ${P}. Ready?` : "Now you read Tori.", g);
+      lines: les.scene.map((l) => ({ who: l.who === "tori" ? (learnerSide === "tori" ? "나" : "Tori") : (learnerSide === "partner" ? "나" : P), en: l.en, mine: (l.who === "tori") === (learnerSide === "tori"), st: "" })), said: null });
+    await this.speak((les.scene[0].who === "tori") === (learnerSide === "tori") ? "Great! You start." : "Great! Listen first.", g);
     let praised = 0;
     for (let i = 0; i < les.scene.length; i++) {
       const l = les.scene[i]; const mine = (l.who === "tori") === (learnerSide === "tori");
       this.mark(i, "now");
-      if (!mine) { await this.speak(l.en, g); this.mark(i, "done"); continue; }
+      if (!mine) { await this.speak(l.en, g, l.who); this.mark(i, "done"); continue; }
       const chk = learnerSide === "partner" ? les.check.find((c) => c.line === i) : null;
       const expr = chk ? les.expressions.find((e) => e.id === chk.expression) : null;
       let tries = 0, res = null, help = false;
       for (;;) {
         const a = await this.wait(g, { kind: "read", line: l.en });
         if (a.type === "skip") { res = "skipped"; break; }
+        this.set({ said: a.text });   // 들린 말을 보여 줘서 토리가 들었는지 알 수 있게
         if (this.offTopic(a.text, l.en)) { await this.pause(a, g); this.mark(i, "now"); await this.speak("Your turn.", g); continue; }
         if (!chk) { res = "ok"; break; }
         const vs = variants(normalize(a.text));
@@ -213,11 +231,13 @@ export class LessonManager {
         if (res === "ok") break;
         if (++tries >= 2) {
           help = true;
-          await this.speak(`Listen: “${l.en}”`, g);
+          await this.speak(l.en, g, l.who === "tori" ? "tori" : les.partner);
+          this.set({ said: null });
           const b = await this.wait(g, { kind: "read", line: l.en });
           res = b.type === "skip" ? "skipped" : "ok"; break;   // 같이 듣고 따라 하기는 시도 자체를 받아 줌
         }
         await this.speak(`Listen: “${l.en}”`, g);
+        this.set({ said: null });
       }
       if (expr) this.record(expr.id, res, "reading", help || tries > 0);
       this.mark(i, "done");
@@ -358,7 +378,7 @@ export class LessonManager {
     if (toast) this.toast?.(toast);
     const baseNote = reason === "sensitive"
       ? "Note from the app: the learner stopped a short practice after sharing something hard. Be gentle and kind. Do not mention the practice. Ask one soft, easy question or just listen."
-      : note ?? "Note from the app: the learner just finished a short practice with you. Role-play names, cities and facts in the practice are not about the learner. Go back to the topic you were talking about before the practice and ask one short, easy question about it.";
+      : note ?? "Note from the app: the learner just finished a short practice with you. Role-play names, cities and facts in the practice are not about the learner. Go back to the topic you were talking about before the practice and ask one short, easy question about it. If there was no topic yet, ask one easy question about something new. Do not ask how their day is going.";
     this.chat.endLessonHold({ deleteItems: items, note: keepLast ? null : baseNote, respond: true });
     if (reason) this.log("lesson_stop", { reason });
   }
@@ -383,6 +403,25 @@ export class LessonManager {
     if (w) w.reject(STOP);
     this.log("lesson_stop", { reason: "user", results: this.results ?? {} });
     this.finish({ say: "Okay!", g: this.gen });
+  }
+
+  /** 친구(대화 AI)의 인사·대답이 끝날 때까지 기다린다(최대 8초). 연결 중이면 연결·인사가 끝날 때까지. */
+  async friendIdle() {
+    const t0 = Date.now();
+    while (Date.now() - t0 < 8000) {
+      const c = this.chat;
+      if (c.greeted && c.pc && !c.resp && !this.player.isPlaying && !c.ui.speech) return;
+      await sleep(150);
+    }
+  }
+  /** 대화 화제와 맞는 과가 있을 때: 말로 끊지 않고 화면에 작은 제안만(30초 뒤 사라짐, 대화당 한 번). */
+  suggest(id) {
+    if (this.suggested || this.active || this.ui) return;
+    this.suggested = true;
+    const meta = lib.byId[id];
+    this.log("lesson_suggest", { id });
+    this.set({ phase: "suggest", title: meta.title_ko, suggestId: id });
+    setTimeout(() => { if (this.ui?.phase === "suggest") this.set(null); }, 30000);
   }
 
   // ---------- 잠시 멈춤·이어 하기(11/14 실장님) ----------
@@ -469,7 +508,9 @@ export class LessonManager {
     if (act === "stop") return this.stopByUser();
     if (act === "resume") return this.resume();
     if (act === "close") return this.closePaused();
-    if (act === "replay") { const t = this.ui?.lastTori; if (t && w) this.speak(t, this.gen).catch(() => {}); return; }
+    if (act === "replay") { const t = this.ui?.lastTori; if (t && w) this.speak(t, this.gen, this.ui?.lastWho ?? "tori").catch(() => {}); return; }
+    if (act === "suggestYes") { const id = this.ui?.suggestId; this.set(null); if (id) this.startNow(id); return; }
+    if (act === "suggestNo") { this.set(null); this.log("lesson_suggest_answer", { a: "no" }); return; }
     if (!w) return;
     if (act === "yes" || act === "no") return this.resolve({ type: act, text: "" });
     if (act === "skip" || act === "next") return this.resolve({ type: "skip", text: "" });
@@ -494,21 +535,29 @@ export class LessonManager {
   }
 
   // ---------- 말하기 ----------
-  prefetch(texts) { texts.forEach((t) => this.audio(t)); }
-  audio(text) {
-    if (!this.sayCache.has(text)) {
-      const p = api.say(text, TORI_VOICE, this.speed, this.chat.sessionId); p.catch(() => this.sayCache.delete(text));
-      this.sayCache.set(text, p);
+  /** 미리 만들기: [글, 누구] 목록. 목소리 서비스가 막히지 않게 한 번에 2개씩만(11/14 기록: 9개 동시 → 429). */
+  prefetch(items) { items.forEach(([t, who]) => this.audio(t, who)); }
+  audio(text, who = "tori") {
+    const key = `${who}|${text}`;
+    if (!this.sayCache.has(key)) {
+      const p = this.slot(() => api.say(text, voiceOf(who), this.speed, this.chat.sessionId)); p.catch(() => this.sayCache.delete(key));
+      this.sayCache.set(key, p);
       if (this.sayCache.size > 80) this.sayCache.delete(this.sayCache.keys().next().value);
     }
-    return this.sayCache.get(text);
+    return this.sayCache.get(key);
   }
-  async speak(text, g) {
+  async slot(fn) {
+    this.busy = this.busy ?? 0; this.queue = this.queue ?? [];
+    if (this.busy >= 2) await new Promise((r) => this.queue.push(r));
+    this.busy++;
+    try { return await fn(); } finally { this.busy--; this.queue.shift()?.(); }
+  }
+  async speak(text, g, who = "tori") {
     if (g !== this.gen) throw STOP;
     this.chat.setLessonMic(false);
-    this.set({ tori: text.replace(/[“”]/g, "\""), lastTori: text });
+    this.set({ tori: text.replace(/[“”]/g, "\""), lastTori: text, lastWho: who, speaker: who });
     let s;
-    try { s = await this.audio(text); } catch { this.set({ notice: "목소리를 만들지 못했어요. 글로 보고 이어 가요." }); await sleep(1200); }
+    try { s = await this.audio(text, who); } catch { this.set({ notice: "목소리를 만들지 못했어요. 글로 보고 이어 가요." }); await sleep(1200); }
     if (g !== this.gen) throw STOP;
     if (s) { this.chat.noteHeard(text); await this.player.play(s.pcm, s.rate); }
     if (g !== this.gen) throw STOP;
@@ -566,6 +615,9 @@ export class LessonManager {
 // 11/14 실장님: 대사가 넘어갈 때마다 카드가 통통 튐 → 겉틀(제목·그림)은 한 번만 그리고 안쪽만 바꾼다.
 /** 겉틀: 교재가 바뀌거나 제안→진행으로 넘어갈 때만 새로 그림. */
 export function lessonShell(u, esc, I, enter) {
+  if (u.phase === "suggest") return `<div class="card lesson paused ${enter ? "enter" : ""}"><div class="lesson-h"><span class="tag">표현 익히기</span><b class="grow">‘${esc(u.title)}’ 해 볼래요?</b>
+    <button class="pill primary compact" data-act="lessonBtn" data-v="suggestYes">해 보기</button><button class="iconbtn sm" data-act="lessonBtn" data-v="suggestNo" aria-label="닫기">${I("close")}</button></div></div>`;
+  if (u.phase === "starting") return `<div class="card lesson paused ${enter ? "enter" : ""}"><div class="lesson-h"><span class="tag">표현 익히기</span><b class="grow">${esc(u.title)} · 토리 말이 끝나면 시작해요</b></div></div>`;
   if (u.phase === "paused") return `<div class="card lesson paused ${enter ? "enter" : ""}"><div class="lesson-h"><span class="tag">표현 익히기</span><b class="grow">${esc(u.title)} · 잠시 멈춤</b>
     <button class="pill primary compact" data-act="lessonBtn" data-v="resume">이어 하기</button><button class="iconbtn sm" data-act="lessonBtn" data-v="close" aria-label="닫기">${I("close")}</button></div></div>`;
   return `<div class="card lesson ${u.phase} ${enter ? "enter" : ""}">
@@ -584,7 +636,7 @@ export function lessonImage(root, u) {
   if (role && role.dataset.k !== rk) { role.dataset.k = rk; role.innerHTML = u.role ? `<span class="tag role">역할극</span>` : ""; }
 }
 /** 안쪽: 단계·대사·힌트·버튼. */
-export function lessonBody(u, mic, esc, I) {
+export function lessonBody(u, mic, esc, I, hearing = false) {
   if (u.phase === "offer") return `<p class="lesson-offer">${esc(u.offer)}</p>
       <div class="row gap"><button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">좋아요</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">다음에</button></div>`;
   const lessonLines = (u.lines ?? []).map((l, i) => `${u.timeSkip === i ? `<div class="ln skip">· · · 잠시 뒤 · · ·</div>` : ""}
@@ -603,8 +655,10 @@ export function lessonBody(u, mic, esc, I) {
     ${blank}${help}
     ${u.said ? `<div class="lesson-said">나: ${esc(u.said)}</div>` : ""}
     ${u.ask ? `<div class="lesson-ask"><span>${esc(u.ask.text)}</span><div class="row gap"><button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">${esc(u.ask.yes)}</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">${esc(u.ask.no)}</button></div></div>` : ""}
-    <div class="lesson-foot"><span class="mic ${mic ? "on" : ""}">${mic ? `${I("mic")}내 차례` : `${I("volume_up")}듣는 중`}</span><span class="grow"></span>
+    <div class="lesson-foot"><span class="mic ${mic ? "on" : ""}">${hearing ? `${I("graphic_eq")}듣고 있어요…` : mic ? `${I("mic")}내 차례 · 말해 보세요` : `${I("volume_up")}${esc(SPEAKER[u.speaker] ?? "토리")} 말하는 중`}</span><span class="grow"></span>
       <button class="link tiny" data-act="lessonBtn" data-v="replay">${I("replay")}다시 듣기</button>
       ${u.waiting && u.waiting !== "offer" && u.waiting !== "yesno" ? `<button class="link tiny" data-act="lessonBtn" data-v="hint">힌트</button><button class="link tiny" data-act="lessonBtn" data-v="skip">건너뛰기</button>` : ""}</div>
+    ${mic ? `<p class="muted tiny lesson-tip">시끄러우면 아래 칸에 글로 써도 돼요</p>` : ""}
     <button class="pill secondary compact lesson-stop" data-act="lessonBtn" data-v="stop">그만하고 대화하기</button>`;
 }
+const SPEAKER = { tori: "토리", moa: "모아", nubi: "누비", rino: "리노", sola: "솔라" };

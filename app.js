@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.4";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.4";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.4";
-import { GUIDE } from "./guide.js?v=0.8.4";
-import { Player } from "./audio.js?v=0.8.4";
-import { Chat } from "./rt.js?v=0.8.4";
-import * as story from "./story.js?v=0.8.4";
-import * as push from "./push.js?v=0.8.4";
-import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.4";
+import * as api from "./api.js?v=0.8.5";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.5";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.5";
+import { GUIDE } from "./guide.js?v=0.8.5";
+import { Player } from "./audio.js?v=0.8.5";
+import { Chat } from "./rt.js?v=0.8.5";
+import * as story from "./story.js?v=0.8.5";
+import * as push from "./push.js?v=0.8.5";
+import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.5";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -242,7 +242,8 @@ function updateChat() {
   $("#lines").innerHTML = subs && u ? u.lines.slice(-8).map((l) => `<div class="bubble ${l.role === "user" ? "me" : ""}">${esc(l.text)}</div>`).join("") : "";
   if (chat) {
     const running = !["stopped", "disconnected"].includes(u.state);
-    const lessonBtn = !!S.lesson && running && (!S.lesson.active || (S.lesson.paused && !S.lesson.ui));
+    // 연결·첫인사가 끝난 뒤에만(연결 중에 누르면 마이크가 늦게 켜짐)
+    const lessonBtn = !!S.lesson && chat.greeted && ["listening", "speaking", "thinking"].includes(u.state) && (!S.lesson.active || (S.lesson.paused && !S.lesson.ui));
     const ctl = `${running}|${u.canRestart}|${lessonBtn}|${!!S.lesson?.paused}`;
     if ($("#controls").dataset.k !== ctl) {
       $("#controls").dataset.k = ctl;
@@ -260,16 +261,21 @@ function updateChat() {
 // ---------------- 교재 카드(11/14): 그림은 lesson.js lessonShell·lessonBody ----------------
 function renderLesson() {
   const box = $("#lesson"); if (!box) return;
-  const u = S.lesson?.ui; const mic = !!S.chat?.ui.micOn;
+  const u = S.lesson?.ui; const mic = !!S.chat?.ui.micOn; const hearing = !!S.chat?.ui.speech && !!S.chat?.lessonHold;
+  // 표현 익히기 카드가 크게 떠 있는 동안: 큰 토리 그림을 접어 카드가 한 화면에 들어오게
+  $(".chat")?.classList.toggle("lesson-on", !!u && ["lesson", "recall", "offer"].includes(u.phase));
   if (!u) { if (box.innerHTML) box.innerHTML = ""; box.dataset.shell = ""; box.dataset.key = ""; return; }
   // 겉틀(제목·그림)은 교재·단계가 바뀔 때만 새로 그리고, 처음 나타날 때만 올라오는 움직임
   const shell = `${u.title}|${u.phase}`;
-  if (box.dataset.shell !== shell) { const enter = !box.dataset.shell; box.dataset.shell = shell; box.innerHTML = lessonShell(u, esc, I, enter); box.dataset.key = ""; }
-  const key = JSON.stringify(u) + (mic ? "|m" : "");
+  if (box.dataset.shell !== shell) {
+    const enter = !box.dataset.shell; box.dataset.shell = shell; box.innerHTML = lessonShell(u, esc, I, enter); box.dataset.key = "";
+    if (["lesson", "recall", "offer"].includes(u.phase)) requestAnimationFrame(() => box.scrollIntoView({ block: "start", behavior: "smooth" }));
+  }
+  const key = JSON.stringify(u) + (mic ? "|m" : "") + (hearing ? "|h" : "");
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   lessonImage(box, u);
-  const body = box.querySelector(".lesson-body"); if (body) body.innerHTML = lessonBody(u, mic, esc, I);
+  const body = box.querySelector(".lesson-body"); if (body) body.innerHTML = lessonBody(u, mic, esc, I, hearing);
 }
 
 /** 쉽게 다시 말한 카드에 붙일 단어 그림(앱과 같이 최대 3개). 그림 묶음이 아직 없으면 불러온 뒤 다시 그린다. */
