@@ -1,6 +1,6 @@
 // 웹 알림(0.7.8): 앱(Reminders.kt)과 같은 규칙으로 서버가 정한 시간에 보낸다.
 // 아이폰은 Safari에서 '홈 화면에 추가'로 설치한 bilody에서만 알림을 받을 수 있다(애플 정책, iOS 16.4 이상).
-import * as api from "./api.js?v=0.8.7";
+import * as api from "./api.js?v=0.8.8";
 
 export const supported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 export const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);

@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.7";
-import { CHARACTERS } from "./characters.js?v=0.8.7";
+import * as api from "./api.js?v=0.8.8";
+import { CHARACTERS } from "./characters.js?v=0.8.8";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
@@ -58,14 +58,22 @@ const RANK = { ok: 3, form_only: 2, partial: 1 };
 let lib = null;
 export async function loadLib() {
   if (lib) return lib;
-  const idx = await fetch("lessons/index.json?v=0.8.7").then((r) => r.json());
+  const idx = await fetch("lessons/index.json?v=0.8.8").then((r) => r.json());
   lib = { ...idx, byId: Object.fromEntries(idx.lessons.map((l) => [l.id, l])), cache: {} };
   return lib;
+}
+let upper = null;
+/** 7단계 의견 과제·8~9단계 대화 주제(11/14 실장님: 모든 단계를 넣어 두기). */
+export async function loadUpper() {
+  if (upper) return upper;
+  const [t, p] = await Promise.all([fetch("lessons/L7.json?v=0.8.8").then((r) => r.json()), fetch("lessons/L8L9.json?v=0.8.8").then((r) => r.json())]);
+  upper = { tasks: t, topics: p, taskById: Object.fromEntries(t.tasks.map((x) => [x.id, x])), topicById: Object.fromEntries(Object.values(p.topics).flat().map((x) => [x.id, x])) };
+  return upper;
 }
 async function loadLesson(id) {
   const l = await loadLib();
   if (!l.cache[id]) {
-    const les = await fetch(`lessons/${id}.json?v=0.8.7`).then((r) => r.json());
+    const les = await fetch(`lessons/${id}.json?v=0.8.8`).then((r) => r.json());
     les.scene = les.scene.map((x) => ({ ...x, who: x.who === "tori" ? "tori" : les.partner }));   // 상대 줄은 상대 캐릭터 id(목소리)
     l.cache[id] = les;
   }
@@ -262,8 +270,10 @@ export class LessonManager {
     if (t.only_if === "previous_default" && this.lastWhen !== "default") return;
     if (t.only_if === "previous_not_negative" && ["negative", "sensitive"].includes(this.lastWhen)) return;
     if (t.only_if === "asked_where" && !/where do you (work|study)/i.test(this.lastSay)) return;
-    this.set({ hint: t.screen_hint_ko ? this.fill(t.screen_hint_ko) : null, blank: t.screen_blank ?? null, role: !!t.role, said: null,
-      choices: this.choicesFor(les, t), clock: t.clock ?? null, sub: t.screen_note_ko ?? null });
+    const hint = t.screen_hint_ko ? this.fill(t.screen_hint_ko) : null;
+    // 4~6단계: 화면 힌트는 8초 뒤 또는 ‘힌트’를 눌렀을 때만(그 전에 답하면 힌트 없는 답으로 기록, 공통 transfer)
+    this.set({ hint: les.hint_delay ? null : hint, pendingHint: les.hint_delay ? hint : null, blank: les.hint_delay ? null : t.screen_blank ?? null, pendingBlank: les.hint_delay ? t.screen_blank ?? null : null,
+      role: !!t.role, said: null, choices: this.choicesFor(les, t), clock: t.clock ?? null, sub: t.screen_note_ko ?? null });
     if (t.en) await this.speak(this.fill(t.en), g);
     if (t.expect == null && !t.free_answer) { await sleep(250); return; }
     const exprs = [t.expect, ...(t.alt_expect ?? [])].map((id) => les.expressions.find((e) => e.id === id)).filter(Boolean);
@@ -351,6 +361,82 @@ export class LessonManager {
     const a = await this.wait(g, { kind: "yesno" });
     this.set({ ask: null });
     if (a.type !== "yes") { this.finish({ say: "Okay.", reason: "sensitive", g }); throw STOP; }
+  }
+
+  // ---------- 7단계 의견 과제(공통 kinds.opinion_task, L7.json flow) ----------
+  async startTask(id) {
+    if (this.active) return;
+    this.offered = true; this.active = true; this.items = [];
+    const g = ++this.gen; const conn = this.chat.connGen;
+    const up = await loadUpper(); const task = up.taskById[id];
+    if (!task || !this.alive(g, conn)) { if (g === this.gen) this.active = false; return; }
+    this.lesson = { id, title_ko: task.title_ko, title_en: task.claim_en, korean_map: {}, credit_ko: "bilody가 직접 만든 토론 주제예요." };
+    this.results = {}; this.t0 = Date.now(); this.hard = false;
+    this.set({ phase: "starting", title: task.title_ko });
+    await this.friendIdle();
+    if (!this.alive(g, conn)) return;
+    this.chat.beginLessonHold();
+    this.chat.privateTopic = true;   // 의견 연습은 기록·기억에 남기지 않음(헤니 검토·실장님 결정 3)
+    this.log("task_start", { id });
+    try { await this.runTask(task, g, up.tasks.markers); } catch (e) { if (e !== STOP) throw e; }
+  }
+  async runTask(task, g, markers) {
+    const notice = `오늘의 질문: ${task.claim_ko}`;
+    this.set({ phase: "lesson", title: task.title_ko, step: "7단계 · 의견 과제", img: null, lines: null, hint: null, blank: null, choices: null, role: false, notice, ask: null, said: null });
+    await this.speak("Want to talk about this together? I can take the other side, or just chat.", g);
+    this.set({ ask: { text: "어떻게 할까요?", opts: [{ v: "against", label: "토리가 반대편" }, { v: "same", label: "같은 편으로" }, { v: "chat", label: "그냥 이야기" }, { v: "no", label: "다음에" }] } });
+    const c = await this.wait(g, { kind: "choice", opts: [{ v: "against", re: "other side|against|disagree with me|반대" }, { v: "same", re: "same side|with me|같은 편|같은편" }, { v: "chat", re: "just chat|just talk|그냥" }] });
+    this.set({ ask: null });
+    this.log("task_mode", { mode: c.v });
+    if (c.v === "no") { await this.speak("Okay! Let’s keep talking.", g); return this.finish({ say: null, g, note: "Note from the app: the learner chose not to do a discussion task now. Keep talking about what you were talking about." }); }
+    if (c.v === "chat") return this.finish({ say: null, g, note: `Note from the app: the learner wants to just chat about this question: "${task.claim_en}". Ask what they think in one short question, listen, and share a balanced view. Do not argue. Real or made-up examples are both fine. Their opinions here are practice, not facts about them.` });
+    const used = new Set(); const words = [];
+    const ask = async (label, hint) => {
+      this.set({ step: `7단계 · ${label}`, hint, said: null });
+      let a = await this.wait(g, { kind: "free" });
+      if (a.type === "skip") return "";
+      if (a.text.split(/\s+/).length <= 5) { await this.speak("Can you tell me a bit more?", g); const b = await this.wait(g, { kind: "free" }); if (b.type !== "skip") a = { text: `${a.text} ${b.text}` }; }
+      this.set({ said: a.text });
+      if (this.sensitive(a.text)) await this.sensitiveFlow(g);
+      const n = normalize(a.text); words.push(n.split(" ").filter(Boolean).length);
+      for (const [k, m] of Object.entries(markers)) if (m.patterns.some((p) => new RegExp(p).test(n))) used.add(k);
+      return n;
+    };
+    await this.speak(`Today’s question: ${task.claim_en} What do you think?`, g);
+    const first = await ask("내 생각과 이유", "도움 표현(선택): I partly agree, but… / The main reason is that…");
+    const personal = /\b(allergic|allergy|allergies|cant afford|no money|my health|my doctor|small apartment|my landlord|my family needs)\b/.test(first);
+    const disagree = /\b(disagree|dont agree|do not agree|not sure i agree|dont think so|i dont think|no way|not really)\b/.test(first);
+    const partly = /\b(partly|partially|to some extent|kind of agree|sort of agree|depends)\b/.test(first);
+    if (personal) {
+      await this.speak("That makes sense. Thanks for sharing. What else do you think about it?", g);
+    } else {
+      // 반대편: 학습자와 다른 쪽 논거 / 같은 편: 학습자와 같은 쪽 논거. 일부 동의는 ‘동의’ 쪽으로 봄
+      const learnerAgrees = !disagree || partly;
+      const opposite = learnerAgrees ? task.counter_for_agree : task.counter_for_disagree;
+      const sameSide = learnerAgrees ? task.counter_for_disagree : task.counter_for_agree;
+      const line = c.v === "against" ? `I see. Here’s another way to look at it. ${opposite[0]}` : `I agree with you! Also, ${sameSide[0].replace(/^But /, "")}`;
+      await this.speak(line, g);
+    }
+    await ask("토리 말에 답하기", "도움 표현(선택): I see your point, but… / For example, …");
+    await this.speak("Good point. So what’s your final answer?", g);
+    await ask("정리", "도움 표현(선택): Overall, I think… / It depends on…");
+    const tipFor = [["example", "For example, …"], ["contrast", "I see your point, but …"], ["reason", "The main reason is that …"], ["conclusion", "Overall, I think …"]].find(([k]) => !used.has(k));
+    this.log("task_result", { id: task.id, mode: c.v, markers: [...used], words, ms: Date.now() - this.t0 });
+    const say = tipFor ? `Great talk! Next time, try “${tipFor[1]}”` : "Great talk! You explained your ideas really well.";
+    return this.finish({ say, g, toast: "토론 연습은 기록·기억에 남기지 않았어요",
+      note: `Note from the app: the learner just finished a short practice discussion about "${task.claim_en}". The opinions in it were practice and may not be their real views; do not treat them as facts about the learner. Go back to what you were talking about before, or ask one short, easy question.` });
+  }
+
+  // ---------- 8~9단계 대화 주제(교재 없음, 친구에게 주제와 대화 방식을 건넴) ----------
+  async startTopic(id) {
+    const up = await loadUpper(); const tp = up.topicById[id]; if (!tp || !this.chat.pc) return;
+    const lv = id.slice(0, 2); const st = up.topics.style[lv]; const both = up.topics.style.both;
+    this.chat.privateTopic = true;
+    this.log("topic_start", { id });
+    this.toast?.("이 주제 대화는 기록·기억에 남기지 않아요");
+    this.chat.topicNote(`Note from the app: the learner chose a ${st.cefr}-level talk topic. For the rest of this call, follow these style notes: ${st.friend_style.join(" ")} ` +
+      `Start now by saying once that real or made-up examples are both fine, then ask: "${tp.opener_en}". Possible follow-ups: ${tp.follow_ups_en.join(" / ")}. ` +
+      "Never ask for real names, company names, amounts of money, or health details. Things the learner says while arguing a side or practicing a tone are practice, not their real beliefs.");
   }
 
   // ---------- 다음 방문 떠올리기 ----------
@@ -533,6 +619,13 @@ export class LessonManager {
     const n = normalize(text);
     if (this.wantsStop(n)) { this.stopByUser(); return true; }
     const w = this.waiter; if (!w) return true;
+    if (w.spec.kind === "choice") {
+      const hit = (w.spec.opts ?? []).find((o) => o.re && new RegExp(o.re, "i").test(n));
+      if (hit) return this.resolve({ type: "opt", v: hit.v, text });
+      if (lib.no.some((y) => n === normalize(y) || n.startsWith(normalize(y) + " "))) return this.resolve({ type: "opt", v: "no", text });
+      if (lib.yes.some((y) => n === normalize(y) || n.startsWith(normalize(y) + " "))) return this.resolve({ type: "opt", v: w.spec.opts?.[0]?.v, text });
+      return true;   // 못 알아들음: 버튼을 기다림
+    }
     if (w.spec.kind === "offer" || w.spec.kind === "yesno") {
       const yes = lib.yes.some((y) => n === normalize(y) || n.startsWith(normalize(y) + " "));
       const no = lib.no.some((y) => n === normalize(y) || n.startsWith(normalize(y) + " "));
@@ -561,6 +654,7 @@ export class LessonManager {
     if (act === "suggestYes") { const id = this.ui?.suggestId; this.set(null); if (id) this.startNow(id); return; }
     if (act === "suggestNo") { this.set(null); this.log("lesson_suggest_answer", { a: "no" }); return; }
     if (!w) return;
+    if (act.startsWith("opt:")) return this.resolve({ type: "opt", v: act.slice(4), text: "" });
     if (act === "yes" || act === "no") return this.resolve({ type: act, text: "" });
     if (act === "skip" || act === "next") return this.resolve({ type: "skip", text: "" });
     if (act === "hint") { this.useHelp(); return this.set({ showHelp: true }); }
@@ -569,7 +663,7 @@ export class LessonManager {
   wait(g, spec) {
     if (g !== this.gen) return Promise.reject(STOP);
     this.chat.setLessonMic(true);
-    this.helpUsed = false;
+    this.helpUsed = !!(this.ui?.hint && (spec.kind === "answer"));   // 처음부터 화면 힌트가 보이면 힌트를 본 답(guided)
     this.set({ waiting: spec.kind, showHelp: false });
     return new Promise((resolve, reject) => {
       const timers = [];
@@ -581,6 +675,7 @@ export class LessonManager {
         timers.push(setTimeout(() => { if (this.waiter?.spec === spec && spec.target) { this.useHelp(); this.speak(`Listen: “${spec.target}”`, g, "tori", true).catch(() => {}); } }, 16000));
         timers.push(setTimeout(() => { if (this.waiter?.spec === spec) this.resolve({ type: "skip", text: "" }); }, 60000));
       }
+      if (spec.kind === "free") timers.push(setTimeout(() => { if (this.waiter?.spec === spec) this.resolve({ type: "skip", text: "" }); }, 90000));
       if (spec.kind === "offer") timers.push(setTimeout(() => { if (this.waiter?.spec === spec) this.resolve({ type: "unclear", text: "" }); }, 20000));
     });
   }
@@ -625,7 +720,10 @@ export class LessonManager {
     if (g !== this.gen) throw STOP;
     if (this.waiter) this.chat.setLessonMic(true);   // 기다리는 중에 들려준 도움말이면 마이크를 다시 연다
   }
-  useHelp() { this.helpUsed = true; }
+  useHelp() {
+    this.helpUsed = true;
+    if (this.ui?.pendingHint || this.ui?.pendingBlank) this.set({ hint: this.ui.pendingHint ?? this.ui.hint, blank: this.ui.pendingBlank ?? this.ui.blank, pendingHint: null, pendingBlank: null });
+  }
 
   // ---------- 도우미 ----------
   mark(i, st) { if (this.ui?.lines) this.set({ lines: this.ui.lines.map((l, j) => (j === i ? { ...l, st } : l.st === "now" ? { ...l, st: "done" } : l)) }); }
@@ -672,7 +770,8 @@ export class LessonManager {
     const h = t.screen_hint_ko ?? "";
     const i = h.indexOf(":");
     if (i >= 0) {
-      const eng = h.slice(i + 1).replace(/\([^)]*\)/g, "").split(/\s\/\s|아니면|안 되면/)[0].trim();
+      // 앞의 한국어 설명(‘역할극: 이번엔 …: ’, ‘지도: 쭉 가서 → ’)은 떼고 영어 문장만(파이썬 검사기와 같은 규칙)
+      const eng = h.slice(i + 1).replace(/\([^)]*\)/g, "").split(/\s\/\s|아니면|안 되면/)[0].replace(/^[^A-Za-z]*/, "").trim();
       if (/[A-Za-z]/.test(eng) && !eng.includes("___")) return eng;
     }
     return (expr?.en ?? "").split(" / ")[0].replaceAll("___", this.x ?? les.fallback ?? "");
@@ -726,10 +825,10 @@ export function lessonBody(u, mic, esc, I, hearing = false) {
     ${u.hint ? `<div class="lesson-hint">${esc(u.hint)}</div>` : ""}
     ${blank}${help}
     ${u.said ? `<div class="lesson-said">나: ${esc(u.said)}</div>` : ""}
-    ${u.ask ? `<div class="lesson-ask"><span>${esc(u.ask.text)}</span><div class="row gap"><button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">${esc(u.ask.yes)}</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">${esc(u.ask.no)}</button></div></div>` : ""}
+    ${u.ask ? `<div class="lesson-ask"><span>${esc(u.ask.text)}</span><div class="row gap wrap">${u.ask.opts ? u.ask.opts.map((o, i) => `<button class="pill ${i === 0 ? "primary" : "secondary"} compact grow" data-act="lessonBtn" data-v="opt:${o.v}">${esc(o.label)}</button>`).join("") : `<button class="pill primary compact grow" data-act="lessonBtn" data-v="yes">${esc(u.ask.yes)}</button><button class="pill secondary compact grow" data-act="lessonBtn" data-v="no">${esc(u.ask.no)}</button>`}</div></div>` : ""}
     <div class="lesson-foot"><span class="mic ${mic ? "on" : ""}">${hearing ? `${I("graphic_eq")}듣고 있어요…` : mic ? `${I("mic")}내 차례 · 말해 보세요` : `${I("volume_up")}${esc(SPEAKER[u.speaker] ?? "토리")} 말하는 중`}</span><span class="grow"></span>
       <button class="link tiny" data-act="lessonBtn" data-v="replay">${I("replay")}다시 듣기</button>
-      ${u.waiting && u.waiting !== "offer" && u.waiting !== "yesno" ? `<button class="link tiny" data-act="lessonBtn" data-v="hint">힌트</button><button class="link tiny" data-act="lessonBtn" data-v="skip">건너뛰기</button>` : ""}</div>
+      ${u.waiting && !["offer", "yesno", "choice"].includes(u.waiting) ? `<button class="link tiny" data-act="lessonBtn" data-v="hint">힌트</button><button class="link tiny" data-act="lessonBtn" data-v="skip">건너뛰기</button>` : ""}</div>
     ${mic ? `<p class="muted tiny lesson-tip">시끄러우면 아래 칸에 글로 써도 돼요</p>` : ""}
     <button class="pill secondary compact lesson-stop" data-act="lessonBtn" data-v="stop">그만하고 대화하기</button>`;
 }

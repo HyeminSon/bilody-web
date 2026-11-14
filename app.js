@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.7";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.7";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.7";
-import { GUIDE } from "./guide.js?v=0.8.7";
-import { Player } from "./audio.js?v=0.8.7";
-import { Chat } from "./rt.js?v=0.8.7";
-import * as story from "./story.js?v=0.8.7";
-import * as push from "./push.js?v=0.8.7";
-import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.7";
+import * as api from "./api.js?v=0.8.8";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.8";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.8";
+import { GUIDE } from "./guide.js?v=0.8.8";
+import { Player } from "./audio.js?v=0.8.8";
+import { Chat } from "./rt.js?v=0.8.8";
+import * as story from "./story.js?v=0.8.8";
+import * as push from "./push.js?v=0.8.8";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.8";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -630,6 +630,20 @@ function renderDialog() {
         <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>`).join("")}</div>
       <div class="row end"><button class="link" data-act="closeDialog">닫기</button><button class="link" data-act="credits">그림 출처</button></div>`);
   }
+  // 11/14 실장님: 9단계 모두 넣어 두기. 단계는 CEFR를 참고한 bilody 내부 단계(인증 아님)
+  function lessonPicker(d, lv, done) {
+    const L = d.lib.levels ?? {}; const info = L[lv] ?? {};
+    const tabs = `<div class="lv-tabs">${Object.keys(L).map((k) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}" aria-label="${k[1]}단계 ${esc(L[k].name_ko)}">${k[1]}</button>`).join("")}</div>
+      <p class="lv-name"><b>${lv[1]}단계 · ${esc(info.name_ko ?? "")}</b> <span class="muted tiny">${esc(info.cefr ?? "")} 참고${info.kind === "opinion_task" ? " · 의견 과제" : info.kind === "talk_topics" ? " · 교재 없이 대화 주제" : ""}</span></p>`;
+    const item = (act, v, title, sub, img, check) => `<button class="lesson-item" data-act="${act}" data-v="${esc(v)}">${img ? `<img src="${img}" alt="">` : `<span class="lesson-noimg">${I(act === "lessonPick" ? "menu_book" : "forum")}</span>`}<span class="grow"><b>${esc(title)}</b><span class="muted small">${esc(sub)}</span></span>${check ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`;
+    let list = "";
+    if (info.kind === "opinion_task") list = d.lib.tasks.map((t) => item("lessonPick", `task:${t.id}`, t.title_ko, t.claim_en, null, false)).join("");
+    else if (info.kind === "talk_topics") list = (d.lib.topics[lv] ?? []).map((t) => item("lessonPick", `topic:${t.id}`, t.title_ko, t.opener_en, null, false)).join("");
+    else list = d.lib.lessons.filter((l) => l.level === lv).map((l) => item("lessonPick", l.id, l.title_ko, l.title_en, l.img, done.has(l.id))).join("");
+    const note = info.kind === "opinion_task" ? `<p class="muted tiny">토리가 반대편·같은 편·그냥 이야기 중 고른 방식으로 이야기해요. 이 연습은 기록·기억에 남기지 않아요.</p>`
+      : info.kind === "talk_topics" ? `<p class="muted tiny">고르면 토리가 이 주제로 대화를 시작해요. 이번 통화가 끝날 때까지 기록·기억에 남기지 않아요.</p>` : "";
+    return tabs + note + `<div class="lesson-list">${list}</div>`;
+  }
   if (d.kind === "lessons") {
     const done = new Set(pref.get("lessonDone", []));
     const lv = d.level;
@@ -637,9 +651,7 @@ function renderDialog() {
     return box(`<h2>표현 익히기</h2>
     <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "이어서" : "처음부터"}: ${esc(rb?.title_ko ?? "")}</button>
     <p class="muted tiny center">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "1과부터 차례대로 해요."}</p>
-    ${d.list ? `<div class="seg">${[["L1", "쉬움"], ["L2", "보통"], ["L3", "도전"]].map(([k, l]) => `<button class="${lv === k ? "on" : ""}" data-act="lessonLevel" data-v="${k}">${l}</button>`).join("")}</div>
-    <div class="lesson-list">${d.lib.lessons.filter((l) => l.level === lv).map((l) => `<button class="lesson-item" data-act="lessonPick" data-v="${l.id}">
-      <img src="lessons/img/${l.id}.webp" alt=""><span class="grow"><b>${esc(l.title_ko)}</b><span class="muted small">${esc(l.title_en)}</span></span>${done.has(l.id) ? I("check_circle", "accent") : I("chevron_right", "muted")}</button>`).join("")}</div>` : `<button class="link" data-act="lessonList">다른 과 고르기</button>`}
+    ${d.list ? lessonPicker(d, lv, done) : `<button class="link" data-act="lessonList">다른 과·단계 고르기</button>`}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
@@ -739,7 +751,9 @@ app.addEventListener("click", async (e) => {
     case "lessonOpen": { if (S.lesson?.paused) { S.lesson.resume(); break; } const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
     case "lessonList": if (S.dialog?.kind === "lessons") { S.dialog.list = true; render(); } break;
     case "lessonLevel": if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
-    case "lessonPick": S.dialog = null; render(); S.lesson?.startNow(v); break;
+    case "lessonPick": S.dialog = null; render();
+      if (v.startsWith("task:")) S.lesson?.startTask(v.slice(5)); else if (v.startsWith("topic:")) S.lesson?.startTopic(v.slice(6)); else S.lesson?.startNow(v);
+      break;
     case "lessonBtn": S.lesson?.button(v); break;
     case "lessonInfo": toast(S.lesson?.lesson?.credit_ko ?? "bilody가 만든 대화예요"); break;
     case "send": { const i = $("#say"); if (!i.value.trim()) break; S.chat?.sendText(i.value); i.value = ""; el.disabled = true; break; }

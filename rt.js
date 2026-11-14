@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.7";
-import { PRESET } from "./config.js?v=0.8.7";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.7";
+import * as api from "./api.js?v=0.8.8";
+import { PRESET } from "./config.js?v=0.8.8";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.8";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -479,7 +479,7 @@ export class Chat {
   }
 
   persist(role, text) {
-    if (!this.sessionId || !this.saveTranscripts) return;
+    if (!this.sessionId || !this.saveTranscripts || this.privateTopic) return;   // 7~9단계 연습 중엔 기록·기억에 남기지 않음(실장님 결정 3)
     const n = this.seq++;
     api.saveTurn(this.sessionId, n, role, text).catch(() => this.log("save_failed", {}));
   }
@@ -537,6 +537,13 @@ export class Chat {
     if (respond && this.pc && !this.closed) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
     this.log("lesson_hold", { on: false, deleted: deleteItems.length });
   }
+  /** 8~9단계 대화 주제: 친구에게 주제·대화 방식을 건네고 바로 말을 꺼내게 한다. */
+  topicNote(note) {
+    if (!this.pc) return;
+    clearTimeout(this.idleTimer); this.interruptReply(); this.send({ type: "response.cancel" });
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
+    this.send({ type: "response.create" }); this.set({ state: "thinking", card: null });
+  }
   /** 교재: 토리가 말하는 동안 마이크를 끄고, 학습자 차례에 켠다. */
   setLessonMic(on) {
     this.lessonMicOn = !!on;
@@ -584,7 +591,7 @@ export class Chat {
     if (this.resp) { this.epoch++; this.finishReply(this.resp, false); this.resp = null; }
     clearTimeout(this.idleTimer); clearTimeout(this.softTimer); this.soft = false;
     this.flushMeter(); clearInterval(this.meter);
-    this.lessonHold = false; this.onStopped?.(reason);
+    this.lessonHold = false; this.privateTopic = false; this.onStopped?.(reason);
     this.teardown();
     this.set({ state: "stopped", micOn: false, canRestart: true, speech: false, notice });
     this.log("stop", { reason });

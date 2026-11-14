@@ -345,3 +345,12 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .lesson-img { max-height: 170px; } .lesson-img.small { height: 96px; }
 .ln { padding: 5px 10px; font-size: 14.5px; }
 .lesson-tip { margin: 6px 0 0; text-align: center; }
+
+/* 11/14 표현 익히기 9단계 고르기 */
+.lv-tabs { display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; background: var(--lilac); border-radius: 16px; padding: 4px; }
+.lv-tabs button { min-height: 44px; border-radius: 12px; color: var(--muted); font-weight: 700; font-size: 15px; }
+.lv-tabs button.on { background: #fff; color: var(--purple); box-shadow: 0 1px 4px rgba(139, 92, 246, .15); }
+.lv-name { margin: 8px 2px 4px; } .lv-name b { font-size: 15px; }
+.lesson-noimg { width: 72px; height: 48px; border-radius: 10px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--lilac); color: var(--purple); }
+.lesson-list { max-height: 46vh; overflow-y: auto; }
+.lesson-ask .row.wrap { flex-wrap: wrap; } .lesson-ask .row.wrap .pill { flex: 1 1 40%; }
