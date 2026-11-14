@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.8";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.8";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.8";
-import { GUIDE } from "./guide.js?v=0.8.8";
-import { Player } from "./audio.js?v=0.8.8";
-import { Chat } from "./rt.js?v=0.8.8";
-import * as story from "./story.js?v=0.8.8";
-import * as push from "./push.js?v=0.8.8";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.8";
+import * as api from "./api.js?v=0.8.9";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.9";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.9";
+import { GUIDE } from "./guide.js?v=0.8.9";
+import { Player } from "./audio.js?v=0.8.9";
+import { Chat } from "./rt.js?v=0.8.9";
+import * as story from "./story.js?v=0.8.9";
+import * as push from "./push.js?v=0.8.9";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.9";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -188,8 +188,9 @@ function renderChat() {
     <div id="lines" class="lines"></div>
     ${guide}
     <p id="notice" class="error"></p>
-    <div class="controls" id="controls">${chat ? "" : `
+    <div class="controls ${!chat && S.profile?.is_staff === true ? "home3" : ""}" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
+      ${S.profile?.is_staff === true ? `<button class="pill secondary grow" data-act="homeLesson">${I("menu_book")}표현 익히기</button>` : ""}
       ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
       <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
@@ -649,9 +650,10 @@ function renderDialog() {
     const lv = d.level;
     const rb = d.lib.byId[d.resume]; const started = !!pref.get("lessonLast", null);
     return box(`<h2>표현 익히기</h2>
-    <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "이어서" : "처음부터"}: ${esc(rb?.title_ko ?? "")}</button>
-    <p class="muted tiny center">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "1과부터 차례대로 해요."}</p>
-    ${d.list ? lessonPicker(d, lv, done) : `<button class="link" data-act="lessonList">다른 과·단계 고르기</button>`}
+    <button class="pill dark lesson-resume" data-act="lessonPick" data-v="${d.resume}">${I("play_arrow")}${started ? "차례대로 이어서" : "1과부터 차례대로"}: ${esc(rb?.title_ko ?? "")}</button>
+    <p class="muted tiny center">${started ? "마지막으로 한 곳에서 이어 가요. 끝낸 과면 다음 과로 가요." : "처음이라면 여기서 시작해요."}</p>
+    <p class="lesson-pick-h"><b>익히고 싶은 표현 고르기</b></p>
+    ${lessonPicker(d, lv, done)}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
@@ -751,7 +753,9 @@ app.addEventListener("click", async (e) => {
     case "lessonOpen": { if (S.lesson?.paused) { S.lesson.resume(); break; } const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
     case "lessonList": if (S.dialog?.kind === "lessons") { S.dialog.list = true; render(); } break;
     case "lessonLevel": if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
+    case "homeLesson": { const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false, fromHome: true }; render(); break; }
     case "lessonPick": S.dialog = null; render();
+      if (!S.chat) startChat();   // 첫 화면 ‘표현 익히기’: 고르면 대화를 연결하고, 토리 인사 뒤 그 과를 시작(11/14 실장님)
       if (v.startsWith("task:")) S.lesson?.startTask(v.slice(5)); else if (v.startsWith("topic:")) S.lesson?.startTopic(v.slice(6)); else S.lesson?.startNow(v);
       break;
     case "lessonBtn": S.lesson?.button(v); break;

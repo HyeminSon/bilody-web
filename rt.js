@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.8";
-import { PRESET } from "./config.js?v=0.8.8";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.8";
+import * as api from "./api.js?v=0.8.9";
+import { PRESET } from "./config.js?v=0.8.9";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.9";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
