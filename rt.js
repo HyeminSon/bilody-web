@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.11";
-import { PRESET } from "./config.js?v=0.8.11";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.11";
+import * as api from "./api.js?v=0.8.12";
+import { PRESET } from "./config.js?v=0.8.12";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.12";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -26,7 +26,7 @@ export class Chat {
     this.tSpeechStopped = 0; this.lastSpeechStart = 0; this.startedDuringPlayback = false;
     this.maxMsg = 65536; this.limitReached = false; this.cameraHold = false;
     this.slots = 0; this.waiters = [];
-    this.lessonItems = new Set(); this.lessonMicOn = false;
+    this.lessonItems = new Map(); this.holdSeq = 0; this.lessonMicOn = false;   // 말 id → 그 말을 시작한 수업 번호(수업 밖이면 -1)
   }
 
   set(patch) { Object.assign(this.ui, patch); this.onChange?.(this.ui); }
@@ -128,7 +128,7 @@ export class Chat {
     switch (ev.type) {
       case "input_audio_buffer.speech_started": {
         this.lastSpeechStart = Date.now();
-        if (this.lessonHold && ev.item_id) this.lessonItems.add(ev.item_id);   // 11/14 헤니 검토: 수업 중에 시작한 말은 늦게 와도 수업 말
+        if (ev.item_id && !this.lessonItems.has(ev.item_id)) this.lessonItems.set(ev.item_id, this.lessonHold ? this.holdSeq : -1);   // 11/14 헤니 검토: 어느 수업(또는 수업 밖)에서 시작한 말인지
         clearTimeout(this.idleTimer); this.onSpeechStart?.();
         this.startedDuringPlayback = this.player.isPlaying || !!this.story?.isNarrating();
         if (this.story) { this.story.onSpeechStart(); this.interruptReply(); }
@@ -138,7 +138,7 @@ export class Chat {
         break;
       }
       case "input_audio_buffer.committed": {
-        if (this.lessonHold && ev.item_id) this.lessonItems.add(ev.item_id);
+        if (ev.item_id && !this.lessonItems.has(ev.item_id)) this.lessonItems.set(ev.item_id, this.lessonHold ? this.holdSeq : -1);
         break;
       }
       case "input_audio_buffer.speech_stopped": {
@@ -165,10 +165,13 @@ export class Chat {
           return;
         }
         this.startedDuringPlayback = false;
-        if (t && this.lessonHook?.(t, ev.item_id)) break;   // 교재 중: 기록·자막에 남기지 않고 교재가 처리(11/14)
-        if (ev.item_id && this.lessonItems.has(ev.item_id)) {
-          // 수업 중에 한 말인데 수업이 끝난 뒤 전사가 도착: 기록·자막·기억에 넣지 않고 서버 문맥에서도 지운다
-          this.lessonItems.delete(ev.item_id);
+        // 11/14 헤니 재검토 1-2: 지금 수업에서 시작한 말만 지금 수업의 답. 앞 수업에서 한 말이 늦게 오면 답으로 쓰지 않는다
+        const hold = ev.item_id ? this.lessonItems.get(ev.item_id) : undefined;
+        if (ev.item_id) this.lessonItems.delete(ev.item_id);
+        const thisLesson = this.lessonHold && (hold === undefined || hold === this.holdSeq);
+        if (t && thisLesson && this.lessonHook?.(t, ev.item_id)) break;   // 교재 중: 기록·자막에 남기지 않고 교재가 처리(11/14)
+        if (hold !== undefined && hold >= 0) {
+          // 끝난(또는 앞) 수업 중에 한 말의 전사가 늦게 도착: 기록·자막·기억에 넣지 않고 서버 문맥에서도 지운다
           this.send({ type: "conversation.item.delete", item_id: ev.item_id });
           this.log("lesson_late_transcript", {});
           break;
@@ -520,7 +523,7 @@ export class Chat {
   // ---------------- 교재로 배우기(11/14, 운영자 계정만) ----------------
   /** 교재 시작: 친구 AI의 대답을 막고(만들어지면 바로 취소), 하던 말·카드·쉬는 시간 타이머를 멈춘다. */
   beginLessonHold() {
-    this.lessonHold = true;
+    this.lessonHold = true; this.holdSeq++;
     clearTimeout(this.idleTimer);
     this.interruptReply(); this.send({ type: "response.cancel" });
     this.player.stop();

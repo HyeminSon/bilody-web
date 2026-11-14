@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.11";
-import { CHARACTERS } from "./characters.js?v=0.8.11";
+import * as api from "./api.js?v=0.8.12";
+import { CHARACTERS } from "./characters.js?v=0.8.12";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
@@ -58,7 +58,7 @@ const RANK = { ok: 3, form_only: 2, partial: 1 };
 let lib = null;
 export async function loadLib() {
   if (lib) return lib;
-  const idx = await fetch("lessons/index.json?v=0.8.11").then((r) => r.json());
+  const idx = await fetch("lessons/index.json?v=0.8.12").then((r) => r.json());
   lib = { ...idx, byId: Object.fromEntries(idx.lessons.map((l) => [l.id, l])), cache: {} };
   return lib;
 }
@@ -66,14 +66,14 @@ let upper = null;
 /** 7단계 의견 과제·8~9단계 대화 주제(11/14 실장님: 모든 단계를 넣어 두기). */
 export async function loadUpper() {
   if (upper) return upper;
-  const [t, p] = await Promise.all([fetch("lessons/L7.json?v=0.8.11").then((r) => r.json()), fetch("lessons/L8L9.json?v=0.8.11").then((r) => r.json())]);
+  const [t, p] = await Promise.all([fetch("lessons/L7.json?v=0.8.12").then((r) => r.json()), fetch("lessons/L8L9.json?v=0.8.12").then((r) => r.json())]);
   upper = { tasks: t, topics: p, taskById: Object.fromEntries(t.tasks.map((x) => [x.id, x])), topicById: Object.fromEntries(Object.values(p.topics).flat().map((x) => [x.id, x])) };
   return upper;
 }
 async function loadLesson(id) {
   const l = await loadLib();
   if (!l.cache[id]) {
-    const les = await fetch(`lessons/${id}.json?v=0.8.11`).then((r) => r.json());
+    const les = await fetch(`lessons/${id}.json?v=0.8.12`).then((r) => r.json());
     les.scene = les.scene.map((x) => ({ ...x, who: x.who === "tori" ? "tori" : les.partner }));   // 상대 줄은 상대 캐릭터 id(목소리)
     l.cache[id] = les;
   }
@@ -429,8 +429,11 @@ export class LessonManager {
 
   // ---------- 8~9단계 대화 주제(교재 없음, 친구에게 주제와 대화 방식을 건넴) ----------
   async startTopic(id) {
-    const up = await loadUpper(); const tp = up.topicById[id]; if (!tp) return;
-    await this.friendIdle(); if (!this.chat.pc) return;
+    // 11/14 헤니 재검토 1-3: 불러오는 사이 멈춤·다시 연결·다른 수업 시작이 있었으면 아무것도 보내지 않는다
+    const g = (this.topicGen = (this.topicGen ?? 0) + 1); const conn = this.chat.connGen;
+    const ok = () => g === this.topicGen && conn === this.chat.connGen && !!this.chat.pc && !this.chat.closed && !this.active;
+    const up = await loadUpper(); const tp = up.topicById[id]; if (!tp || !ok()) return;
+    await this.friendIdle(); if (!ok()) return;
     const lv = id.slice(0, 2); const st = up.topics.style[lv]; const both = up.topics.style.both;
     this.chat.privateTopic = true;
     this.log("topic_start", { id });
@@ -497,10 +500,11 @@ export class LessonManager {
   /** 대화가 멈추거나 끊김: 마지막으로 끝난 단계까지만 기록하고 닫는다(재접속 뒤 자동으로 다시 열지 않음). */
   abort() {
     clearTimeout(this.silenceTimer); clearTimeout(this.dismissTimer);
+    this.topicGen = (this.topicGen ?? 0) + 1;   // 불러오던 대화 주제도 취소
     if (!this.active) return;
     if (this.paused) { this.paused = false; const pw = this.pauseWaiter; this.pauseWaiter = null; pw?.reject(STOP); }
     this.log("lesson_stop", { reason: "call_stopped", results: this.results ?? {} });
-    this.active = false; this.gen++; this.items = [];
+    this.active = false; this.gen++; this.items = []; this.sideSeq = (this.sideSeq ?? 0) + 1; if (this.sidePlaying) this.player.stop();
     const w = this.waiter; this.waiter = null; if (w) w.reject(STOP);
     this.chat.lessonHold = false;
     this.set(null);
@@ -703,6 +707,8 @@ export class LessonManager {
   /** side=true: 다시 듣기·자동 힌트(곁말). 주 진행 말이 나오면 곁말을 끊고, 주 말이 나오는 중이면 곁말은 하지 않는다. */
   async speak(text, g, who = "tori", side = false) {
     if (g !== this.gen) throw STOP;
+    // 11/14 헤니 재검토 1-1: 곁말은 늘 하나만. 새 곁말이 오면 앞 곁말 차례는 무효(sideSeq), 재생 직전에 앞 곁말 소리를 끊는다
+    const my = side ? (this.sideSeq = (this.sideSeq ?? 0) + 1) : 0;
     if (this.chat.limitReached) { this.chat.afterFriendFinished(); throw STOP; }   // 오늘 한도: 수업 중에도 바로 멈춤(헤니 검토 8)
     if (side && this.mainPlaying) return;
     if (!side && this.sidePlaying) this.player.stop();
@@ -712,11 +718,12 @@ export class LessonManager {
     let s;
     try { s = await this.audio(text, who, g); } catch { if (g === this.gen && !side) { this.set({ notice: "목소리를 만들지 못했어요. 글로 보고 이어 가요." }); await sleep(1200); } }
     if (g !== this.gen) throw STOP;
-    if (side && (this.mainPlaying || !this.waiter)) return;
+    if (side && (this.mainPlaying || !this.waiter || my !== this.sideSeq)) return;
     if (s) {
       this.chat.noteHeard(text);
-      if (side) this.sidePlaying = true; else this.mainPlaying = true;
-      try { await this.player.play(s.pcm, s.rate); } finally { if (side) this.sidePlaying = false; else this.mainPlaying = false; }
+      if (side && this.sidePlaying) this.player.stop();
+      if (side) this.sidePlaying = my; else this.mainPlaying = true;
+      try { await this.player.play(s.pcm, s.rate); } finally { if (side) { if (this.sidePlaying === my) this.sidePlaying = false; } else this.mainPlaying = false; }
     }
     if (g !== this.gen) throw STOP;
     if (this.waiter) this.chat.setLessonMic(true);   // 기다리는 중에 들려준 도움말이면 마이크를 다시 연다
