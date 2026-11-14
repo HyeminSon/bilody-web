@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.6";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.7";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
