@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.5";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.5";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.5";
-import { GUIDE } from "./guide.js?v=0.8.5";
-import { Player } from "./audio.js?v=0.8.5";
-import { Chat } from "./rt.js?v=0.8.5";
-import * as story from "./story.js?v=0.8.5";
-import * as push from "./push.js?v=0.8.5";
-import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.6";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.6";
+import { GUIDE } from "./guide.js?v=0.8.6";
+import { Player } from "./audio.js?v=0.8.6";
+import { Chat } from "./rt.js?v=0.8.6";
+import * as story from "./story.js?v=0.8.6";
+import * as push from "./push.js?v=0.8.6";
+import { LessonManager, loadLib as loadLessons, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.6";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -746,7 +746,7 @@ app.addEventListener("click", async (e) => {
     case "dismissCard": S.chat?.dismissCard(); break;
     case "dismissWebPicture": S.chat?.dismissWebPicture(); break;
     case "clearPhoto": S.chat?.clearPhoto(); break;
-    case "photo": S.dialog = { kind: "photoPick" }; render(); break;
+    case "photo": if (S.lesson?.active && !S.lesson.paused) { toast("표현 익히기 중에는 사진을 보낼 수 없어요. 끝내거나 잠시 멈춘 뒤 보내 주세요."); break; } S.dialog = { kind: "photoPick" }; render(); break;
     case "camera": case "gallery": { S.dialog = null; render(); S.chat?.holdForCamera(true); $(act === "camera" ? "#camera" : "#gallery").click(); break; }
     case "openSession": S.openSession = v; await work(async () => { S.turns = await api.turns(v); }); break;
     case "closeSession": S.turns = null; S.openSession = null; render(); break;
@@ -845,7 +845,14 @@ app.addEventListener("change", async (e) => {
     const f = t.files?.[0]; t.value = "";
     S.chat?.holdForCamera(false);
     if (!f || !S.chat) return;
-    try { const data = await preparePhoto(f, S.chat.maxMsg); S.chat.sendImage(data, data); } catch { toast("사진을 열지 못했어요."); }
+    // 11/14 헤니 검토 5: 사진을 줄이는 사이 대화가 바뀌거나(다시 연결·나가기) 수업이 시작되면 보내지 않는다
+    const chat = S.chat, conn = chat.connGen;
+    try {
+      const data = await preparePhoto(f, chat.maxMsg);
+      if (S.chat !== chat || chat.connGen !== conn || !chat.pc) return toast("대화가 바뀌어서 사진을 보내지 않았어요.");
+      if (S.lesson?.active && !S.lesson.paused) return toast("표현 익히기 중에는 사진을 보낼 수 없어요.");
+      chat.sendImage(data, data);
+    } catch { toast("사진을 열지 못했어요."); }
   }
   void p;
 });

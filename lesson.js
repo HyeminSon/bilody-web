@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.5";
-import { CHARACTERS } from "./characters.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { CHARACTERS } from "./characters.js?v=0.8.6";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
@@ -14,6 +14,9 @@ const NEGATIVE = /\b(no|not|never|cant|cannot|dont|busy|bad|terrible|boring|sorr
 const STOP = Symbol("stop");
 const RESUME = /(let'?s (continue|go back|keep going|do it again|practice)|continue( the)? (practice|lesson|scene)|back to (the )?(practice|lesson|scene)|where were we|아까 (하던|그거)|다시 (하자|해|이어)|이어서 (하자|해)|계속 (하자|해)|표현 (익히기|연습))/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// 11/14 헤니 검토 7: 분명한 위기 표현은 수업을 바로 멈추고 친구(안전 규칙)에게 넘긴다. 키워드만으로 안전을 보장하지는 않음.
+const CRISIS = /\b(kill myself|end my life|want to die|wanna die|suicide|hurt myself|self harm|cut myself)\b|죽고 싶|죽을래|자살|자해|살기 싫|없어지고 싶/i;
+const escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // ---------------- 판정(교재 공통 v2와 같은 규칙) ----------------
 export function normalize(s) {
@@ -55,14 +58,14 @@ const RANK = { ok: 3, form_only: 2, partial: 1 };
 let lib = null;
 export async function loadLib() {
   if (lib) return lib;
-  const idx = await fetch("lessons/index.json?v=0.8.4").then((r) => r.json());
+  const idx = await fetch("lessons/index.json?v=0.8.6").then((r) => r.json());
   lib = { ...idx, byId: Object.fromEntries(idx.lessons.map((l) => [l.id, l])), cache: {} };
   return lib;
 }
 async function loadLesson(id) {
   const l = await loadLib();
   if (!l.cache[id]) {
-    const les = await fetch(`lessons/${id}.json?v=0.8.4`).then((r) => r.json());
+    const les = await fetch(`lessons/${id}.json?v=0.8.6`).then((r) => r.json());
     les.scene = les.scene.map((x) => ({ ...x, who: x.who === "tori" ? "tori" : les.partner }));   // 상대 줄은 상대 캐릭터 id(목소리)
     l.cache[id] = les;
   }
@@ -139,20 +142,22 @@ export class LessonManager {
   async offer(id, why) {
     if (this.active || this.offered) return;
     this.offered = true; this.active = true; this.items = [];
-    const les = await loadLesson(id); this.lesson = les;
+    const g = ++this.gen; const conn = this.chat.connGen;
+    const les = await loadLesson(id);
+    if (!this.alive(g, conn)) return;   // 불러오는 사이 대화가 멈췄거나 바뀜(11/14 헤니 검토 3)
+    this.lesson = les;
     this.chat.beginLessonHold();
     this.log("lesson_offer", { why });
     this.set({ phase: "offer", title: les.title_ko, offer: les.offer_ko, img: null });
-    const g = ++this.gen;
     try {
       await this.speak("Want to learn a new expression today?", g);
       const a = await this.wait(g, { kind: "offer" });
       if (a.type === "yes") { this.log("lesson_offer_answer", { a: "yes" }); return await this.run(les, g, "Great!"); }
       this.declined = true;
       this.log("lesson_offer_answer", { a: a.type });
-      if (a.type === "other") return this.finish({ say: null, keepLast: true });
+      if (a.type === "other") return this.finish({ say: null, keepLast: true, g });
       await this.speak("Okay! Let’s keep talking.", g);
-      this.finish({ say: null, note: "Note from the app: the learner said no to a short practice. Do not mention it. Keep talking about the same topic with one short, easy question." });
+      this.finish({ say: null, g, note: "Note from the app: the learner said no to a short practice. Do not mention it. Keep talking about the same topic with one short, easy question." });
     } catch (e) { if (e !== STOP) throw e; }
   }
 
@@ -160,14 +165,19 @@ export class LessonManager {
   async startNow(id) {
     if (this.active) return;
     this.offered = true; this.active = true; this.items = [];
-    const les = await loadLesson(id); this.lesson = les;
+    const g = ++this.gen; const conn = this.chat.connGen;
+    const les = await loadLesson(id);
+    if (!this.alive(g, conn)) return;
+    this.lesson = les;
     this.set({ phase: "starting", title: les.title_ko });
     await this.friendIdle();   // 친구 인사·대답을 문장 중간에 끊지 않는다
-    if (!this.active) return;
+    if (!this.alive(g, conn)) return;
     this.chat.beginLessonHold();
     this.log("lesson_start", { via: "button" });
-    try { await this.run(les, ++this.gen, "Okay!"); } catch (e) { if (e !== STOP) throw e; }
+    try { await this.run(les, g, "Okay!"); } catch (e) { if (e !== STOP) throw e; }
   }
+  /** 이 세대·이 연결의 수업이 아직 살아 있는지. 아니면 늦게 끝난 작업은 아무것도 바꾸지 않는다. */
+  alive(g, conn) { return g === this.gen && this.active && conn === this.chat.connGen && !!this.chat.pc && !this.chat.closed; }
 
   // ---------- 본 진행 ----------
   async run(les, g, opener = "Okay!") {
@@ -179,7 +189,7 @@ export class LessonManager {
     // 11/14 실장님: 친구처럼 짧게 운을 떼고 바로 장면(말할 기회를 늘리려고 시작 말은 한 문장)
     const intro = `${opener} Let’s practice “${les.title_en}” together. Listen!`;
     this.set({ phase: "lesson", title: les.title_ko, step: "장면 듣기", img: les.img, lines, hint: null, blank: null, choices: null, role: false, notice: null, timeSkip: les.time_skip_before ?? null, ask: null, said: null });
-    this.prefetch([[intro, "tori"], ...les.scene.map((l) => [l.en, l.who])]);
+    this.prefetch([[intro, "tori"], ...les.scene.map((l) => [l.en, l.who])], g);
     await this.speak(intro, g);
     // 1. 장면 듣기: 토리와 상대가 각자 목소리로
     for (let i = 0; i < lines.length; i++) { this.mark(i, "now"); await this.speak(les.scene[i].en, g, les.scene[i].who); this.mark(i, "done"); }
@@ -204,7 +214,7 @@ export class LessonManager {
     this.set({ step: "토리에게 묻기", notice: null, hint: null, blank: null });
     for (const t of les.ask_me) await this.turn(les, t, g, "transfer");
     // 5. 다시 대화로
-    this.complete(g);
+    await this.complete(g);
   }
 
   async readRound(les, g, learnerSide) {
@@ -224,6 +234,8 @@ export class LessonManager {
         const a = await this.wait(g, { kind: "read", line: l.en });
         if (a.type === "skip") { res = "skipped"; break; }
         this.set({ said: a.text });   // 들린 말을 보여 줘서 토리가 들었는지 알 수 있게
+        const lineHit = chk && variants(normalize(a.text)).some((v) => chk.line_accept.includes(v));
+        if (!lineHit && this.sensitive(a.text) && !this.sensitive(l.en)) { if (expr) this.record(expr.id, "skipped", "reading", false); return this.sensitiveFlow(g); }
         if (this.offTopic(a.text, l.en)) { await this.pause(a, g); this.mark(i, "now"); await this.speak("Your turn.", g); continue; }
         if (!chk) { res = "ok"; break; }
         const vs = variants(normalize(a.text));
@@ -239,7 +251,7 @@ export class LessonManager {
         await this.speak(`Listen: “${l.en}”`, g);
         this.set({ said: null });
       }
-      if (expr) this.record(expr.id, res, "reading", help || tries > 0);
+      if (expr) this.record(expr.id, res, "reading", help || tries > 0 || this.helpUsed);
       this.mark(i, "done");
       if (res === "ok" && chk && praised++ % 2 === 0) await this.speak("Yes!", g);
     }
@@ -268,7 +280,7 @@ export class LessonManager {
       for (const e of exprs) { const r = judge(e, a.text); if ((RANK[r.result] ?? 0) > (RANK[best.result] ?? 0)) { best = r; bestExpr = e; } }
       if (best.result === "ok" || best.result === "form_only") {
         if (best.x || bestExpr.slot || bestExpr.pattern?.includes("<x>")) this.setSlot(les, a.text, best.x);
-        this.record(bestExpr.id, best.result, kind, tries > 0);
+        this.record(bestExpr.id, best.result, kind, tries > 0 || this.helpUsed);
         if (t.expect_slot && this.x && !new RegExp(`^(${t.expect_slot})$`).test(normalize(this.x))) {
           return this.reply(les, t, g, { text: a.text, result: best.result, matched: bestExpr.id, mismatch: true });
         }
@@ -277,11 +289,16 @@ export class LessonManager {
       }
       if (best.result === "partial") {
         const known = this.setSlot(les, a.text, null);
-        this.record(bestExpr.id, "partial", kind, tries > 0);
+        this.record(bestExpr.id, "partial", kind, tries > 0 || this.helpUsed);
         if (t.model && known) await this.speak(`Okay! You can say, “${this.fill(t.model, true)}”`, g);
         return this.reply(les, t, g, { text: a.text, result: "partial", matched: bestExpr.id, unknown: !known });
       }
-      // 정답과 상관없는 다른 이야기(질문·한국어 문장·긴 말): 잠시 멈추고 평소 대화로(11/14 실장님)
+      // 거절(Sorry, I can’t.): 그 차례에 거절 분기가 있으면 대답으로 받아 줌(11/14 헤니 검토 9)
+      if ((t.branches ?? []).some((b) => b.when === "declined") && NEGATIVE.test(normalize(a.text))) {
+        this.record(exprs[0]?.id, "declined", kind, tries > 0 || this.helpUsed);
+        return this.reply(les, t, g, { text: a.text, result: null, matched: null, declined: true });
+      }
+      // 정답과 상관없는 다른 이야기(질문·한국어 문장): 잠시 멈추고 평소 대화로(11/14 실장님)
       if (this.offTopic(a.text, this.target(les, t, exprs[0]))) {
         await this.pause(a, g);
         if (t.en) await this.speak(this.fill(t.en), g);
@@ -290,7 +307,7 @@ export class LessonManager {
       // 판정 안 됨: 한 번 들려주고, 두 번째는 받아 주고 넘어감
       tries++;
       const target = this.target(les, t, exprs[0]);
-      if (tries === 1) { this.set({ showHelp: true }); await this.speak(`Listen: “${target}”`, g); continue; }
+      if (tries === 1) { this.useHelp(); this.set({ showHelp: true }); await this.speak(`Listen: “${target}”`, g); continue; }
       this.record(exprs[0]?.id, "tried", kind, true);
       await this.speak(`Good try! “${target}”`, g);
       return this.reply(les, t, g, { text: a.text, result: null, matched: null });
@@ -307,6 +324,7 @@ export class LessonManager {
       if (w === "negative") return NEGATIVE.test(n) || NEGATIVE.test(a.text);
       if (w === "plural") return (les.plural_words ?? []).includes(x);
       if (w === "unknown_slot") return !!a.unknown;
+      if (w === "declined") return !!a.declined;
       if (w === "slot_mismatch") return !!a.mismatch;
       const [k, v = ""] = w.split(":"); const opts = v.split("|");
       if (k === "matched") return opts.includes(a.matched);
@@ -332,16 +350,19 @@ export class LessonManager {
     this.set({ ask: { text: "계속할까요, 그냥 이야기할까요?", yes: "계속하기", no: "그냥 대화하기" }, hint: null, blank: null });
     const a = await this.wait(g, { kind: "yesno" });
     this.set({ ask: null });
-    if (a.type !== "yes") { this.finish({ say: "Okay.", reason: "sensitive" }); throw STOP; }
+    if (a.type !== "yes") { this.finish({ say: "Okay.", reason: "sensitive", g }); throw STOP; }
   }
 
   // ---------- 다음 방문 떠올리기 ----------
   async recall(id) {
     if (this.active) return;
     this.active = true; this.items = [];
-    const les = await loadLesson(id); this.lesson = les;
+    const g = ++this.gen; const conn = this.chat.connGen;
+    const les = await loadLesson(id);
+    if (!this.alive(g, conn)) return;
+    this.lesson = les;
     this.chat.beginLessonHold();
-    const g = ++this.gen; this.results = {}; this.t0 = Date.now();
+    this.results = {}; this.t0 = Date.now();
     const expr = les.expressions.find((e) => e.id === les.recall.expect);
     this.set({ phase: "recall", title: les.title_ko, step: "지난번 표현 떠올리기", img: les.img, lines: null, hint: null, blank: null, notice: null, ask: null });
     const hintTimer = setTimeout(() => this.set({ hint: les.recall.hint_ko }), 6000);
@@ -349,12 +370,13 @@ export class LessonManager {
       await this.speak(les.recall.voice, g);
       const a = await this.wait(g, { kind: "answer", target: expr.en });
       clearTimeout(hintTimer);
+      if (a.type !== "skip" && this.sensitive(a.text)) { this.store.set("lessonRecall", null); return this.finish({ say: "I’m sorry to hear that.", reason: "sensitive", g }); }
       const r = a.type === "skip" ? { result: "skipped" } : judge(expr, a.text);
       const withHint = !!this.ui?.hint;
       this.log("lesson_recall", { result: r.result ?? "none", hint: withHint });
       this.store.set("lessonRecall", null);
       await this.speak(r.result === "ok" ? "Yes! Great memory." : `Good try! “${this.target(les, { screen_hint_ko: les.recall.hint_ko }, expr)}”`, g);
-      this.finish({ say: null, note: "The learner just did a quick review of an expression. Continue the conversation naturally." });
+      this.finish({ say: null, note: "The learner just did a quick review of an expression. Continue the conversation naturally.", g });
     } catch (e) { clearTimeout(hintTimer); if (e !== STOP) throw e; }
   }
 
@@ -365,12 +387,14 @@ export class LessonManager {
     const done = new Set(this.done()); done.add(this.lesson.id); this.store.set("lessonDone", [...done]);
     this.store.set("lessonLast", { id: this.lesson.id, done: true, at: Date.now() });
     this.store.set("lessonRecall", { id: this.lesson.id, session: this.chat.sessionId, at: Date.now() });
-    this.finish({ say: this.hard ? "Thanks for practicing. Let’s just talk." : "That was fun! Let’s keep talking.", toast: "오늘 익힌 표현을 기록에 남겼어요", g });
+    return this.finish({ say: this.hard ? "Thanks for practicing. Let’s just talk." : "That was fun! Let’s keep talking.", toast: "오늘 익힌 표현을 기록에 남겼어요", g });
   }
 
   async finish({ say, toast, reason, keepLast = false, note, g }) {
-    const gen = g ?? this.gen;
+    const gen = g ?? this.gen; const conn = this.chat.connGen;
+    if (!this.alive(gen, conn)) return;
     if (say) { try { await this.speak(say, gen); } catch { /* 멈춤 */ } }
+    if (!this.alive(gen, conn)) return;   // 말하는 사이 멈춤·다른 끝내기가 먼저 됨: 마이크·문맥을 건드리지 않음(11/14 헤니 검토 3)
     const items = keepLast ? this.items.slice(0, -1) : this.items;
     this.items = []; this.active = false; this.waiter = null; this.gen++;
     this.chat.setLessonMic(true);
@@ -401,8 +425,22 @@ export class LessonManager {
     const w = this.waiter; this.waiter = null;
     this.gen++; this.player.stop();
     if (w) w.reject(STOP);
+    if (this.paused) { this.paused = false; const pw = this.pauseWaiter; this.pauseWaiter = null; pw?.reject(STOP); }
     this.log("lesson_stop", { reason: "user", results: this.results ?? {} });
     this.finish({ say: "Okay!", g: this.gen });
+  }
+  /** 위기 표현: 수업을 바로 닫고 그 말을 친구에게 그대로 넘긴다(지우지 않음). */
+  crisis(text, itemId) {
+    const w = this.waiter; this.waiter = null;
+    this.gen++; this.player.stop(); if (w) w.reject(STOP);
+    if (this.paused) { this.paused = false; const pw = this.pauseWaiter; this.pauseWaiter = null; pw?.reject(STOP); }
+    const del = this.items.filter((id) => id !== itemId); this.items = [];
+    this.active = false; this.waiter = null; this.gen++;
+    this.log("lesson_stop", { reason: "safety" });
+    this.set(null);
+    this.chat.setLessonMic(true);
+    this.chat.endLessonHold({ deleteItems: del, userText: itemId ? null : text, respond: true,
+      note: "Note from the app: the practice was stopped because the learner may have said something about being in danger or hurting themselves. Follow your safety rules first. Be warm and calm. Do not mention the practice." });
   }
 
   /** 친구(대화 AI)의 인사·대답이 끝날 때까지 기다린다(최대 8초). 연결 중이면 연결·인사가 끝날 때까지. */
@@ -427,24 +465,28 @@ export class LessonManager {
   // ---------- 잠시 멈춤·이어 하기(11/14 실장님) ----------
   /** 정답과 상관없는 다른 이야기인지: 질문, 한국어 문장, 목표 문장과 거의 안 겹치는 긴 영어. 짧게 틀린 답은 아님. */
   offTopic(text, target) {
+    // 11/14 헤니 검토 2: 겹치는 낱말이 적다는 것만으로는 다른 이야기로 보지 않는다(‘My name is Moa and I work in Busan’은 역할극 답).
+    // 다른 이야기로 보는 것: 한국어 문장, 또는 질문·끼어들기 말로 시작하고 목표 문장과 거의 안 겹치는 말.
     const t = String(text ?? "").trim();
     const hangul = (t.match(/[가-힣]/g) ?? []).length;
     if (hangul >= 6 && !Object.keys(this.lesson?.korean_map ?? {}).some((k) => t.includes(k))) return true;
-    const w = normalize(t).split(" ").filter(Boolean);
+    const n = normalize(t); const w = n.split(" ").filter(Boolean);
     const tw = new Set(normalize(target ?? "").split(" "));
     const overlap = w.filter((x) => tw.has(x)).length / Math.max(1, w.length);
-    if (/\?$/.test(t) && w.length >= 3 && overlap < 0.5) return true;
-    return w.length >= 5 && overlap < 0.3;
+    const asks = /\?$/.test(t) || /^(what|why|how|where|when|who|which|can you|could you|do you|did you|are you|is it|is there|would you|tell me)\b/.test(n);
+    const breaks = /^(by the way|wait|hold on|actually|excuse me|can i ask|let me ask|i have a question|one question)\b/.test(n);
+    return (asks || breaks) && w.length >= 3 && overlap < 0.5;
   }
   /** 멈춤: 카드를 작게 접고, 방금 말은 평소 대화로 넘겨 친구가 대답하게 한다. 이어 하기 전까지 여기서 기다림. */
   async pause(a, g) {
     this.paused = true; this.pauseTurns = 1; this.savedUi = this.ui;
     this.items = this.items.filter((id) => id !== a.itemId);
-    this.chat.persist("user", a.text); this.chat.addLine("user", a.text);
+    if (a.itemId) this.chat.lessonItems?.delete(a.itemId);   // 친구가 대답할 말이라 서버 문맥에는 남김
+    this.chat.addLine("user", a.text);   // 화면에만. 수업 중에 한 말이라 기록(turns)·기억에는 넣지 않음(11/14 헤니 검토 2)
     const del = this.items; this.items = [];
     this.log("lesson_pause", {});
     this.set({ phase: "paused" });
-    this.chat.endLessonHold({ deleteItems: del, respond: true,
+    this.chat.endLessonHold({ deleteItems: del, respond: true, userText: a.itemId ? null : a.text,
       note: "Note from the app: the learner paused the expression practice to talk about something else. Reply naturally to what they just said. Do not mention the practice unless they ask. Role-play names and facts in the practice are not about the learner." });
     clearTimeout(this.dismissTimer);
     this.dismissTimer = setTimeout(() => this.dismiss(), 120000);   // 약 2분 지나면 카드를 치움
@@ -486,9 +528,10 @@ export class LessonManager {
       if (RESUME.test(text) || RESUME.test(normalize(text))) { if (itemId) this.items.push(itemId); this.resume(); return true; }
       return false;   // 평소 대화로(기록·친구 대답)
     }
+    if (CRISIS.test(text) || CRISIS.test(normalize(text))) { this.crisis(text, itemId); return true; }
     if (itemId) this.items.push(itemId);
     const n = normalize(text);
-    if (lib.stop.some((s) => ` ${n} `.includes(` ${normalize(s)} `))) { this.stopByUser(); return true; }
+    if (this.wantsStop(n)) { this.stopByUser(); return true; }
     const w = this.waiter; if (!w) return true;
     if (w.spec.kind === "offer" || w.spec.kind === "yesno") {
       const yes = lib.yes.some((y) => n === normalize(y) || n.startsWith(normalize(y) + " "));
@@ -502,32 +545,40 @@ export class LessonManager {
     return this.resolve({ type: "speech", text, itemId });
   }
   resolve(v) { const w = this.waiter; this.waiter = null; w?.resolve(v); return true; }
+  /** 그만하자는 말: 그 말로 시작하거나 그 말뿐일 때만(‘Please do not stop’·‘I can’t stop laughing’은 아님). 11/14 헤니 검토 7 */
+  wantsStop(n) {
+    const w = n.split(" ").filter(Boolean);
+    if (w.length > 6 || /\b(dont|do not|not|never|cant|cannot)\b/.test(n)) return false;
+    return lib.stop.some((s) => { const k = normalize(s); return n === k || n.startsWith(k + " ") || n.endsWith(" " + k); });
+  }
 
   button(act) {
     const w = this.waiter;
     if (act === "stop") return this.stopByUser();
     if (act === "resume") return this.resume();
     if (act === "close") return this.closePaused();
-    if (act === "replay") { const t = this.ui?.lastTori; if (t && w) this.speak(t, this.gen, this.ui?.lastWho ?? "tori").catch(() => {}); return; }
+    if (act === "replay") { const t = this.ui?.lastTori; if (t && w) { this.useHelp(); this.speak(t, this.gen, this.ui?.lastWho ?? "tori", true).catch(() => {}); } return; }
     if (act === "suggestYes") { const id = this.ui?.suggestId; this.set(null); if (id) this.startNow(id); return; }
     if (act === "suggestNo") { this.set(null); this.log("lesson_suggest_answer", { a: "no" }); return; }
     if (!w) return;
     if (act === "yes" || act === "no") return this.resolve({ type: act, text: "" });
     if (act === "skip" || act === "next") return this.resolve({ type: "skip", text: "" });
-    if (act === "hint") return this.set({ showHelp: true });
+    if (act === "hint") { this.useHelp(); return this.set({ showHelp: true }); }
   }
 
   wait(g, spec) {
     if (g !== this.gen) return Promise.reject(STOP);
     this.chat.setLessonMic(true);
+    this.helpUsed = false;
     this.set({ waiting: spec.kind, showHelp: false });
     return new Promise((resolve, reject) => {
       const timers = [];
-      const done = (fn) => (v) => { timers.forEach(clearTimeout); this.set({ waiting: null }); fn(v); };
+      // 기다림이 끝나면 곁말(다시 듣기·자동 힌트)도 멈춰 다음 말과 겹치지 않게(11/14 헤니 검토 6)
+      const done = (fn) => (v) => { timers.forEach(clearTimeout); if (this.sidePlaying) this.player.stop(); this.set({ waiting: null }); fn(v); };
       this.waiter = { spec, resolve: done(resolve), reject: done(reject) };
       if (spec.kind === "answer" || spec.kind === "read") {
-        timers.push(setTimeout(() => this.set({ showHelp: true }), 8000));
-        timers.push(setTimeout(() => { if (this.waiter?.spec === spec && spec.target) this.speak(`Listen: “${spec.target}”`, g).catch(() => {}); }, 16000));
+        timers.push(setTimeout(() => { if (this.waiter?.spec === spec) { this.useHelp(); this.set({ showHelp: true }); } }, 8000));
+        timers.push(setTimeout(() => { if (this.waiter?.spec === spec && spec.target) { this.useHelp(); this.speak(`Listen: “${spec.target}”`, g, "tori", true).catch(() => {}); } }, 16000));
         timers.push(setTimeout(() => { if (this.waiter?.spec === spec) this.resolve({ type: "skip", text: "" }); }, 60000));
       }
       if (spec.kind === "offer") timers.push(setTimeout(() => { if (this.waiter?.spec === spec) this.resolve({ type: "unclear", text: "" }); }, 20000));
@@ -536,11 +587,12 @@ export class LessonManager {
 
   // ---------- 말하기 ----------
   /** 미리 만들기: [글, 누구] 목록. 목소리 서비스가 막히지 않게 한 번에 2개씩만(11/14 기록: 9개 동시 → 429). */
-  prefetch(items) { items.forEach(([t, who]) => this.audio(t, who)); }
-  audio(text, who = "tori") {
+  prefetch(items, g = this.gen) { items.forEach(([t, who]) => this.audio(t, who, g).catch(() => {})); }
+  audio(text, who = "tori", g = this.gen) {
     const key = `${who}|${text}`;
     if (!this.sayCache.has(key)) {
-      const p = this.slot(() => api.say(text, voiceOf(who), this.speed, this.chat.sessionId)); p.catch(() => this.sayCache.delete(key));
+      // 차례를 기다리는 사이 수업이 멈췄으면 목소리를 만들지 않는다(11/14 헤니 검토 8)
+      const p = this.slot(() => { if (g !== this.gen) throw STOP; return api.say(text, voiceOf(who), this.speed, this.chat.sessionId); }); p.catch(() => this.sayCache.delete(key));
       this.sayCache.set(key, p);
       if (this.sayCache.size > 80) this.sayCache.delete(this.sayCache.keys().next().value);
     }
@@ -552,27 +604,41 @@ export class LessonManager {
     this.busy++;
     try { return await fn(); } finally { this.busy--; this.queue.shift()?.(); }
   }
-  async speak(text, g, who = "tori") {
+  /** side=true: 다시 듣기·자동 힌트(곁말). 주 진행 말이 나오면 곁말을 끊고, 주 말이 나오는 중이면 곁말은 하지 않는다. */
+  async speak(text, g, who = "tori", side = false) {
     if (g !== this.gen) throw STOP;
+    if (this.chat.limitReached) { this.chat.afterFriendFinished(); throw STOP; }   // 오늘 한도: 수업 중에도 바로 멈춤(헤니 검토 8)
+    if (side && this.mainPlaying) return;
+    if (!side && this.sidePlaying) this.player.stop();
     this.chat.setLessonMic(false);
-    this.set({ tori: text.replace(/[“”]/g, "\""), lastTori: text, lastWho: who, speaker: who });
+    if (!side) this.set({ tori: text.replace(/[“”]/g, "\""), lastTori: text, lastWho: who, speaker: who });
+    else this.set({ speaker: who });
     let s;
-    try { s = await this.audio(text, who); } catch { this.set({ notice: "목소리를 만들지 못했어요. 글로 보고 이어 가요." }); await sleep(1200); }
+    try { s = await this.audio(text, who, g); } catch { if (g === this.gen && !side) { this.set({ notice: "목소리를 만들지 못했어요. 글로 보고 이어 가요." }); await sleep(1200); } }
     if (g !== this.gen) throw STOP;
-    if (s) { this.chat.noteHeard(text); await this.player.play(s.pcm, s.rate); }
+    if (side && (this.mainPlaying || !this.waiter)) return;
+    if (s) {
+      this.chat.noteHeard(text);
+      if (side) this.sidePlaying = true; else this.mainPlaying = true;
+      try { await this.player.play(s.pcm, s.rate); } finally { if (side) this.sidePlaying = false; else this.mainPlaying = false; }
+    }
     if (g !== this.gen) throw STOP;
     if (this.waiter) this.chat.setLessonMic(true);   // 기다리는 중에 들려준 도움말이면 마이크를 다시 연다
   }
+  useHelp() { this.helpUsed = true; }
 
   // ---------- 도우미 ----------
   mark(i, st) { if (this.ui?.lines) this.set({ lines: this.ui.lines.map((l, j) => (j === i ? { ...l, st } : l.st === "now" ? { ...l, st: "done" } : l)) }); }
   record(id, result, step, help) {
     if (!id) return;
     const k = `${id}_${step}`; const prev = this.results[k];
-    const order = { ok: 5, form_only: 4, partial: 3, tried: 2, skipped: 1 };
+    const order = { ok: 6, form_only: 5, partial: 4, declined: 3, tried: 2, skipped: 1 };
     if (!prev || (order[result] ?? 0) > (order[prev.r] ?? 0)) this.results[k] = { r: result, help };
   }
-  sensitive(t) { const s = String(t).toLowerCase(); return lib.sensitive.some((k) => s.includes(k)); }
+  sensitive(t) {
+    const raw = String(t); const n = ` ${normalize(raw)} `;
+    return lib.sensitive.some((k) => (/[a-z]/i.test(k) ? new RegExp(`(^|\\s)${escRe(normalize(k))}(\\s|$)`).test(n) : raw.includes(k)));
+  }
   /** 학습자 말에서 슬롯 단어를 정한다. 한국어 지도에 있으면 바꾸고, 모르는 한국어면 기본값을 몰래 쓰지 않는다. 반환: 알아낸 단어가 있는지. */
   setSlot(les, text, x) {
     const map = les.korean_map ?? {};
