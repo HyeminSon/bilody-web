@@ -1,0 +1,240 @@
+{
+ "id": "L4-05",
+ "level": "L4",
+ "title_ko": "있잖아, 무슨 일이 있었냐면",
+ "title_en": "You won’t believe what happened!",
+ "goal_ko": "있었던 일을 꺼내고, 순서대로 말하고, 결말을 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘있잖아, 무슨 일이 있었냐면’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "You won’t believe what happened!",
+   "ko": "무슨 일이 있었는지 들으면 놀랄 거예요!",
+   "help": {
+    "blank": "You won’t ___ what happened!",
+    "choices": [
+     "believe",
+     "relieve",
+     "leave"
+    ]
+   },
+   "accept": [
+    "you wont believe what happened",
+    "you will not believe what happened",
+    "you wont believe what happened today",
+    "you wont believe what happened to me",
+    "guess what happened",
+    "you wont believe this"
+   ],
+   "partial_patterns": [
+    "^(?:guess what|you know what)$"
+   ],
+   "tests": {
+    "ok": [
+     "You won’t believe what happened!",
+     "guess what happened"
+    ],
+    "partial": [
+     "guess what"
+    ],
+    "form_only": [],
+    "no": [
+     "what happened"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "First, ___. Then ___.",
+   "ko": "먼저 ___. 그리고 ___.",
+   "help": {
+    "blank": "First, I lost my bag. ___ I called the company.",
+    "choices": [
+     "Then",
+     "Than",
+     "Them"
+    ]
+   },
+   "pattern": "^first (?<x>[a-z]+(?: [a-z]+){1,10}) (?:then|and then|after that|next) (?<y>[a-z]+(?: [a-z]+){1,10})$",
+   "partial_patterns": [
+    "^(?:first|then|after that) [a-z]+(?: [a-z]+){1,10}$"
+   ],
+   "accept_note": "순서 말(First … Then/After that …)이 둘 다 있어야 목표 수행.",
+   "tests": {
+    "ok": [
+     "First, I lost my wallet. Then a man found it.",
+     "first the bus was late and then it started raining"
+    ],
+    "partial": [
+     "Then it started raining"
+    ],
+    "form_only": [],
+    "no": [
+     "first"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "In the end, ___.",
+   "ko": "결국 ___.",
+   "help": {
+    "blank": "In the ___, I got it back.",
+    "choices": [
+     "end",
+     "and",
+     "and then"
+    ]
+   },
+   "pattern": "^(?:in the end|finally|luckily in the end) (?<x>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^at the end [a-z]+(?: [a-z]+){1,12}$"
+   ],
+   "accept_note": "‘At the end, …’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "In the end, I got it back.",
+     "finally everything was okay"
+    ],
+    "partial": [
+     "at the end I got home"
+    ],
+    "form_only": [],
+    "no": [
+     "in the end"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori! You won’t believe what happened!"
+  },
+  {
+   "who": "tori",
+   "en": "What? Tell me!"
+  },
+  {
+   "who": "partner",
+   "en": "First, I left my bag on the bus. Then I called the company."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no! Did you find it?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes! In the end, a driver brought it back."
+  },
+  {
+   "who": "tori",
+   "en": "What a relief!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "tori you wont believe what happened",
+    "you wont believe what happened"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "first i left my bag on the bus then i called the company"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "in the end a driver brought it back",
+    "yes in the end a driver brought it back"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이번 주에 있었던 작은 일을 말해요. 꾸며 낸 이야기도 좋아요.",
+ "story": [
+  {
+   "en": "You look excited. What’s up?",
+   "expect": "e1",
+   "screen_hint_ko": "이야기를 시작해요: You won’t believe what happened!"
+  },
+  {
+   "en": "What happened?",
+   "expect": "e2",
+   "screen_hint_ko": "순서대로 말해요: First, ___. Then ___.",
+   "screen_blank": "First, ___. Then ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Really? And then?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "어떻게 끝났는지: In the end, ___.",
+   "screen_blank": "In the end, ___.",
+   "branches": [
+    {
+     "when": "negative",
+     "say": "Oh no. I’m sorry to hear that."
+    },
+    {
+     "when": "default",
+     "say": "What a story!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. You won’t believe what happened!",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "되물어요: What happened?"
+  },
+  {
+   "en": "First, I fell asleep on the bus. Then I missed my stop!",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "어떻게 됐는지 물어요: So what happened in the end?"
+  },
+  {
+   "en": "In the end, I walked home for an hour!",
+   "expect": null
+  }
+ ],
+ "recall": {
+  "voice": "Tell Nubi your news.",
+  "hint_ko": "누비에게 ‘You won’t believe what happened!’로 이야기를 시작해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Tell me!",
+  "Really? And then?",
+  "What a story!",
+  "What a relief!"
+ ],
+ "privacy_ko": "있었던 일은 기억에 남기지 않아요. 사고·도난·다툼 같은 무거운 일은 공통 민감 규칙.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

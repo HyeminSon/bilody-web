@@ -1,0 +1,231 @@
+{
+ "id": "L5-06",
+ "level": "L5",
+ "title_ko": "그럴 걸 그랬어요",
+ "title_en": "I should have brought an umbrella.",
+ "goal_ko": "작은 후회를 말하고, 바랐던 일을 말하고, 위로하기",
+ "partner": "rino",
+ "offer_ko": "‘그럴 걸 그랬어요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I should have ___.",
+   "ko": "___할 걸 그랬어요.",
+   "help": {
+    "blank": "I should ___ brought an umbrella.",
+    "choices": [
+     "have",
+     "half",
+     "had"
+    ]
+   },
+   "pattern": "^(?:oh no )?i (?:should have|shouldve) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish)\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^i should of [a-z]+(?: [a-z]+){0,8}$",
+    "^i (?:should|must) (?:bring|check|take|leave|go|sleep|study|call)(?: [a-z]+){0,8}$",
+    "^i (?:should have|shouldve) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "have 뒤가 과거분사여야 목표 수행(I should have go → 부분). ‘should of’·‘I should bring …’도 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "I should have brought an umbrella.",
+     "i shouldve checked the weather",
+     "I should have gone to bed earlier."
+    ],
+    "partial": [
+     "I should bring an umbrella",
+     "I should of left early",
+     "I should have go home"
+    ],
+    "form_only": [],
+    "no": [
+     "should"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I wish I had ___.",
+   "ko": "___했으면 좋았을 텐데요.",
+   "help": {
+    "blank": "I wish I ___ left earlier.",
+    "choices": [
+     "had",
+     "have",
+     "hat"
+    ]
+   },
+   "pattern": "^i wish (?:i had|id|i hadnt|i had not) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish)\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^i wish i [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "had 뒤가 과거분사여야 목표 수행(I wish I had go → 부분). ‘I wish I studied …’도 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "I wish I had left earlier.",
+     "i wish i hadnt eaten so much",
+     "I wish I had slept more."
+    ],
+    "partial": [
+     "I wish I studied harder",
+     "I wish I had go home"
+    ],
+    "form_only": [],
+    "no": [
+     "wish"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Don’t be too hard on yourself.",
+   "ko": "너무 자책하지 마세요.",
+   "help": {
+    "blank": "Don’t be too ___ on yourself.",
+    "choices": [
+     "hard",
+     "heart",
+     "hot"
+    ]
+   },
+   "accept": [
+    "dont be too hard on yourself",
+    "dont be so hard on yourself",
+    "do not be too hard on yourself",
+    "its okay dont be too hard on yourself",
+    "dont worry about it",
+    "its not your fault",
+    "dont worry its not your fault"
+   ],
+   "partial_patterns": [
+    "^(?:its okay|dont worry|no problem|its fine)$"
+   ],
+   "tests": {
+    "ok": [
+     "Don’t be too hard on yourself.",
+     "it's not your fault"
+    ],
+    "partial": [
+     "don't worry"
+    ],
+    "form_only": [],
+    "no": [
+     "yourself"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Oh no, it’s raining. I should have brought an umbrella."
+  },
+  {
+   "who": "tori",
+   "en": "Me too. I should have checked the weather."
+  },
+  {
+   "who": "partner",
+   "en": "And I’m so late. I wish I had left earlier."
+  },
+  {
+   "who": "tori",
+   "en": "Don’t be too hard on yourself. The bus is late, too."
+  },
+  {
+   "who": "partner",
+   "en": "Really? That’s a relief."
+  },
+  {
+   "who": "tori",
+   "en": "Look, here it comes!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "i should have brought an umbrella",
+    "no its raining i should have brought an umbrella",
+    "oh no its raining i should have brought an umbrella"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "and im so late i wish i had left earlier",
+    "i wish i had left earlier"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "작은 후회면 충분해요. 꾸며도 돼요.",
+ "story": [
+  {
+   "en": "Tell me about a small mistake from this week.",
+   "expect": "e1",
+   "screen_hint_ko": "작은 후회: I should have ___. (gone to bed earlier)",
+   "screen_blank": "I should have ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Oh, that happens to everyone."
+    }
+   ]
+  },
+  {
+   "en": "If you could change one thing about yesterday, what would it be?",
+   "expect": "e2",
+   "screen_hint_ko": "‘I wish I had’로: I wish I had ___. (slept more)",
+   "screen_blank": "I wish I had ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Ha, me too sometimes!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "I forgot my friend’s birthday. I should have set a reminder.",
+   "expect": "e3",
+   "screen_hint_ko": "위로해요: Don’t be too hard on yourself.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks. I’ll call her today."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Talk about the rain.",
+  "hint_ko": "비가 오는데 우산이 없어요. ‘I should have…’로 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "That happens to everyone.",
+  "Me too sometimes!",
+  "That’s a relief."
+ ],
+ "privacy_ko": "후회는 기억에 남기지 않아요. 무거운 후회는 공통 민감 규칙.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

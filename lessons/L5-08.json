@@ -1,0 +1,219 @@
+{
+ "id": "L5-08",
+ "level": "L5",
+ "title_ko": "소식 전하기",
+ "title_en": "I heard that it opens next Monday.",
+ "goal_ko": "소식을 꺼내고, 들은 것을 전하고, ‘듣자 하니’로 덧붙이기",
+ "partner": "sola",
+ "offer_ko": "‘소식 전하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Did you hear about ___?",
+   "ko": "___ 소식 들었어요?",
+   "help": {
+    "blank": "Did you ___ about the new bakery?",
+    "choices": [
+     "hear",
+     "here",
+     "hair"
+    ]
+   },
+   "pattern": "^(?:did you hear|have you heard) (?:about )?(?<x>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^(?:did you hear|have you heard)$"
+   ],
+   "tests": {
+    "ok": [
+     "Did you hear about the new bakery?",
+     "have you heard the news"
+    ],
+    "partial": [
+     "did you hear"
+    ],
+    "form_only": [],
+    "no": [
+     "hear"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I heard (that) ___.",
+   "ko": "___라고 들었어요.",
+   "help": {
+    "blank": "I ___ that it opens next Monday.",
+    "choices": [
+     "heard",
+     "hurt",
+     "hard"
+    ]
+   },
+   "pattern": "^i heard(?: that)? (?<x>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^(?:i hear|they say|people say) [a-z]+(?: [a-z]+){1,12}$"
+   ],
+   "tests": {
+    "ok": [
+     "I heard that it opens next Monday.",
+     "i heard the bread is amazing"
+    ],
+    "partial": [
+     "people say the bread is good"
+    ],
+    "form_only": [],
+    "no": [
+     "I heard"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Apparently, ___.",
+   "ko": "듣자 하니 ___래요.",
+   "help": {
+    "blank": "___, the owner was a chef.",
+    "choices": [
+     "Apparently",
+     "Appearing",
+     "A parent"
+    ]
+   },
+   "pattern": "^apparently (?<x>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^apparently$"
+   ],
+   "tests": {
+    "ok": [
+     "Apparently, the owner was a chef in Paris.",
+     "apparently it's very popular"
+    ],
+    "partial": [
+     "apparently"
+    ],
+    "form_only": [],
+    "no": [
+     "the owner was a chef"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Did you hear about the new bakery on our street?"
+  },
+  {
+   "who": "tori",
+   "en": "No! Tell me."
+  },
+  {
+   "who": "partner",
+   "en": "I heard that it opens next Monday."
+  },
+  {
+   "who": "tori",
+   "en": "Great! Is the bread good?"
+  },
+  {
+   "who": "partner",
+   "en": "Apparently, the owner was a chef in Paris."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! Let’s go on Monday."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "did you hear about the new bakery on our street"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "i heard that it opens next monday"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "apparently the owner was a chef in paris"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "동네·회사·날씨·스포츠 소식이면 돼요. 꾸며도 되고, 다른 사람의 사생활 이야기는 하지 않아요.",
+ "story": [
+  {
+   "en": "Any news around you this week?",
+   "expect": "e2",
+   "screen_hint_ko": "들은 소식: I heard that ___. (a new cafe opened)",
+   "screen_blank": "I heard that ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Oh, really? Interesting!"
+    }
+   ]
+  },
+  {
+   "en": "Do you know anything more about it?",
+   "expect": "e3",
+   "screen_hint_ko": "‘Apparently’로 덧붙여요: Apparently, ___.",
+   "screen_blank": "Apparently, ___.",
+   "branches": [
+    {
+     "when": "negative",
+     "say": "That’s okay!"
+    },
+    {
+     "when": "default",
+     "say": "Wow, I didn’t know that!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you tell me some news. Start with a question.",
+   "expect": "e1",
+   "screen_hint_ko": "물어보며 시작해요: Did you hear about ___?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "No! What about it?"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Tell Tori the news.",
+  "hint_ko": "‘Did you hear about…?’로 소식을 꺼내 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Tell me.",
+  "Interesting!",
+  "I didn’t know that!",
+  "What about it?"
+ ],
+ "privacy_ko": "가게·날씨·행사 같은 소식만 다뤄요. 다른 사람 이름·사생활·소문은 다루지 않고 기억에 남기지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

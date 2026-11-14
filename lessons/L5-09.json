@@ -1,0 +1,240 @@
+{
+ "id": "L5-09",
+ "level": "L5",
+ "title_ko": "정중하게 부탁하기",
+ "title_en": "Would you mind turning down the music?",
+ "goal_ko": "Would you mind로 부탁하고, 괜찮다고 답하고, 더 정중하게 부탁하기",
+ "partner": "moa",
+ "offer_ko": "‘정중하게 부탁하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Would you mind ___ing?",
+   "ko": "___해 주실 수 있을까요?",
+   "help": {
+    "blank": "Would you ___ turning down the music?",
+    "choices": [
+     "mind",
+     "mine",
+     "mend"
+    ]
+   },
+   "pattern": "^(?:excuse me )?(?:would you mind|do you mind) (?<x>[a-z]+ing(?: [a-z]+){0,8})(?: please)?$",
+   "partial_patterns": [
+    "^(?:can you|could you|please) [a-z]+(?: [a-z]+){0,8}$",
+    "^(?:would you mind|do you mind) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "mind 뒤에는 -ing. ‘Would you mind close …’·‘Can you …?’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "Would you mind turning down the music?",
+     "excuse me do you mind closing the window"
+    ],
+    "partial": [
+     "Can you close the window?",
+     "Would you mind close the window",
+     "Would you mind to close the window?"
+    ],
+    "form_only": [],
+    "no": [
+     "mind"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Not at all.",
+   "ko": "괜찮아요(전혀요).",
+   "help": {
+    "blank": "Not at ___.",
+    "choices": [
+     "all",
+     "ball",
+     "owl"
+    ]
+   },
+   "accept": [
+    "not at all",
+    "of course not",
+    "not at all go ahead",
+    "no problem",
+    "sure no problem",
+    "not at all no problem",
+    "no i dont mind",
+    "i dont mind"
+   ],
+   "partial_patterns": [
+    "^(?:sure|okay|yes|ok)$"
+   ],
+   "accept_note": "Would you mind …?에 ‘Yes’는 ‘싫어요’ 뜻이라 부분으로만 셈.",
+   "tests": {
+    "ok": [
+     "Not at all.",
+     "of course not",
+     "No, not at all."
+    ],
+    "partial": [
+     "sure"
+    ],
+    "form_only": [],
+    "no": [
+     "at all",
+     "Yes, I mind."
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I’d appreciate it if you could ___.",
+   "ko": "___해 주시면 감사하겠어요.",
+   "help": {
+    "blank": "I’d ___ it if you could help me.",
+    "choices": [
+     "appreciate",
+     "a precious",
+     "appreciated"
+    ]
+   },
+   "pattern": "^(?:id|i would) (?:really )?appreciate it if you could (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:please|could you) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "tests": {
+    "ok": [
+     "I’d appreciate it if you could help me.",
+     "i would really appreciate it if you could use headphones"
+    ],
+    "partial": [
+     "could you help me"
+    ],
+    "form_only": [],
+    "no": [
+     "appreciate"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Excuse me. Would you mind turning down your music?"
+  },
+  {
+   "who": "tori",
+   "en": "Oh, sorry! I didn’t know it was loud."
+  },
+  {
+   "who": "partner",
+   "en": "I’d appreciate it if you could use headphones."
+  },
+  {
+   "who": "tori",
+   "en": "Of course. Would you mind watching my bag for a minute?"
+  },
+  {
+   "who": "partner",
+   "en": "Not at all. Go ahead."
+  },
+  {
+   "who": "tori",
+   "en": "Thanks! I’ll be right back."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "excuse me would you mind turning down your music",
+    "would you mind turning down your music"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e3",
+   "line_accept": [
+    "id appreciate it if you could use headphones"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e2",
+   "line_accept": [
+    "not at all",
+    "not at all go ahead"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 사무실에서 옆자리 동료(토리)에게 부탁해요.",
+ "story": [
+  {
+   "en": "Hi! Do you need something?",
+   "expect": "e1",
+   "model": "Would you mind closing the window?",
+   "screen_hint_ko": "창문을 닫아 달라고: Would you mind closing the window?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Not at all!"
+    }
+   ]
+  },
+  {
+   "en": "Anything else?",
+   "expect": "e3",
+   "screen_hint_ko": "정중하게 더 부탁해요: I’d appreciate it if you could ___. (help me with this file)",
+   "screen_blank": "I’d appreciate it if you could ___.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sure, I can do that."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. Would you mind lending me your pen?",
+   "expect": "e2",
+   "screen_hint_ko": "괜찮다고 해요: Not at all.",
+   "role": true,
+   "branches": [
+    {
+     "when": "declined",
+     "say": "Oh, okay. No problem!"
+    },
+    {
+     "when": "matched_text:yes",
+     "say": "RETRY:Hmm, ‘yes’ means you mind. Is it okay?"
+    },
+    {
+     "when": "default",
+     "say": "Thanks a lot!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa nicely.",
+  "hint_ko": "모아에게 ‘Would you mind…?’로 정중하게 부탁해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Anything else?",
+  "Sure, I can do that.",
+  "Thanks a lot!",
+  "I’ll be right back."
+ ],
+ "privacy_ko": "모두 역할극이에요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

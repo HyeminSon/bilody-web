@@ -1,0 +1,250 @@
+{
+ "id": "L4-09",
+ "level": "L4",
+ "title_ko": "그때 기분",
+ "title_en": "I was so nervous when I started.",
+ "goal_ko": "그때 기분을 묻고 when으로 말하고, 공감하기",
+ "partner": "sola",
+ "offer_ko": "‘그때 기분’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How did you feel?",
+   "ko": "기분이 어땠어요?",
+   "help": {
+    "blank": "How did you ___?",
+    "choices": [
+     "feel",
+     "fill",
+     "fall"
+    ]
+   },
+   "pattern": "^how did you feel(?: about (?:it|that|the [a-z]+)| at the end| then| after(?: that)?| when [a-z ]{3,30})?$|^how did it feel$",
+   "partial_patterns": [
+    "^how was it$"
+   ],
+   "tests": {
+    "ok": [
+     "How did you feel?",
+     "how did you feel at the end",
+     "how did it feel"
+    ],
+    "partial": [
+     "how was it"
+    ],
+    "form_only": [],
+    "no": [
+     "feel"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I was so ___ when ___.",
+   "ko": "___했을 때 정말 ___했어요.",
+   "help": {
+    "blank": "I was so nervous ___ I started.",
+    "choices": [
+     "when",
+     "what",
+     "went"
+    ]
+   },
+   "pattern": "^i (?:was|felt)(?: so| really| very| a little| a bit)? (?<x>[a-z]+) when (?<y>[a-z]+(?: [a-z]+){1,10})$",
+   "partial_patterns": [
+    "^i (?:was|felt|am|feel)(?: so| really| very| a little)? [a-z]+$",
+    "^(?:nervous|happy|surprised|excited|relieved|proud|scared|embarrassed|glad|shocked)$"
+   ],
+   "slot": {
+    "kind": "feeling",
+    "closed": true,
+    "lexicon": [
+     "nervous",
+     "happy",
+     "surprised",
+     "excited",
+     "relieved",
+     "proud",
+     "scared",
+     "embarrassed",
+     "tired",
+     "sad",
+     "angry",
+     "upset",
+     "glad",
+     "shocked",
+     "bored",
+     "worried",
+     "disappointed",
+     "stressed",
+     "thrilled",
+     "moved"
+    ]
+   },
+   "accept_note": "when으로 그때를 말해야 목표 수행. 기분만 말하면 부분.",
+   "tests": {
+    "ok": [
+     "I was so nervous when I started.",
+     "I felt really proud when my team won"
+    ],
+    "partial": [
+     "I was so nervous",
+     "relieved"
+    ],
+    "form_only": [
+     "I was so banana when I started"
+    ],
+    "no": [
+     "when I started"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That must have been ___.",
+   "ko": "정말 ___했겠어요.",
+   "help": {
+    "blank": "That ___ have been hard.",
+    "choices": [
+     "must",
+     "most",
+     "mask"
+    ]
+   },
+   "pattern": "^(?:that|it) must (?:have been|be) (?<x>[a-z]+(?: [a-z]+){0,3})$",
+   "partial_patterns": [
+    "^(?:that was|it was) (?:scary|fun|great|hard|exciting|amazing|stressful)$"
+   ],
+   "tests": {
+    "ok": [
+     "That must have been scary.",
+     "it must have been so exciting"
+    ],
+    "partial": [
+     "that was scary"
+    ],
+    "form_only": [],
+    "no": [
+     "must"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Sola, how was your presentation?"
+  },
+  {
+   "who": "partner",
+   "en": "I was so nervous when I started."
+  },
+  {
+   "who": "tori",
+   "en": "That must have been hard. How did you feel at the end?"
+  },
+  {
+   "who": "partner",
+   "en": "I was so relieved when it was over."
+  },
+  {
+   "who": "tori",
+   "en": "I bet you were proud!"
+  },
+  {
+   "who": "partner",
+   "en": "Yes! I felt really proud."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i was so nervous when i started"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "i was so relieved when it was over"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "최근에 긴장했거나 기뻤던 일을 떠올려 봐요. 꾸며도 돼요.",
+ "story": [
+  {
+   "en": "When were you really happy or nervous lately?",
+   "expect": "e2",
+   "screen_hint_ko": "문장으로: I was so ___ when ___. (happy, nervous)",
+   "screen_blank": "I was so ___ when ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "slot_in:angry|upset|disappointed|shocked",
+     "say": "Oh no. That must have been hard."
+    },
+    {
+     "when": "slot_in:nervous|scared|worried|embarrassed|stressed|tired|bored",
+     "say": "Oh, that must have been stressful."
+    },
+    {
+     "when": "slot_in:happy|excited|relieved|proud|glad|thrilled|moved|surprised",
+     "say": "That must have been great!"
+    },
+    {
+     "when": "default",
+     "say": "I see. Thanks for telling me."
+    }
+   ]
+  },
+  {
+   "en": "I was so nervous when I sang on stage.",
+   "expect": "e3",
+   "screen_hint_ko": "공감해요: That must have been scary.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "It was! But it was fun, too."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me how I felt.",
+   "expect": "e1",
+   "screen_hint_ko": "물어봐요: How did you feel?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "I felt so proud!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola how she felt.",
+  "hint_ko": "솔라에게 발표 끝나고 기분이 어땠는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "I bet you were proud!",
+  "That must have been great!",
+  "It was!"
+ ],
+ "privacy_ko": "감정 이야기는 기억에 남기지 않아요. 슬프거나 힘든 기분은 공통 민감 규칙.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

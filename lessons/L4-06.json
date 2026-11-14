@@ -1,0 +1,232 @@
+{
+ "id": "L4-06",
+ "level": "L4",
+ "title_ko": "새해 계획",
+ "title_en": "I’m thinking of learning Spanish.",
+ "goal_ko": "계획을 묻고, 생각 중인 계획을 말하고, 응원하기",
+ "partner": "rino",
+ "offer_ko": "‘새해 계획’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Do you have any plans for ___?",
+   "ko": "___ 계획 있어요?",
+   "help": {
+    "blank": "Do you have any ___ for next year?",
+    "choices": [
+     "plans",
+     "plants",
+     "planes"
+    ]
+   },
+   "pattern": "^(?:do you have any plans|any plans|what are your plans|what are you planning to do) (?:for|this|next) (?<x>[a-z ]{2,25})$",
+   "partial_patterns": [
+    "^any plans$"
+   ],
+   "tests": {
+    "ok": [
+     "Do you have any plans for next year?",
+     "any plans for the holidays",
+     "what are you planning to do this weekend"
+    ],
+    "partial": [
+     "any plans"
+    ],
+    "form_only": [],
+    "no": [
+     "plans"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m thinking of ___ing.",
+   "ko": "___할까 생각 중이에요.",
+   "help": {
+    "blank": "I’m ___ of learning Spanish.",
+    "choices": [
+     "thinking",
+     "sinking",
+     "thanking"
+    ]
+   },
+   "pattern": "^(?:im|i am) (?:thinking (?:of|about) (?<x>[a-z]+ing(?: [a-z]+){0,8})|planning to (?<y>[a-z]+(?: [a-z]+){0,8}))$",
+   "partial_patterns": [
+    "^i (?:want to|will|wanna|plan to|hope to) [a-z]+(?: [a-z]+){0,8}$",
+    "^(?:im|i am) thinking (?:of|about) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "thinking of 뒤에는 -ing. ‘I’m thinking of Spanish’·‘I want to …’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "I’m thinking of learning Spanish.",
+     "I am planning to travel more",
+     "im thinking about changing jobs"
+    ],
+    "partial": [
+     "I want to learn Spanish",
+     "I’m thinking of Spanish"
+    ],
+    "form_only": [],
+    "no": [
+     "Spanish",
+     "thinking"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I hope it works out!",
+   "ko": "잘되면 좋겠어요!",
+   "help": {
+    "blank": "I hope it ___ out!",
+    "choices": [
+     "works",
+     "walks",
+     "words"
+    ]
+   },
+   "accept": [
+    "i hope it works out",
+    "i hope it goes well",
+    "good luck i hope it works out",
+    "i hope it works out for you",
+    "hope it works out",
+    "i really hope it works out",
+    "fingers crossed"
+   ],
+   "partial_patterns": [
+    "^(?:good luck|nice|cool|great)$"
+   ],
+   "tests": {
+    "ok": [
+     "I hope it works out!",
+     "good luck I hope it works out"
+    ],
+    "partial": [
+     "good luck"
+    ],
+    "form_only": [],
+    "no": [
+     "works out"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, do you have any plans for next year?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m thinking of learning Spanish."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! Why Spanish?"
+  },
+  {
+   "who": "partner",
+   "en": "I want to travel to Mexico. Do you have any plans for next year?"
+  },
+  {
+   "who": "tori",
+   "en": "I’m thinking of running a marathon."
+  },
+  {
+   "who": "partner",
+   "en": "Cool! I hope it works out!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "im thinking of learning spanish"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "do you have any plans for next year",
+    "i want to travel to mexico do you have any plans for next year"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "cool i hope it works out",
+    "i hope it works out"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 계획이에요. 정해진 게 없으면 장면 속 계획으로 해도 돼요.",
+ "story": [
+  {
+   "en": "Do you have any plans for next year?",
+   "expect": "e2",
+   "model": "I’m thinking of {x}.",
+   "screen_hint_ko": "‘I’m thinking of’로: I’m thinking of ___. (learning to swim, changing jobs)",
+   "screen_blank": "I’m thinking of ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Wow, I hope it works out!"
+    }
+   ]
+  }
+ ],
+ "fallback": "learning Spanish",
+ "korean_map": {
+  "수영": "learning to swim",
+  "운동": "working out more",
+  "여행": "traveling more",
+  "이사": "moving",
+  "영어": "studying English",
+  "저축": "saving money",
+  "이직": "changing jobs",
+  "요리": "learning to cook"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Do you have any plans for next year?"
+  },
+  {
+   "en": "I’m thinking of running a marathon!",
+   "expect": "e3",
+   "screen_hint_ko": "응원해요: I hope it works out!",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 내년 계획이 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "I hope it works out!",
+  "Thanks!"
+ ],
+ "privacy_ko": "계획은 기억에 남기지 않아요. 이직·이사 같은 계획도 이 연습에만 써요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

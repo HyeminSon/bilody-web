@@ -1,0 +1,224 @@
+{
+ "id": "L5-02",
+ "level": "L5",
+ "title_ko": "가장 기억에 남는 일",
+ "title_en": "My most memorable trip was to Jeju.",
+ "goal_ko": "가장 기억에 남는 일을 묻고, 이유와 함께 말하고, ‘처음’이었던 경험 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘가장 기억에 남는 일’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What was the most memorable ___?",
+   "ko": "가장 기억에 남는 ___는 뭐였어요?",
+   "help": {
+    "blank": "What was the most ___ trip?",
+    "choices": [
+     "memorable",
+     "remember",
+     "memory"
+    ]
+   },
+   "pattern": "^what was (?:the most memorable|your most memorable|the best) (?<x>[a-z]+(?: [a-z]+){0,4}?)(?: (?:youve ever had|you ever had|of your life|ever|so far))?$",
+   "partial_patterns": [
+    "^most memorable [a-z]+$"
+   ],
+   "tests": {
+    "ok": [
+     "What was the most memorable trip you’ve ever had?",
+     "what was your most memorable day",
+     "What was the most memorable day of your life?"
+    ],
+    "partial": [
+     "most memorable trip"
+    ],
+    "form_only": [],
+    "no": [
+     "memorable"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "My most memorable ___ was ___ because ___.",
+   "ko": "가장 기억에 남는 ___는 ___예요. ___ 때문에요.",
+   "help": {
+    "blank": "My most memorable trip was to Jeju ___ I saw the sunrise.",
+    "choices": [
+     "because",
+     "before",
+     "become"
+    ]
+   },
+   "pattern": "^(?:the|my) most memorable (?<x>[a-z]+(?: [a-z]+){0,3}) was (?:to |in |at )?(?<y>[a-z]+(?: [a-z]+){0,8}) because (?<z>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^(?:the|my) most memorable [a-z]+(?: [a-z]+){0,3} was [a-z]+(?: [a-z]+){0,8}$",
+    "^(?:it was|that was) [a-z]+(?: [a-z]+){0,8} because [a-z]+(?: [a-z]+){1,12}$"
+   ],
+   "accept_note": "이유(because)까지 말해야 목표 수행. 곳은 to/in과 함께(was to Jeju).",
+   "tests": {
+    "ok": [
+     "My most memorable trip was to Jeju because I saw the sunrise.",
+     "my most memorable day was my first day at work because everyone was kind"
+    ],
+    "partial": [
+     "My most memorable trip was to Jeju"
+    ],
+    "form_only": [],
+    "no": [
+     "Jeju"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It was the first time I’d ever ___.",
+   "ko": "그때 처음 ___해 봤어요.",
+   "help": {
+    "blank": "It was the ___ time I’d ever seen snow.",
+    "choices": [
+     "first",
+     "fast",
+     "fist"
+    ]
+   },
+   "pattern": "^(?:it was|that was) (?:the|my) first time (?:id ever|i had ever|i ever|ive ever|id|i) (?<x>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^(?:first time)(?: [a-z]+){0,6}$"
+   ],
+   "accept_note": "‘It was the first time I saw …’도 인정.",
+   "tests": {
+    "ok": [
+     "It was the first time I’d ever seen snow.",
+     "it was the first time I saw the sea"
+    ],
+    "partial": [
+     "first time"
+    ],
+    "form_only": [],
+    "no": [
+     "the first"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, what was the most memorable trip you’ve ever had?"
+  },
+  {
+   "who": "tori",
+   "en": "Hmm, a winter trip to Canada. What about you?"
+  },
+  {
+   "who": "partner",
+   "en": "My most memorable trip was to Jeju because I saw the sunrise."
+  },
+  {
+   "who": "tori",
+   "en": "Wow. On the mountain?"
+  },
+  {
+   "who": "partner",
+   "en": "Yes. It was the first time I’d ever climbed a mountain at night."
+  },
+  {
+   "who": "tori",
+   "en": "That sounds amazing!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "tori what was the most memorable trip youve ever had",
+    "what was the most memorable trip youve ever had"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "my most memorable trip was to jeju because i saw the sunrise"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "it was the first time id ever climbed a mountain at night",
+    "yes it was the first time id ever climbed a mountain at night"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내 이야기예요. 여행이 아니어도 좋아요(공연, 첫 출근…). 꾸며도 돼요.",
+ "story": [
+  {
+   "en": "What was the most memorable trip you’ve ever had?",
+   "expect": "e2",
+   "screen_hint_ko": "이유까지: My most memorable trip was to ___ because ___.",
+   "screen_blank": "My most memorable trip was to ___ because ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Wow, that sounds special!"
+    }
+   ]
+  },
+  {
+   "en": "Was it a first for you?",
+   "expect": "e3",
+   "screen_hint_ko": "처음이었다면: It was the first time I’d ever ___. (been abroad)",
+   "screen_blank": "It was the first time I’d ever ___.",
+   "branches": [
+    {
+     "when": "negative",
+     "say": "Oh, so you’ve done it before!"
+    },
+    {
+     "when": "default",
+     "say": "How exciting!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me. Not about trips this time.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What was the most memorable day of your life?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "My first day at bilody! I met so many friends."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 가장 기억에 남는 여행을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "That sounds amazing!",
+  "How exciting!",
+  "That sounds special!"
+ ],
+ "privacy_ko": "추억은 기억에 남기지 않아요. 슬픈 기억이면 공통 민감 규칙. 날짜·동행은 묻지 않아요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

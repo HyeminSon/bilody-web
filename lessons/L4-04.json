@@ -1,0 +1,236 @@
+{
+ "id": "L4-04",
+ "level": "L4",
+ "title_ko": "기차를 놓쳤어요",
+ "title_en": "I missed my train.",
+ "goal_ko": "여행 중 문제를 말하고 다음 편을 묻고 표를 바꾸기",
+ "partner": "moa",
+ "offer_ko": "‘기차를 놓쳤어요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I missed my ___.",
+   "ko": "___를 놓쳤어요.",
+   "help": {
+    "blank": "I ___ my train.",
+    "choices": [
+     "missed",
+     "mixed",
+     "mist"
+    ]
+   },
+   "pattern": "^(?:excuse me )?(?:i|we) (?:just )?missed (?:my|our|the) (?<x>train|bus|flight|plane|ferry|connection)(?: to [a-z ]{2,20})?$",
+   "partial_patterns": [
+    "^(?:i )?(?:miss|missed) (?:my |the )?(?:train|bus|flight|plane)$"
+   ],
+   "accept_note": "‘I miss my train’(현재형)은 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "I missed my train.",
+     "excuse me I just missed the bus",
+     "I missed my train to Busan"
+    ],
+    "partial": [
+     "I miss my train"
+    ],
+    "form_only": [],
+    "no": [
+     "train"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "When is the next ___?",
+   "ko": "다음 ___는 언제예요?",
+   "help": {
+    "blank": "When is the ___ train?",
+    "choices": [
+     "next",
+     "neck",
+     "nest"
+    ]
+   },
+   "pattern": "^(?:when|what time) is the next (?<x>train|bus|flight|plane|one|ferry)(?: to [a-z ]{2,20})?$",
+   "partial_patterns": [
+    "^next (?:train|bus|flight)$"
+   ],
+   "tests": {
+    "ok": [
+     "When is the next train?",
+     "what time is the next one to busan"
+    ],
+    "partial": [
+     "next train"
+    ],
+    "form_only": [],
+    "no": [
+     "when"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Can I change my ticket?",
+   "ko": "표를 바꿀 수 있어요?",
+   "help": {
+    "blank": "Can I ___ my ticket?",
+    "choices": [
+     "change",
+     "charge",
+     "chance"
+    ]
+   },
+   "accept": [
+    "can i change my ticket",
+    "could i change my ticket",
+    "can i change my ticket please",
+    "can i change the ticket",
+    "is it possible to change my ticket",
+    "can i get a new ticket",
+    "can i exchange my ticket"
+   ],
+   "partial_patterns": [
+    "^(?:change|change ticket|change my ticket|ticket change)$"
+   ],
+   "tests": {
+    "ok": [
+     "Can I change my ticket?",
+     "is it possible to change my ticket"
+    ],
+    "partial": [
+     "change my ticket"
+    ],
+    "form_only": [],
+    "no": [
+     "ticket"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Excuse me. I missed my train to Busan."
+  },
+  {
+   "who": "tori",
+   "en": "Oh no. Let me check."
+  },
+  {
+   "who": "partner",
+   "en": "When is the next train?"
+  },
+  {
+   "who": "tori",
+   "en": "At four thirty. There are a few seats left."
+  },
+  {
+   "who": "partner",
+   "en": "Great. Can I change my ticket?"
+  },
+  {
+   "who": "tori",
+   "en": "Sure. It’s free today."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "excuse me i missed my train to busan",
+    "i missed my train to busan"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "when is the next train"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "can i change my ticket",
+    "great can i change my ticket"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 기차를 놓쳤어요. 토리가 역 직원이에요.",
+ "story": [
+  {
+   "en": "Hello. How can I help you?",
+   "expect": "e1",
+   "model": "I missed my train.",
+   "screen_hint_ko": "기차를 놓쳤다고 말해요: I missed my train.",
+   "role": true
+  },
+  {
+   "en": "I’m sorry. Let me check.",
+   "expect": "e2",
+   "screen_hint_ko": "다음 기차가 언제인지 물어요: When is the next train?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "The next one is at six."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "표를 바꿀 수 있는지 물어요: Can I change my ticket?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sure. Here you go."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now it’s a bus station. I work here. Hello!",
+   "expect": "e1",
+   "screen_hint_ko": "이번엔 버스를 놓쳤어요: I missed my bus.",
+   "role": true
+  },
+  {
+   "en": "No problem. Anything else?",
+   "expect": "e2",
+   "screen_hint_ko": "다음 버스를 물어요: When is the next bus?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "In twenty minutes."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "You missed your train.",
+  "hint_ko": "역 직원에게 기차를 놓쳤다고 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Let me check.",
+  "Here you go.",
+  "Anything else?"
+ ],
+ "privacy_ko": "모두 역할극이에요. 실제 여행 일정·예약 번호는 묻지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

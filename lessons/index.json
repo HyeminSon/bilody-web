@@ -1,56 +1,767 @@
 {
- "version": 2,
+ "version": 3,
+ "levels": {
+  "L1": {
+   "cefr": "Pre-A1",
+   "name_ko": "왕초보",
+   "kind": "scene"
+  },
+  "L2": {
+   "cefr": "A1",
+   "name_ko": "초급",
+   "kind": "scene"
+  },
+  "L3": {
+   "cefr": "A2",
+   "name_ko": "초중급",
+   "kind": "scene"
+  },
+  "L4": {
+   "cefr": "B1",
+   "name_ko": "중급",
+   "kind": "scene"
+  },
+  "L5": {
+   "cefr": "B1+",
+   "name_ko": "중급 플러스",
+   "kind": "scene"
+  },
+  "L6": {
+   "cefr": "B2",
+   "name_ko": "중상급",
+   "kind": "scene"
+  },
+  "L7": {
+   "cefr": "B2+",
+   "name_ko": "중상급 플러스",
+   "kind": "opinion_task"
+  },
+  "L8": {
+   "cefr": "C1",
+   "name_ko": "고급",
+   "kind": "talk_topics"
+  },
+  "L9": {
+   "cefr": "C2",
+   "name_ko": "최고급",
+   "kind": "talk_topics"
+  }
+ },
  "lessons": [
   {
    "id": "L1-01",
    "level": "L1",
    "title_ko": "새 이웃",
    "title_en": "Nice to meet you!",
-   "partner": "moa"
+   "partner": "moa",
+   "img": "lessons/img/L1-01.webp"
   },
   {
    "id": "L1-02",
    "level": "L1",
    "title_ko": "이름 묻기",
    "title_en": "What’s your name?",
-   "partner": "nubi"
+   "partner": "nubi",
+   "img": "lessons/img/L1-02.webp"
+  },
+  {
+   "id": "L1-03",
+   "level": "L1",
+   "title_ko": "오늘 기분",
+   "title_en": "How are you?",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L1-04",
+   "level": "L1",
+   "title_ko": "좋아하는 음식",
+   "title_en": "I like kimchi!",
+   "partner": "rino",
+   "img": null
   },
   {
    "id": "L1-05",
    "level": "L1",
    "title_ko": "카페에서 주문",
    "title_en": "Can I have tea, please?",
-   "partner": "moa"
+   "partner": "moa",
+   "img": "lessons/img/L1-05.webp"
+  },
+  {
+   "id": "L1-06",
+   "level": "L1",
+   "title_ko": "오늘 날씨",
+   "title_en": "It’s rainy today.",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L1-07",
+   "level": "L1",
+   "title_ko": "몇 시예요?",
+   "title_en": "What time is it?",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L1-08",
+   "level": "L1",
+   "title_ko": "어디 있어요?",
+   "title_en": "Where is my phone?",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L1-09",
+   "level": "L1",
+   "title_ko": "할 수 있어요",
+   "title_en": "I can swim!",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L1-10",
+   "level": "L1",
+   "title_ko": "시간 돼요?",
+   "title_en": "Are you free on Saturday?",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L2-01",
+   "level": "L2",
+   "title_ko": "무슨 일 해요?",
+   "title_en": "What do you do?",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L2-02",
+   "level": "L2",
+   "title_ko": "아침 일과",
+   "title_en": "I get up at seven.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L2-03",
+   "level": "L2",
+   "title_ko": "어떻게 가요?",
+   "title_en": "I go by subway.",
+   "partner": "moa",
+   "img": null
   },
   {
    "id": "L2-04",
    "level": "L2",
    "title_ko": "이거 얼마예요?",
    "title_en": "How much is this hat?",
-   "partner": "nubi"
+   "partner": "nubi",
+   "img": "lessons/img/L2-04.webp"
+  },
+  {
+   "id": "L2-05",
+   "level": "L2",
+   "title_ko": "길 묻기",
+   "title_en": "Where is the bank?",
+   "partner": "rino",
+   "img": null
   },
   {
    "id": "L2-06",
    "level": "L2",
    "title_ko": "식당에서 주문",
    "title_en": "I’d like the pasta.",
-   "partner": "sola"
+   "partner": "sola",
+   "img": "lessons/img/L2-06.webp"
+  },
+  {
+   "id": "L2-07",
+   "level": "L2",
+   "title_ko": "지난 주말",
+   "title_en": "I went hiking.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L2-08",
+   "level": "L2",
+   "title_ko": "주말 계획",
+   "title_en": "I’m going to visit my grandma.",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L2-09",
+   "level": "L2",
+   "title_ko": "같이 갈래요?",
+   "title_en": "Do you want to see a movie?",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L2-10",
+   "level": "L2",
+   "title_ko": "좋아하는 계절",
+   "title_en": "My favorite season is fall.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L3-01",
+   "level": "L3",
+   "title_ko": "해 본 적 있어요?",
+   "title_en": "Have you ever tried surfing?",
+   "partner": "moa",
+   "img": null
   },
   {
    "id": "L3-02",
    "level": "L3",
    "title_ko": "추천해 줄래요?",
    "title_en": "You should try the noodles.",
-   "partner": "nubi"
+   "partner": "nubi",
+   "img": "lessons/img/L3-02.webp"
+  },
+  {
+   "id": "L3-03",
+   "level": "L3",
+   "title_ko": "뭐가 더 좋아요?",
+   "title_en": "I think the countryside is better.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L3-04",
+   "level": "L3",
+   "title_ko": "부탁하기",
+   "title_en": "Could you help me, please?",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L3-05",
+   "level": "L3",
+   "title_ko": "어떻게 생각해요?",
+   "title_en": "I think so, too.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L3-06",
+   "level": "L3",
+   "title_ko": "문제가 있어요",
+   "title_en": "There’s a problem with my room.",
+   "partner": "nubi",
+   "img": null
   },
   {
    "id": "L3-07",
    "level": "L3",
    "title_ko": "약속 바꾸기",
    "title_en": "Can we change our plan?",
-   "partner": "sola"
+   "partner": "sola",
+   "img": "lessons/img/L3-07.webp"
+  },
+  {
+   "id": "L3-08",
+   "level": "L3",
+   "title_ko": "어릴 때",
+   "title_en": "I used to climb trees.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L3-09",
+   "level": "L3",
+   "title_ko": "여행 이야기",
+   "title_en": "I went to Gyeongju.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L3-10",
+   "level": "L3",
+   "title_ko": "축하와 위로",
+   "title_en": "Congratulations!",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L4-01",
+   "level": "L4",
+   "title_ko": "요즘 어떻게 지내요?",
+   "title_en": "What have you been up to?",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L4-02",
+   "level": "L4",
+   "title_ko": "왜 골랐어요?",
+   "title_en": "Why did you choose it?",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L4-03",
+   "level": "L4",
+   "title_ko": "조언하기",
+   "title_en": "If I were you, I’d take a break.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L4-04",
+   "level": "L4",
+   "title_ko": "기차를 놓쳤어요",
+   "title_en": "I missed my train.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L4-05",
+   "level": "L4",
+   "title_ko": "있잖아, 무슨 일이 있었냐면",
+   "title_en": "You won’t believe what happened!",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L4-06",
+   "level": "L4",
+   "title_ko": "새해 계획",
+   "title_en": "I’m thinking of learning Spanish.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L4-07",
+   "level": "L4",
+   "title_ko": "반품하고 싶어요",
+   "title_en": "I’d like to return this.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L4-08",
+   "level": "L4",
+   "title_ko": "정중하게 반대하기",
+   "title_en": "I see your point, but…",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L4-09",
+   "level": "L4",
+   "title_ko": "그때 기분",
+   "title_en": "I was so nervous when I started.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L4-10",
+   "level": "L4",
+   "title_ko": "전화로 예약하기",
+   "title_en": "I’d like to book a table.",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L5-01",
+   "level": "L5",
+   "title_ko": "무슨 걱정 있어요?",
+   "title_en": "What’s bothering you?",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L5-02",
+   "level": "L5",
+   "title_ko": "가장 기억에 남는 일",
+   "title_en": "My most memorable trip was to Jeju.",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L5-03",
+   "level": "L5",
+   "title_ko": "차라리 이게 좋아요",
+   "title_en": "I’d rather stay home.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L5-04",
+   "level": "L5",
+   "title_ko": "주문이 잘못됐어요",
+   "title_en": "I’m afraid there’s been a mistake.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L5-05",
+   "level": "L5",
+   "title_ko": "만드는 법 설명하기",
+   "title_en": "First, you need to cut the kimchi.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L5-06",
+   "level": "L5",
+   "title_ko": "그럴 걸 그랬어요",
+   "title_en": "I should have brought an umbrella.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L5-07",
+   "level": "L5",
+   "title_ko": "만약에",
+   "title_en": "What would you do if you had a month off?",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L5-08",
+   "level": "L5",
+   "title_ko": "소식 전하기",
+   "title_en": "I heard that it opens next Monday.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L5-09",
+   "level": "L5",
+   "title_ko": "정중하게 부탁하기",
+   "title_en": "Would you mind turning down the music?",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L5-10",
+   "level": "L5",
+   "title_ko": "어떤 사람이에요?",
+   "title_en": "He’s the kind of person who always makes people laugh.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L6-01",
+   "level": "L6",
+   "title_ko": "뉴스 이야기",
+   "title_en": "According to the news, …",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L6-02",
+   "level": "L6",
+   "title_ko": "의견과 근거",
+   "title_en": "The main reason is that I save time.",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L6-03",
+   "level": "L6",
+   "title_ko": "장단점 말하기",
+   "title_en": "One advantage is that it’s fast.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L6-04",
+   "level": "L6",
+   "title_ko": "얼마나 동의해요?",
+   "title_en": "I partly agree, but…",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L6-05",
+   "level": "L6",
+   "title_ko": "뭘까요? 추측하기",
+   "title_en": "It must be from my sister.",
+   "partner": "nubi",
+   "img": null
+  },
+  {
+   "id": "L6-06",
+   "level": "L6",
+   "title_ko": "무슨 뜻이에요?",
+   "title_en": "What do you mean by ‘tricky’?",
+   "partner": "moa",
+   "img": null
+  },
+  {
+   "id": "L6-07",
+   "level": "L6",
+   "title_ko": "제안하고 설득하기",
+   "title_en": "I really think we should start later.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L6-08",
+   "level": "L6",
+   "title_ko": "문제 해결 회의",
+   "title_en": "The problem is that the trash area is messy.",
+   "partner": "rino",
+   "img": null
+  },
+  {
+   "id": "L6-09",
+   "level": "L6",
+   "title_ko": "달라진 것",
+   "title_en": "It has become much busier.",
+   "partner": "sola",
+   "img": null
+  },
+  {
+   "id": "L6-10",
+   "level": "L6",
+   "title_ko": "미래 예측",
+   "title_en": "In ten years, robots will probably cook.",
+   "partner": "nubi",
+   "img": null
   }
  ],
+ "tasks": [
+  {
+   "id": "L7-01",
+   "title_ko": "재택근무",
+   "claim_en": "Working from home is better than working at the office."
+  },
+  {
+   "id": "L7-02",
+   "title_ko": "AI 시대의 외국어",
+   "claim_en": "We still need to learn foreign languages, even with AI translators."
+  },
+  {
+   "id": "L7-03",
+   "title_ko": "주 4일 근무",
+   "claim_en": "A four-day work week is a good idea."
+  },
+  {
+   "id": "L7-04",
+   "title_ko": "현금 없는 생활",
+   "claim_en": "We won’t need cash in ten years."
+  },
+  {
+   "id": "L7-05",
+   "title_ko": "패키지 vs 자유 여행",
+   "claim_en": "Package tours are better than planning your own trip."
+  },
+  {
+   "id": "L7-06",
+   "title_ko": "온라인 리뷰",
+   "claim_en": "You can trust online reviews."
+  },
+  {
+   "id": "L7-07",
+   "title_ko": "시골에서 노후",
+   "claim_en": "It’s better to live in the countryside when you get older."
+  },
+  {
+   "id": "L7-08",
+   "title_ko": "아이와 스마트폰",
+   "claim_en": "Children under twelve shouldn’t have smartphones."
+  },
+  {
+   "id": "L7-09",
+   "title_ko": "SNS와 행복",
+   "claim_en": "Social media makes people less happy."
+  },
+  {
+   "id": "L7-10",
+   "title_ko": "반려동물",
+   "claim_en": "Everyone should try having a pet at least once."
+  }
+ ],
+ "topics": {
+  "L8": [
+   {
+    "id": "L8-01",
+    "title_ko": "AI가 만든 그림도 예술일까",
+    "opener_en": "Can a picture made by AI be real art?"
+   },
+   {
+    "id": "L8-02",
+    "title_ko": "관광객 수 제한",
+    "opener_en": "Should popular cities limit the number of tourists?"
+   },
+   {
+    "id": "L8-03",
+    "title_ko": "전문가 vs 다재다능",
+    "opener_en": "Is it better to be a specialist or a generalist?"
+   },
+   {
+    "id": "L8-04",
+    "title_ko": "실패의 가치",
+    "opener_en": "What can we learn from failure?"
+   },
+   {
+    "id": "L8-05",
+    "title_ko": "편리함과 개인정보",
+    "opener_en": "How much privacy would people give up for convenience?"
+   },
+   {
+    "id": "L8-06",
+    "title_ko": "패스트 패션",
+    "opener_en": "Is fast fashion worth the low price?"
+   },
+   {
+    "id": "L8-07",
+    "title_ko": "우주 탐사",
+    "opener_en": "Is space exploration worth the money?"
+   },
+   {
+    "id": "L8-08",
+    "title_ko": "돈과 행복",
+    "opener_en": "Can money buy happiness?"
+   },
+   {
+    "id": "L8-09",
+    "title_ko": "야망",
+    "opener_en": "Is ambition always a good thing?"
+   },
+   {
+    "id": "L8-10",
+    "title_ko": "긱 경제",
+    "opener_en": "Is freelance or gig work the future of jobs?"
+   },
+   {
+    "id": "L8-11",
+    "title_ko": "고기 덜 먹기",
+    "opener_en": "Should people eat less meat?"
+   },
+   {
+    "id": "L8-12",
+    "title_ko": "온라인 수업",
+    "opener_en": "Is online learning as good as classroom learning?"
+   },
+   {
+    "id": "L8-13",
+    "title_ko": "도시 설계",
+    "opener_en": "What makes a city a great place to live?"
+   },
+   {
+    "id": "L8-14",
+    "title_ko": "일과 의미",
+    "opener_en": "Should a job be meaningful, or is a good salary enough?"
+   },
+   {
+    "id": "L8-15",
+    "title_ko": "기술과 외로움",
+    "opener_en": "Does technology make us more connected or more lonely?"
+   },
+   {
+    "id": "L8-16",
+    "title_ko": "자동화",
+    "opener_en": "Which jobs should never be done by robots?"
+   },
+   {
+    "id": "L8-17",
+    "title_ko": "교육",
+    "opener_en": "What should schools teach that they don’t?"
+   },
+   {
+    "id": "L8-18",
+    "title_ko": "소비 습관",
+    "opener_en": "Do we buy too many things we don’t need?"
+   },
+   {
+    "id": "L8-19",
+    "title_ko": "세대 차이",
+    "opener_en": "What do different generations misunderstand about each other?"
+   },
+   {
+    "id": "L8-20",
+    "title_ko": "미래의 일",
+    "opener_en": "What will a normal workday look like in 2040?"
+   }
+  ],
+  "L9": [
+   {
+    "id": "L9-01",
+    "title_ko": "말투 바꾸기",
+    "opener_en": "Say the same thing to a boss, a friend, and a child."
+   },
+   {
+    "id": "L9-02",
+    "title_ko": "관용 표현",
+    "opener_en": "Let’s swap idioms: tell me a Korean saying, and I’ll find an English match."
+   },
+   {
+    "id": "L9-03",
+    "title_ko": "농담 설명",
+    "opener_en": "Explain a Korean pun or wordplay in English. Only if you like jokes!"
+   },
+   {
+    "id": "L9-04",
+    "title_ko": "반대편 변호",
+    "opener_en": "Just for practice: argue that cereal is a soup."
+   },
+   {
+    "id": "L9-05",
+    "title_ko": "스포일러 없이",
+    "opener_en": "Describe a film’s ending without spoiling it."
+   },
+   {
+    "id": "L9-06",
+    "title_ko": "완곡하게 말하기",
+    "opener_en": "Turn down an invitation without sounding rude."
+   },
+   {
+    "id": "L9-07",
+    "title_ko": "뉘앙스 차이",
+    "opener_en": "What’s the difference between ‘I’m fine’, ‘I’m okay’, and ‘I’m good’?"
+   },
+   {
+    "id": "L9-08",
+    "title_ko": "이야기로 긴장감",
+    "opener_en": "Tell a short story with a twist at the end."
+   },
+   {
+    "id": "L9-09",
+    "title_ko": "말장난",
+    "opener_en": "Let’s make puns about food."
+   },
+   {
+    "id": "L9-10",
+    "title_ko": "비꼼 알아듣기",
+    "opener_en": "‘Oh, great. Another Monday.’ What does that really mean?"
+   },
+   {
+    "id": "L9-11",
+    "title_ko": "정중한 반대",
+    "opener_en": "Made-up meeting: your manager wants meetings at 7 a.m. Disagree politely but clearly."
+   },
+   {
+    "id": "L9-12",
+    "title_ko": "설명 압축",
+    "opener_en": "Explain your job, or a hobby, in one sentence, then in three words."
+   },
+   {
+    "id": "L9-13",
+    "title_ko": "격식 바꾸기",
+    "opener_en": "Say ‘Can’t come tomorrow, sorry!’ like a formal email, out loud."
+   },
+   {
+    "id": "L9-14",
+    "title_ko": "영어 속 문화",
+    "opener_en": "In English, ‘sorry’ isn’t always an apology. Like ‘Sorry, can you repeat that?’ What else?"
+   },
+   {
+    "id": "L9-15",
+    "title_ko": "말 많은 토론",
+    "opener_en": "Is a hot dog a sandwich? Defend your answer."
+   }
+  ]
+ },
  "sensitive": [
   "sick",
   "hospital",

@@ -1,0 +1,229 @@
+{
+ "id": "L5-10",
+ "level": "L5",
+ "title_ko": "어떤 사람이에요?",
+ "title_en": "He’s the kind of person who always makes people laugh.",
+ "goal_ko": "어떤 사람인지 묻고, 성격을 문장으로 묘사하고, 사이를 말하기",
+ "partner": "rino",
+ "offer_ko": "‘어떤 사람이에요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What’s ___ like?",
+   "ko": "___는 어떤 사람이에요?",
+   "help": {
+    "blank": "What’s your best friend ___?",
+    "choices": [
+     "like",
+     "lake",
+     "light"
+    ]
+   },
+   "pattern": "^(?:whats|what is) (?<x>[a-z]+(?: [a-z]+){0,4}) like$",
+   "partial_patterns": [
+    "^(?:how is|tell me about) [a-z]+(?: [a-z]+){0,4}$"
+   ],
+   "tests": {
+    "ok": [
+     "What’s your best friend like?",
+     "what is your boss like",
+     "What’s Jin like?"
+    ],
+    "partial": [
+     "tell me about your friend"
+    ],
+    "form_only": [],
+    "no": [
+     "like"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "He’s the kind of person who ___.",
+   "ko": "그는 ___하는 사람이에요.",
+   "help": {
+    "blank": "He’s the kind of person ___ always helps.",
+    "choices": [
+     "who",
+     "how",
+     "whose"
+    ]
+   },
+   "pattern": "^(?:(?:hes|shes|theyre|he is|she is|they are|[a-z]+(?: [a-z]+){0,2} (?:is|are)) )?(?:the kind of person|the type of person|someone|a person|the kind of friend) (?:who|that) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:hes|shes|he is|she is)(?: very| really| so)? (?:kind|funny|nice|smart|quiet|friendly|shy|honest|busy)$"
+   ],
+   "tests": {
+    "ok": [
+     "She’s the kind of person who always helps others.",
+     "my best friend is someone who makes me laugh"
+    ],
+    "partial": [
+     "He’s very funny"
+    ],
+    "form_only": [],
+    "no": [
+     "kind of person"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "We get along well.",
+   "ko": "우리는 잘 지내요.",
+   "help": {
+    "blank": "We get ___ well.",
+    "choices": [
+     "along",
+     "a long",
+     "alone"
+    ]
+   },
+   "accept": [
+    "we get along well",
+    "we get along",
+    "we get along really well",
+    "we get on well",
+    "we get along very well",
+    "we really get along",
+    "we get along so well"
+   ],
+   "partial_patterns": [
+    "^(?:were close|we are close|were good friends|we are good friends|good friends)$"
+   ],
+   "tests": {
+    "ok": [
+     "We get along well.",
+     "We get along really well."
+    ],
+    "partial": [
+     "we’re close"
+    ],
+    "form_only": [],
+    "no": [
+     "along"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Rino, who’s this in the photo?"
+  },
+  {
+   "who": "partner",
+   "en": "That’s my best friend, Jin."
+  },
+  {
+   "who": "tori",
+   "en": "What’s Jin like?"
+  },
+  {
+   "who": "partner",
+   "en": "He’s the kind of person who always makes people laugh."
+  },
+  {
+   "who": "tori",
+   "en": "He sounds fun!"
+  },
+  {
+   "who": "partner",
+   "en": "He is. We get along really well."
+  }
+ ],
+ "check": [
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "hes the kind of person who always makes people laugh"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "he is we get along really well",
+    "we get along really well"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내 주변 사람 이야기예요. 이름은 말하지 않아도 돼요(my friend, my coworker).",
+ "story": [
+  {
+   "en": "What’s your best friend like?",
+   "expect": "e2",
+   "screen_hint_ko": "문장으로: My friend is the kind of person who ___. (always listens)",
+   "screen_blank": "My friend is the kind of person who ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "matched_text:never|rude|lazy|always late|complains|selfish",
+     "say": "Hmm, that sounds hard sometimes."
+    },
+    {
+     "when": "matched_text:kind|funny|nice|helps|listens|laugh|smart|great|cares|honest|friendly",
+     "say": "They sound great!"
+    },
+    {
+     "when": "default",
+     "say": "Thanks for telling me."
+    }
+   ]
+  },
+  {
+   "en": "Do you two get along?",
+   "expect": "e3",
+   "screen_hint_ko": "잘 지낸다면: We get along well.",
+   "branches": [
+    {
+     "when": "negative",
+     "say": "Oh, I see."
+    },
+    {
+     "when": "default",
+     "say": "That’s so nice."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me about my friend Moa.",
+   "expect": "e1",
+   "screen_hint_ko": "물어봐요: What’s Moa like?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "She’s the kind of person who remembers everything!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino about Jin.",
+  "hint_ko": "리노에게 친구 진이 어떤 사람인지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "He sounds fun!",
+  "They sound great!",
+  "That’s so nice.",
+  "Oh, I see."
+ ],
+ "privacy_ko": "다른 사람 이름·사생활은 기억에 남기지 않아요. 이름 없이 말해도 되고, 험담을 끌어내지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

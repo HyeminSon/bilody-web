@@ -1,0 +1,221 @@
+{
+ "id": "L6-07",
+ "level": "L6",
+ "title_ko": "제안하고 설득하기",
+ "title_en": "I really think we should start later.",
+ "goal_ko": "강하게 제안하고, 좋은 결과를 들어 설득하고, 받아들이기",
+ "partner": "sola",
+ "offer_ko": "‘제안하고 설득하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I really think we should ___.",
+   "ko": "정말 ___해야 한다고 생각해요.",
+   "help": {
+    "blank": "I really think we ___ start later.",
+    "choices": [
+     "should",
+     "shoot",
+     "showed"
+    ]
+   },
+   "pattern": "^(?:i really think|i honestly think|i strongly feel|i think) we should (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^we should [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "tests": {
+    "ok": [
+     "I really think we should start meetings later.",
+     "i honestly think we should go to a buffet"
+    ],
+    "partial": [
+     "we should go to a buffet"
+    ],
+    "form_only": [],
+    "no": [
+     "should"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It would ___.",
+   "ko": "그러면 ___할 거예요.",
+   "help": {
+    "blank": "It ___ save us a lot of time.",
+    "choices": [
+     "would",
+     "wood",
+     "will"
+    ]
+   },
+   "pattern": "^(?:it|that|this) (?:would|could|will) (?<x>(?:save|help|make|give|cut|reduce|be|let)(?: [a-z]+){0,12})$",
+   "partial_patterns": [
+    "^(?:its|it is) (?:cheaper|better|faster|easier|good)(?: [a-z]+){0,8}$"
+   ],
+   "tests": {
+    "ok": [
+     "It would save us a lot of money.",
+     "that could help the team",
+     "It would give everyone more time."
+    ],
+    "partial": [
+     "it’s cheaper"
+    ],
+    "form_only": [],
+    "no": [
+     "would"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Let’s give it a try.",
+   "ko": "한번 해 봐요.",
+   "help": {
+    "blank": "Let’s give it a ___.",
+    "choices": [
+     "try",
+     "tree",
+     "tie"
+    ]
+   },
+   "accept": [
+    "lets give it a try",
+    "okay lets give it a try",
+    "why not lets give it a try",
+    "lets try it",
+    "fine lets give it a try",
+    "alright lets give it a try",
+    "sure lets give it a try",
+    "its worth a try",
+    "lets give it a shot"
+   ],
+   "partial_patterns": [
+    "^(?:okay|ok|fine|sure|why not|lets try)$"
+   ],
+   "tests": {
+    "ok": [
+     "Let’s give it a try.",
+     "it’s worth a try"
+    ],
+    "partial": [
+     "why not"
+    ],
+    "form_only": [],
+    "no": [
+     "try"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, I really think we should start meetings later."
+  },
+  {
+   "who": "tori",
+   "en": "Why is that?"
+  },
+  {
+   "who": "partner",
+   "en": "It would give everyone more time in the morning."
+  },
+  {
+   "who": "tori",
+   "en": "Hmm. Some people like early meetings."
+  },
+  {
+   "who": "partner",
+   "en": "Then let’s try it for just one week."
+  },
+  {
+   "who": "tori",
+   "en": "Okay, let’s give it a try."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "i really think we should start meetings later",
+    "tori i really think we should start meetings later"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "it would give everyone more time in the morning"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 가상의 팀 회식 장소를 정해요.",
+ "story": [
+  {
+   "en": "Let’s plan a team dinner. Where should we go?",
+   "expect": "e1",
+   "screen_hint_ko": "‘I really think’로: I really think we should ___. (go to a buffet)",
+   "screen_blank": "I really think we should ___.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Why?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "좋은 점을 들어 설득해요: It would ___. (make everyone happy)",
+   "screen_blank": "It would ___.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Hmm, you’re pretty convincing!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My idea: let’s have meetings standing up. It would save time!",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "좋으면: Let’s give it a try.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Great! Starting tomorrow."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Persuade Sola.",
+  "hint_ko": "솔라에게 ‘I really think we should…’로 제안해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Why is that?",
+  "You’re pretty convincing!",
+  "Starting tomorrow."
+ ],
+ "privacy_ko": "역할극이에요. 실제 회사·동료 이름은 묻지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

@@ -1,0 +1,244 @@
+{
+ "id": "L4-01",
+ "level": "L4",
+ "title_ko": "요즘 어떻게 지내요?",
+ "title_en": "What have you been up to?",
+ "goal_ko": "요즘 하는 일을 묻고, 계속해 온 일과 기간을 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘요즘 어떻게 지내요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What have you been up to?",
+   "ko": "요즘 어떻게 지냈어요?",
+   "help": {
+    "blank": "What have you been ___ to?",
+    "choices": [
+     "up",
+     "on",
+     "in"
+    ]
+   },
+   "accept": [
+    "what have you been up to",
+    "what have you been up to lately",
+    "what have you been up to recently",
+    "what have you been up to these days",
+    "what have you been doing",
+    "what have you been doing lately",
+    "whats new",
+    "whats new with you"
+   ],
+   "tests": {
+    "ok": [
+     "What have you been up to?",
+     "what have you been doing lately",
+     "What’s new with you?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "up to",
+     "what are you doing"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’ve been ___ing lately.",
+   "ko": "요즘 ___하고 있어요.",
+   "help": {
+    "blank": "I’ve ___ learning to cook lately.",
+    "choices": [
+     "been",
+     "bean",
+     "being"
+    ]
+   },
+   "pattern": "^(?:ive been|i have been)(?: really)? (?<x>[a-z]+ing(?: [a-z]+){0,6}?)(?: (?:lately|recently|these days|a lot))?$",
+   "partial_patterns": [
+    "^(?:im|i am) [a-z]+ing(?: [a-z]+){0,6}$",
+    "^(?:ive been|i have been) (?:busy|tired|good|okay|fine|well)(?: [a-z]+){0,4}$"
+   ],
+   "accept_note": "‘I’m learning…’(현재진행)·‘I’ve been busy…’는 뜻 전달(부분). ‘I been …’은 불인정.",
+   "tests": {
+    "ok": [
+     "I’ve been learning to cook lately.",
+     "I have been working a lot",
+     "ive been reading books these days"
+    ],
+    "partial": [
+     "I’m learning to cook",
+     "I’ve been busy with work"
+    ],
+    "form_only": [],
+    "no": [
+     "cooking",
+     "I been cooking",
+     "I’ve been learn to cook"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "How long have you been ___ing?",
+   "ko": "___한 지 얼마나 됐어요?",
+   "help": {
+    "blank": "How ___ have you been running?",
+    "choices": [
+     "long",
+     "much",
+     "many"
+    ]
+   },
+   "pattern": "^how long have you been (?<x>[a-z]+ing(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^how long$",
+    "^since when$"
+   ],
+   "tests": {
+    "ok": [
+     "How long have you been learning it?",
+     "how long have you been doing yoga"
+    ],
+    "partial": [
+     "how long"
+    ],
+    "form_only": [],
+    "no": [
+     "learning"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Nubi! Long time no see. What have you been up to?"
+  },
+  {
+   "who": "partner",
+   "en": "I’ve been learning to cook lately."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! How long have you been cooking?"
+  },
+  {
+   "who": "partner",
+   "en": "About two months. What have you been up to?"
+  },
+  {
+   "who": "tori",
+   "en": "I’ve been running in the mornings."
+  },
+  {
+   "who": "partner",
+   "en": "Nice! How long have you been running?"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "ive been learning to cook lately"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "about two months what have you been up to",
+    "what have you been up to"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "how long have you been running",
+    "nice how long have you been running"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 진짜 내 이야기예요. 떠오르지 않으면 장면 속 일(learning to cook)로 해도 돼요.",
+ "story": [
+  {
+   "en": "So, what have you been up to lately?",
+   "expect": "e2",
+   "model": "I’ve been {x} lately.",
+   "screen_hint_ko": "요즘 하는 일을 문장으로: I’ve been ___ lately. (working a lot, reading books)",
+   "screen_blank": "I’ve been ___ lately.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Oh, really? Sounds interesting."
+    }
+   ]
+  },
+  {
+   "en": "How long have you been doing that?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "얼마나 됐는지: For ___. (two weeks, a year)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s great!"
+    }
+   ]
+  }
+ ],
+ "fallback": "learning to cook",
+ "korean_map": {
+  "요리": "learning to cook",
+  "운동": "working out",
+  "일": "working a lot",
+  "공부": "studying English",
+  "영어": "studying English",
+  "독서": "reading books",
+  "책": "reading books",
+  "여행": "traveling"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What have you been up to?"
+  },
+  {
+   "en": "I’ve been running in the mornings.",
+   "expect": "e3",
+   "screen_hint_ko": "얼마나 됐는지 물어봐요: How long have you been running?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "For about a year! It feels great."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 요즘 어떻게 지냈는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Sounds interesting.",
+  "That’s great!",
+  "It feels great."
+ ],
+ "privacy_ko": "요즘 하는 일은 이 연습에만 쓰고 기억에 남기지 않아요. 일·건강의 힘든 이야기는 공통 민감 규칙.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

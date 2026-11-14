@@ -1,0 +1,250 @@
+{
+ "id": "L6-06",
+ "level": "L6",
+ "title_ko": "무슨 뜻이에요?",
+ "title_en": "What do you mean by ‘tricky’?",
+ "goal_ko": "애매한 말의 뜻을 묻고, 내 말을 풀어 설명하고, 상대 말을 정리해 확인하기",
+ "partner": "moa",
+ "offer_ko": "‘무슨 뜻이에요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What do you mean by ___?",
+   "ko": "___가 무슨 뜻이에요?",
+   "help": {
+    "blank": "What do you ___ by ‘tricky’?",
+    "choices": [
+     "mean",
+     "mind",
+     "meet"
+    ]
+   },
+   "pattern": "^(?:sorry |sorry but )?what do you mean by (?<x>[a-z]+(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^(?:what do you mean|what does [a-z]+(?: [a-z]+){0,4} mean)$"
+   ],
+   "tests": {
+    "ok": [
+     "What do you mean by ‘tricky’?",
+     "sorry what do you mean by that"
+    ],
+    "partial": [
+     "what do you mean"
+    ],
+    "form_only": [],
+    "no": [
+     "mean"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "What I mean is ___.",
+   "ko": "제 말은 ___라는 거예요.",
+   "help": {
+    "blank": "What I ___ is I have a lot of work.",
+    "choices": [
+     "mean",
+     "meant",
+     "mine"
+    ]
+   },
+   "pattern": "^(?:what i mean is|what im saying is|in other words|i mean)(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:because|so) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "What I mean is we need more time.",
+     "in other words I’m really busy"
+    ],
+    "partial": [
+     "because I have a lot of work"
+    ],
+    "form_only": [],
+    "no": [
+     "what I mean"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "So you’re saying ___?",
+   "ko": "그러니까 ___라는 말이죠?",
+   "help": {
+    "blank": "So you’re ___ we should wait?",
+    "choices": [
+     "saying",
+     "sang",
+     "seeing"
+    ]
+   },
+   "pattern": "^(?:so )?(?:youre saying|you are saying|you mean|are you saying)(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:really|you mean)$"
+   ],
+   "tests": {
+    "ok": [
+     "So you’re saying we should wait?",
+     "you mean we can’t go"
+    ],
+    "partial": [
+     "you mean"
+    ],
+    "form_only": [],
+    "no": [
+     "saying"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, the trip is a bit tricky this year."
+  },
+  {
+   "who": "partner",
+   "en": "What do you mean by ‘tricky’?"
+  },
+  {
+   "who": "tori",
+   "en": "What I mean is the hotels are almost full."
+  },
+  {
+   "who": "partner",
+   "en": "So you’re saying we should book now?"
+  },
+  {
+   "who": "tori",
+   "en": "Exactly. Today, if possible."
+  },
+  {
+   "who": "partner",
+   "en": "Got it. I’ll check tonight."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "what do you mean by tricky"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "so youre saying we should book now",
+    "youre saying we should book now"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "토리 말이 애매할 때 뜻을 묻고, 내 말도 풀어 설명해요.",
+ "story": [
+  {
+   "en": "Our plan for Saturday is a little complicated.",
+   "expect": "e1",
+   "screen_hint_ko": "뜻을 물어요: What do you mean by ‘complicated’?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "I mean the weather might be bad."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "정리해 확인해요: So you’re saying we might cancel?",
+   "branches": [
+    {
+     "when": "matched_text:cancel|not go|postpone|another day|change the plan|stay home",
+     "say": "Exactly. Let’s check on Friday."
+    },
+    {
+     "when": "default",
+     "say": "Not quite. I mean the weather might be bad, so we might cancel."
+    }
+   ]
+  },
+  {
+   "en": "By the way, how’s your week going?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "짧게: It’s busy. / It’s okay.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Hmm, what do you mean by that?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "풀어 설명해요: What I mean is ___. (I have a lot of work)",
+   "screen_blank": "What I mean is ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Oh, I see. That makes sense."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you check what I mean. The movie was… interesting.",
+   "expect": "e1",
+   "screen_hint_ko": "뜻을 물어요: What do you mean by ‘interesting’?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "What I mean is it was a little strange!"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "정리해 확인해요: So you’re saying you didn’t like it?",
+   "branches": [
+    {
+     "when": "matched_text:didnt like|did not like|not good|boring|strange|weird|bad|not great",
+     "say": "Ha, exactly!"
+    },
+    {
+     "when": "default",
+     "say": "Not exactly. I mean it was a little strange."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아의 말이 애매하면 ‘What do you mean by…?’로 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Exactly.",
+  "Oh, I see.",
+  "That makes sense.",
+  "Ha, exactly!"
+ ],
+ "privacy_ko": "이야기는 기억에 남기지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

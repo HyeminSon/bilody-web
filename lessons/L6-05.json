@@ -1,0 +1,233 @@
+{
+ "id": "L6-05",
+ "level": "L6",
+ "title_ko": "뭘까요? 추측하기",
+ "title_en": "It must be from my sister.",
+ "goal_ko": "확신 정도에 따라 추측하고(must·might), 의심을 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘뭘까요? 추측하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "It must be ___.",
+   "ko": "분명 ___일 거예요.",
+   "help": {
+    "blank": "It ___ be from my sister.",
+    "choices": [
+     "must",
+     "most",
+     "mask"
+    ]
+   },
+   "pattern": "^(?:it|that|this|they|he|she) (?:must|has to) (?:be|have been) (?<x>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^(?:its|it is) (?:definitely|surely) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "tests": {
+    "ok": [
+     "It must be a gift from your mom.",
+     "that must have been the neighbor",
+     "It must be an orange."
+    ],
+    "partial": [
+     "it’s definitely a gift"
+    ],
+    "form_only": [],
+    "no": [
+     "must",
+     "It must is a gift"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It might be ___.",
+   "ko": "___일지도 몰라요.",
+   "help": {
+    "blank": "It ___ be a gift.",
+    "choices": [
+     "might",
+     "mate",
+     "night"
+    ]
+   },
+   "pattern": "^(?:it|that|this|they|we|you) (?:might|may|could) (?:be |have been )?(?!(?:is|are|was|to)\\b)(?<x>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^(?:maybe|perhaps|probably) (?:its |it is )?[a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "tests": {
+    "ok": [
+     "It might be a book.",
+     "it could be shoes",
+     "It might snow."
+    ],
+    "partial": [
+     "maybe it’s a book"
+    ],
+    "form_only": [],
+    "no": [
+     "might",
+     "it might is a book"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I doubt it.",
+   "ko": "아닐 것 같아요.",
+   "help": {
+    "blank": "I ___ it.",
+    "choices": [
+     "doubt",
+     "double",
+     "don’t"
+    ]
+   },
+   "accept": [
+    "i doubt it",
+    "i doubt that",
+    "hmm i doubt it",
+    "i really doubt it",
+    "i doubt that very much"
+   ],
+   "partial_patterns": [
+    "^(?:probably not|i dont think so|no way|not really)$"
+   ],
+   "accept_note": "‘I don’t think so’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "I doubt it.",
+     "I really doubt it"
+    ],
+    "partial": [
+     "I don't think so"
+    ],
+    "form_only": [],
+    "no": [
+     "doubt"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, there’s a big box at my door. I didn’t order anything."
+  },
+  {
+   "who": "tori",
+   "en": "Hmm. It might be a gift."
+  },
+  {
+   "who": "partner",
+   "en": "It must be from my sister. Her gifts are always early."
+  },
+  {
+   "who": "tori",
+   "en": "Or it might be for your neighbor."
+  },
+  {
+   "who": "partner",
+   "en": "I doubt it. My name is on it."
+  },
+  {
+   "who": "tori",
+   "en": "Then open it!"
+  }
+ ],
+ "check": [
+  {
+   "line": 2,
+   "expression": "e1",
+   "line_accept": [
+    "it must be from my sister",
+    "it must be from my sister her gifts are always early"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "i doubt it",
+    "i doubt it my name is on it"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "수수께끼 놀이예요. 토리가 손에 든 물건을 추측해요.",
+ "story": [
+  {
+   "en": "I’m holding something small and round. What do you think it is?",
+   "expect": "e2",
+   "alt_expect": [
+    "e1"
+   ],
+   "screen_hint_ko": "추측해요: It might be ___. (a ball, an apple)",
+   "screen_blank": "It might be ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good guess! Here’s a clue: it’s orange and juicy."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e1",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "확실하면: It must be an orange.",
+   "branches": [
+    {
+     "when": "slot_in:an orange|orange",
+     "say": "Yes! It’s an orange."
+    },
+    {
+     "when": "default",
+     "say": "Nope! It’s an orange."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "I think it will snow tomorrow. Do you?",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "의심되면: I doubt it. 아니면 It might ___.",
+   "branches": [
+    {
+     "when": "matched:e2",
+     "say": "Maybe! Let’s check tomorrow."
+    },
+    {
+     "when": "default",
+     "say": "Ha, you’re probably right."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Guess with Nubi.",
+  "hint_ko": "누비의 상자에 뭐가 있을지 ‘It might be…’로 추측해 보세요",
+  "expect": "e2"
+ },
+ "extra_guides": [
+  "Good guess!",
+  "Here’s a clue.",
+  "Nope!",
+  "You’re probably right."
+ ],
+ "privacy_ko": "실제 사람에 대해 근거 없는 추측(누가 그랬을 것 같다 등)은 하지 않아요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

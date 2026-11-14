@@ -1,0 +1,216 @@
+{
+ "id": "L6-10",
+ "level": "L6",
+ "title_ko": "미래 예측",
+ "title_en": "In ten years, robots will probably cook.",
+ "goal_ko": "미래를 묻고, 확신 정도를 넣어 예측하고, 조건을 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘미래 예측’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Do you think ___ will ___?",
+   "ko": "___가 ___할 것 같아요?",
+   "help": {
+    "blank": "Do you think robots ___ cook for us?",
+    "choices": [
+     "will",
+     "well",
+     "wheel"
+    ]
+   },
+   "pattern": "^do you think (?:that )?(?<x>[a-z]+(?: [a-z]+){0,5}?) will (?<y>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^will [a-z]+(?: [a-z]+){1,12}$"
+   ],
+   "tests": {
+    "ok": [
+     "Do you think robots will cook for us?",
+     "do you think we will live on mars"
+    ],
+    "partial": [
+     "will robots cook"
+    ],
+    "form_only": [],
+    "no": [
+     "will"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "In ten years, ___ will probably ___.",
+   "ko": "10년 뒤엔 아마 ___가 ___할 거예요.",
+   "help": {
+    "blank": "In ten years, robots will ___ cook.",
+    "choices": [
+     "probably",
+     "problem",
+     "properly"
+    ]
+   },
+   "pattern": "^(?:in (?:ten|10|twenty|20|five|5|fifty|50) years|in the future|someday|one day)(?: i think)? (?<x>[a-z]+(?: [a-z]+){0,5}?) (?:will probably|will likely|will definitely|probably will|will|might) (?![a-z]+ing\\b)(?<y>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^[a-z]+(?: [a-z]+){0,5} will (?:probably )?[a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "언제(In ten years 등)가 있어야 목표 수행.",
+   "tests": {
+    "ok": [
+     "In ten years, robots will probably clean our homes.",
+     "in the future people might live on mars"
+    ],
+    "partial": [
+     "robots will probably clean our homes",
+     "In ten years robots will cooking"
+    ],
+    "form_only": [],
+    "no": [
+     "in ten years"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It depends on ___.",
+   "ko": "___에 달렸어요.",
+   "help": {
+    "blank": "It ___ on the price.",
+    "choices": [
+     "depends",
+     "defends",
+     "depend"
+    ]
+   },
+   "pattern": "^(?:well |hmm )?(?:it depends on|that depends on|it all depends on) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:it depends|maybe|depends)$"
+   ],
+   "tests": {
+    "ok": [
+     "It depends on the price.",
+     "that depends on the technology"
+    ],
+    "partial": [
+     "it depends"
+    ],
+    "form_only": [],
+    "no": [
+     "depends on"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, do you think robots will cook for us someday?"
+  },
+  {
+   "who": "tori",
+   "en": "Maybe! What do you think?"
+  },
+  {
+   "who": "partner",
+   "en": "In ten years, robots will probably cook simple meals."
+  },
+  {
+   "who": "tori",
+   "en": "Will people buy them?"
+  },
+  {
+   "who": "partner",
+   "en": "It depends on the price. They’re very expensive now."
+  },
+  {
+   "who": "tori",
+   "en": "True. I’d buy one for pancakes!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "do you think robots will cook for us someday",
+    "tori do you think robots will cook for us someday"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "in ten years robots will probably cook simple meals"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "it depends on the price",
+    "it depends on the price theyre very expensive now"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "미래 상상이에요. 정답은 없어요. 선거·주식 같은 예측은 하지 않아요.",
+ "story": [
+  {
+   "en": "Do you think people will still drive cars in twenty years?",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "생각을: In twenty years, ___ will probably ___. 아니면 It depends on ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Interesting prediction!"
+    }
+   ]
+  },
+  {
+   "en": "What about schools? How will they change?",
+   "expect": "e2",
+   "screen_hint_ko": "‘probably’로: In ten years, schools will probably ___.",
+   "screen_blank": "In ten years, schools will probably ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Hmm, that could happen!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me a ‘do you think’ question about the future.",
+   "expect": "e1",
+   "screen_hint_ko": "물어봐요: Do you think we will live on Mars?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "It depends on the technology! Maybe in fifty years."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi about the future.",
+  "hint_ko": "누비에게 ‘Do you think … will …?’로 미래를 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Interesting prediction!",
+  "That could happen!",
+  "Maybe!"
+ ],
+ "privacy_ko": "정치·경제 예측(선거·주식·집값)은 다루지 않아요. 생각은 기억에 남기지 않아요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

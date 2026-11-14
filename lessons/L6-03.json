@@ -1,0 +1,229 @@
+{
+ "id": "L6-03",
+ "level": "L6",
+ "title_ko": "장단점 말하기",
+ "title_en": "One advantage is that it’s fast.",
+ "goal_ko": "장점과 단점을 말하고 전체 생각으로 정리하기",
+ "partner": "sola",
+ "offer_ko": "‘장단점 말하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "One advantage is that ___.",
+   "ko": "한 가지 장점은 ___예요.",
+   "help": {
+    "blank": "One ___ is that it’s fast.",
+    "choices": [
+     "advantage",
+     "adventure",
+     "vantage"
+    ]
+   },
+   "pattern": "^(?:one|the biggest|the main|another) (?:advantage|benefit|good point|upside)(?: of (?<y>[a-z]+(?: [a-z]+){0,4}?))? is(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:its good because|the good thing is) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "One advantage of online shopping is that it’s fast.",
+     "another benefit is you can compare prices"
+    ],
+    "partial": [
+     "the good thing is it’s fast"
+    ],
+    "form_only": [],
+    "no": [
+     "one advantage"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "On the other hand, ___.",
+   "ko": "반면에 ___.",
+   "help": {
+    "blank": "On the other ___, you can’t try things on.",
+    "choices": [
+     "hand",
+     "and",
+     "hen"
+    ]
+   },
+   "pattern": "^(?:on the other hand|however|but on the other hand) (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^but [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "On the other hand, you can’t try clothes on.",
+     "however it takes a long time"
+    ],
+    "partial": [
+     "but it’s expensive"
+    ],
+    "form_only": [],
+    "no": [
+     "other hand"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Overall, I think ___.",
+   "ko": "전체적으로 ___라고 생각해요.",
+   "help": {
+    "blank": "___, I think it’s worth it.",
+    "choices": [
+     "Overall",
+     "Over all",
+     "All over"
+    ]
+   },
+   "pattern": "^(?:overall|all in all|on the whole|in general)(?: i think| i feel| i believe)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:so|i think) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "Overall, I think it’s worth it.",
+     "all in all it’s a good idea"
+    ],
+    "partial": [
+     "I think it’s worth it"
+    ],
+    "form_only": [],
+    "no": [
+     "overall"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Sola, do you shop online a lot?"
+  },
+  {
+   "who": "partner",
+   "en": "All the time. One advantage is that it’s really fast."
+  },
+  {
+   "who": "tori",
+   "en": "True. Any disadvantages?"
+  },
+  {
+   "who": "partner",
+   "en": "On the other hand, you can’t try clothes on."
+  },
+  {
+   "who": "tori",
+   "en": "That’s a problem. So what do you think?"
+  },
+  {
+   "who": "partner",
+   "en": "Overall, I think it’s worth it for small things."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "all the time one advantage is that its really fast",
+    "one advantage is that its really fast"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "on the other hand you cant try clothes on"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "overall i think its worth it for small things"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "정답은 없어요. 내 생각대로 말해요.",
+ "story": [
+  {
+   "en": "Let’s talk about living alone. What’s one advantage?",
+   "expect": "e1",
+   "screen_hint_ko": "장점: One advantage is that ___.",
+   "screen_blank": "One advantage is that ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good point. Any disadvantages?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "단점: On the other hand, ___.",
+   "screen_blank": "On the other hand, ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "True. So what do you think overall?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "정리: Overall, I think ___.",
+   "screen_blank": "Overall, I think ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s a fair conclusion."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me about having a pet. I’ll give pros and cons.",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "물어봐요: What are the pros and cons of having a pet?",
+   "branches": [
+    {
+     "when": "matched_text:pet|dog|cat",
+     "say": "One advantage is that pets make you happy. On the other hand, they need time."
+    },
+    {
+     "when": "default",
+     "say": "One advantage is that pets make you happy. On the other hand, they cost money."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Talk to Sola about online shopping.",
+  "hint_ko": "‘One advantage is…’로 온라인 쇼핑의 장점을 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Good point.",
+  "Any disadvantages?",
+  "So what do you think overall?",
+  "That’s a fair conclusion."
+ ],
+ "privacy_ko": "생각은 기억에 남기지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

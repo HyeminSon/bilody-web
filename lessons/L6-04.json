@@ -1,0 +1,273 @@
+{
+ "id": "L6-04",
+ "level": "L6",
+ "title_ko": "얼마나 동의해요?",
+ "title_en": "I partly agree, but…",
+ "goal_ko": "완전히·일부만 동의하거나 조심스럽게 반대하기",
+ "partner": "rino",
+ "offer_ko": "‘얼마나 동의해요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I completely agree.",
+   "ko": "완전히 동의해요.",
+   "help": {
+    "blank": "I ___ agree.",
+    "choices": [
+     "completely",
+     "complete",
+     "compete"
+    ]
+   },
+   "accept": [
+    "i completely agree",
+    "i totally agree",
+    "i agree completely",
+    "i couldnt agree more",
+    "i completely agree with you",
+    "i totally agree with you",
+    "absolutely i agree",
+    "i agree one hundred percent"
+   ],
+   "partial_patterns": [
+    "^(?:i agree|agree|yes|same)$"
+   ],
+   "tests": {
+    "ok": [
+     "I completely agree.",
+     "I couldn't agree more"
+    ],
+    "partial": [
+     "I agree"
+    ],
+    "form_only": [],
+    "no": [
+     "completely"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I partly agree, but ___.",
+   "ko": "일부는 동의하지만 ___.",
+   "help": {
+    "blank": "I ___ agree, but phones help us.",
+    "choices": [
+     "partly",
+     "party",
+     "part"
+    ]
+   },
+   "pattern": "^(?:i partly agree|i agree to some extent|i kind of agree|i sort of agree|i agree up to a point|i partially agree|partly) (?:but|however) (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:i partly agree|i agree to some extent|i kind of agree|i partially agree)$"
+   ],
+   "tests": {
+    "ok": [
+     "I partly agree, but phones help us stay in touch.",
+     "i agree to some extent but it depends"
+    ],
+    "partial": [
+     "I partly agree"
+    ],
+    "form_only": [],
+    "no": [
+     "partly"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I’m not sure I agree.",
+   "ko": "글쎄요, 동의하기 어렵네요.",
+   "help": {
+    "blank": "I’m not ___ I agree.",
+    "choices": [
+     "sure",
+     "shore",
+     "short"
+    ]
+   },
+   "accept": [
+    "im not sure i agree",
+    "i am not sure i agree",
+    "im not sure i agree with that",
+    "im not sure about that",
+    "im not so sure",
+    "i dont really agree",
+    "im not sure i agree with you",
+    "i dont think i agree"
+   ],
+   "partial_patterns": [
+    "^(?:i disagree|no|i dont agree)$"
+   ],
+   "accept_note": "‘I don’t agree’·‘I disagree’는 뜻 전달(부분, 이 과는 부드럽게 반대하기).",
+   "tests": {
+    "ok": [
+     "I’m not sure I agree.",
+     "I’m not sure about that"
+    ],
+    "partial": [
+     "I disagree"
+    ],
+    "form_only": [],
+    "no": [
+     "not sure"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "This book says smartphones make us less social. What do you think?"
+  },
+  {
+   "who": "partner",
+   "en": "I partly agree, but phones help me talk to my family."
+  },
+  {
+   "who": "tori",
+   "en": "That’s true. I think we use them too much, though."
+  },
+  {
+   "who": "partner",
+   "en": "I completely agree. I check mine all the time!"
+  },
+  {
+   "who": "tori",
+   "en": "Some people say we should ban phones at dinner."
+  },
+  {
+   "who": "partner",
+   "en": "Hmm, I’m not sure I agree. It depends on the family."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i partly agree but phones help me talk to my family"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e1",
+   "line_accept": [
+    "i completely agree",
+    "i completely agree i check mine all the time"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "hmm im not sure i agree",
+    "hmm im not sure i agree it depends on the family",
+    "im not sure i agree",
+    "im not sure i agree it depends on the family"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "토리가 말하는 주장에 얼마나 동의하는지 골라 말해요. 정치·종교 주제는 다루지 않아요.",
+ "story": [
+  {
+   "en": "First: breakfast is the most important meal.",
+   "expect": "e1",
+   "alt_expect": [
+    "e2",
+    "e3"
+   ],
+   "screen_hint_ko": "동의 정도를 골라요: I completely agree. / I partly agree, but ___. / I’m not sure I agree.",
+   "branches": [
+    {
+     "when": "matched:e2",
+     "say": "Interesting point!"
+    },
+    {
+     "when": "default",
+     "say": "Okay! Next one."
+    }
+   ]
+  },
+  {
+   "en": "Next: everyone should learn to cook.",
+   "expect": "e1",
+   "alt_expect": [
+    "e2",
+    "e3"
+   ],
+   "screen_hint_ko": "동의 정도를 골라요: I completely agree. / I partly agree, but ___. / I’m not sure I agree.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Got it!"
+    }
+   ]
+  },
+  {
+   "en": "Last one: it’s better to live in a big city.",
+   "expect": "e1",
+   "alt_expect": [
+    "e2",
+    "e3"
+   ],
+   "screen_hint_ko": "동의 정도를 골라요: I completely agree. / I partly agree, but ___. / I’m not sure I agree.",
+   "branches": [
+    {
+     "when": "matched:e2",
+     "say": "Fair enough!"
+    },
+    {
+     "when": "default",
+     "say": "Interesting!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you say: summer is better than winter. Then I’ll answer.",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "말해요: Summer is better than winter.",
+   "branches": [
+    {
+     "when": "matched_text:summer",
+     "say": "I partly agree. Summer is fun, but it’s too hot!"
+    },
+    {
+     "when": "matched_text:winter",
+     "say": "I partly agree. Winter is cozy, but it’s so cold!"
+    },
+    {
+     "when": "default",
+     "say": "Interesting! I’m not sure I agree, but I like your idea."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Agree or disagree with Rino.",
+  "hint_ko": "리노의 말에 얼마나 동의하는지 말해 보세요",
+  "expect": "e2"
+ },
+ "extra_guides": [
+  "Next one.",
+  "Got it!",
+  "Interesting point!",
+  "It depends!",
+  "That’s true."
+ ],
+ "privacy_ko": "의견은 기억에 남기지 않아요. 민감한 주제(정치·종교·성별 등)는 다루지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

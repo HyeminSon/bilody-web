@@ -1,0 +1,241 @@
+{
+ "id": "L4-07",
+ "level": "L4",
+ "title_ko": "반품하고 싶어요",
+ "title_en": "I’d like to return this.",
+ "goal_ko": "반품·교환을 부탁하고 문제를 말하고 환불을 요청하기",
+ "partner": "sola",
+ "offer_ko": "‘반품하고 싶어요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I’d like to return this.",
+   "ko": "이거 반품하고 싶어요.",
+   "help": {
+    "blank": "I’d like to ___ this.",
+    "choices": [
+     "return",
+     "retire",
+     "repeat"
+    ]
+   },
+   "pattern": "^(?:hi |excuse me )?(?:id like to|i would like to|can i|could i) (?<x>return|exchange) (?:this|these|it|this (?:shirt|jacket|sweater|bag|hat|item)|these (?:shoes|pants|jeans))(?: please)?$",
+   "partial_patterns": [
+    "^(?:i want to |want )?(?:return|exchange)(?: this| it| these)?(?: please)?$"
+   ],
+   "accept_note": "‘I want to return this’는 뜻 전달(부분, 덜 정중함).",
+   "tests": {
+    "ok": [
+     "I’d like to return this.",
+     "Can I exchange these shoes?",
+     "excuse me I would like to return this shirt"
+    ],
+    "partial": [
+     "I want to return this",
+     "return please"
+    ],
+    "form_only": [],
+    "no": [
+     "this"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It’s too ___.",
+   "ko": "너무 ___해요.",
+   "help": {
+    "blank": "It’s ___ small.",
+    "choices": [
+     "too",
+     "two",
+     "to"
+    ]
+   },
+   "pattern": "^(?:its|it is|theyre|they are|this is|these are)(?: a little| a bit| a little bit)? too (?<x>small|big|large|tight|long|short|loose)(?: for me)?$",
+   "partial_patterns": [
+    "^(?:too )?(?:small|big|tight|long|short)$",
+    "^(?:its|it is) too much [a-z]+$"
+   ],
+   "tests": {
+    "ok": [
+     "It’s too small.",
+     "they are a little too tight",
+     "It’s too small for me."
+    ],
+    "partial": [
+     "small",
+     "It’s too much expensive"
+    ],
+    "form_only": [],
+    "no": [
+     "too"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Can I get a refund?",
+   "ko": "환불받을 수 있어요?",
+   "help": {
+    "blank": "Can I get a ___?",
+    "choices": [
+     "refund",
+     "repeat",
+     "return"
+    ]
+   },
+   "accept": [
+    "can i get a refund",
+    "could i get a refund",
+    "can i have a refund",
+    "can i get my money back",
+    "can i get a refund please",
+    "could i have a refund please",
+    "is it possible to get a refund"
+   ],
+   "partial_patterns": [
+    "^(?:refund|refund please|money back)$"
+   ],
+   "tests": {
+    "ok": [
+     "Can I get a refund?",
+     "can I get my money back"
+    ],
+    "partial": [
+     "refund please"
+    ],
+    "form_only": [],
+    "no": [
+     "refund me"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Hi. I’d like to return this jacket."
+  },
+  {
+   "who": "tori",
+   "en": "Sure. What’s wrong with it?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s too small for me."
+  },
+  {
+   "who": "tori",
+   "en": "Would you like a bigger size?"
+  },
+  {
+   "who": "partner",
+   "en": "No, thanks. Can I get a refund?"
+  },
+  {
+   "who": "tori",
+   "en": "Of course. Do you have the receipt?"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "hi id like to return this jacket",
+    "id like to return this jacket"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "its too small for me"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "can i get a refund",
+    "no thanks can i get a refund",
+    "thanks can i get a refund"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 인터넷으로 산 신발이 작아요. 토리가 가게 직원이에요.",
+ "story": [
+  {
+   "en": "Hi! How can I help you?",
+   "expect": "e1",
+   "model": "I’d like to return these shoes.",
+   "screen_hint_ko": "반품하고 싶다고 해요: I’d like to return these shoes.",
+   "role": true
+  },
+  {
+   "en": "Sure. What’s wrong with them?",
+   "expect": "e2",
+   "screen_hint_ko": "너무 작다고 해요: They’re too small.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "I see. Do you want a bigger size?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "환불을 부탁해요: Can I get a refund?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Of course. No problem."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you work here. I’m the customer.",
+   "expect": null,
+   "screen_hint_ko": "역할극: 이번엔 내가 직원이에요.",
+   "role": true
+  },
+  {
+   "en": "Hi. This hat is too big. Can I get a refund?",
+   "expect": null,
+   "free_answer": true,
+   "role": true,
+   "screen_hint_ko": "직원으로 답해요: Sure. Do you have the receipt?"
+  },
+  {
+   "en": "Yes, here it is. Thank you!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Return the jacket.",
+  "hint_ko": "가게 직원에게 재킷을 반품하고 싶다고 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "What’s wrong with it?",
+  "No problem.",
+  "Do you have the receipt?"
+ ],
+ "privacy_ko": "모두 역할극이에요. 결제·카드 정보는 묻지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

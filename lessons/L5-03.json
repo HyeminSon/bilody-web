@@ -1,0 +1,223 @@
+{
+ "id": "L5-03",
+ "level": "L5",
+ "title_ko": "차라리 이게 좋아요",
+ "title_en": "I’d rather stay home.",
+ "goal_ko": "둘 중 무엇을 하겠는지 묻고, I’d rather로 고르고, 좋은 점 말하기",
+ "partner": "rino",
+ "offer_ko": "‘차라리 이게 좋아요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Would you rather ___ or ___?",
+   "ko": "___할래요, ___할래요?",
+   "help": {
+    "blank": "Would you ___ stay home or go out?",
+    "choices": [
+     "rather",
+     "rather than",
+     "father"
+    ]
+   },
+   "pattern": "^would you rather (?<x>[a-z]+(?: [a-z]+){0,6}) or (?<y>[a-z]+(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^(?:do you prefer|which do you prefer|which is better) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "tests": {
+    "ok": [
+     "Would you rather stay home or go out?",
+     "would you rather read or watch movies"
+    ],
+    "partial": [
+     "do you prefer tea or coffee"
+    ],
+    "form_only": [],
+    "no": [
+     "rather"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’d rather ___ than ___.",
+   "ko": "___보다 차라리 ___할래요.",
+   "help": {
+    "blank": "I’d ___ stay home than go out.",
+    "choices": [
+     "rather",
+     "father",
+     "radar"
+    ]
+   },
+   "pattern": "^(?:id|i would) rather (?<x>[a-z]+(?: [a-z]+){0,6}?)(?: than (?<y>[a-z]+(?: [a-z]+){0,6}))?$",
+   "partial_patterns": [
+    "^i (?:prefer|like) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "than 부분은 없어도 목표 수행.",
+   "tests": {
+    "ok": [
+     "I’d rather stay home than go out.",
+     "i would rather go out"
+    ],
+    "partial": [
+     "I prefer staying home"
+    ],
+    "form_only": [],
+    "no": [
+     "rather"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "The good thing about ___ is ___.",
+   "ko": "___의 좋은 점은 ___예요.",
+   "help": {
+    "blank": "The good ___ about staying home is I can rest.",
+    "choices": [
+     "thing",
+     "think",
+     "sing"
+    ]
+   },
+   "pattern": "^the (?:good|best|nice|great) (?:thing|part) about (?<x>[a-z]+(?: [a-z]+){0,5}) is(?: that)? (?<y>[a-z]+(?: [a-z]+){1,10})$",
+   "partial_patterns": [
+    "^(?:its good because|because) [a-z]+(?: [a-z]+){1,10}$"
+   ],
+   "tests": {
+    "ok": [
+     "The good thing about staying home is I can rest.",
+     "the best part about going out is meeting people"
+    ],
+    "partial": [
+     "because I can rest"
+    ],
+    "form_only": [],
+    "no": [
+     "good thing"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, would you rather stay home or go out this weekend?"
+  },
+  {
+   "who": "tori",
+   "en": "I’d rather go out. What about you?"
+  },
+  {
+   "who": "partner",
+   "en": "I’d rather stay home than go out."
+  },
+  {
+   "who": "tori",
+   "en": "Really? Why?"
+  },
+  {
+   "who": "partner",
+   "en": "The good thing about staying home is I can sleep late."
+  },
+  {
+   "who": "tori",
+   "en": "Ha! That’s a good point."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "tori would you rather stay home or go out this weekend",
+    "would you rather stay home or go out this weekend"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "id rather stay home than go out"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "the good thing about staying home is i can sleep late"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "정답은 없어요. 진짜 내 취향으로 골라요.",
+ "story": [
+  {
+   "en": "Would you rather live in a big city or a small town?",
+   "expect": "e2",
+   "model": "I’d rather live in {x}.",
+   "screen_hint_ko": "골라요: I’d rather live in ___. (a big city, a small town)",
+   "screen_blank": "I’d rather live in ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Interesting! Why?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "좋은 점을 말해요: The good thing about ___ is ___.",
+   "screen_blank": "The good thing about ___ is ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s a good point."
+    }
+   ]
+  }
+ ],
+ "fallback": "a small town",
+ "korean_map": {
+  "도시": "a big city",
+  "대도시": "a big city",
+  "시골": "the countryside",
+  "작은 도시": "a small town",
+  "바닷가": "a town by the sea"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me: read or watch movies?",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Would you rather read or watch movies?",
+   "branches": [
+    {
+     "when": "matched_text:read|book|books",
+     "say": "Tough one! I’d rather read. Books are cozy."
+    },
+    {
+     "when": "default",
+     "say": "Hmm, good one! I’d rather read a book than do that."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino.",
+  "hint_ko": "리노에게 ‘Would you rather …?’로 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Interesting! Why?",
+  "That’s a good point.",
+  "Tough one!"
+ ],
+ "privacy_ko": "취향은 기억에 남기지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

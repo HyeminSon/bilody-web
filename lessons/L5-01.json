@@ -1,0 +1,238 @@
+{
+ "id": "L5-01",
+ "level": "L5",
+ "title_ko": "무슨 걱정 있어요?",
+ "title_en": "What’s bothering you?",
+ "goal_ko": "걱정을 묻고, 걱정을 말하고, 부드럽게 도움말 주기",
+ "partner": "moa",
+ "offer_ko": "‘무슨 걱정 있어요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What’s bothering you?",
+   "ko": "무슨 걱정 있어요?",
+   "help": {
+    "blank": "What’s ___ you?",
+    "choices": [
+     "bothering",
+     "brothering",
+     "bathing"
+    ]
+   },
+   "accept": [
+    "whats bothering you",
+    "what is bothering you",
+    "whats wrong",
+    "is something bothering you",
+    "whats on your mind",
+    "you look worried whats wrong",
+    "is everything okay",
+    "is everything ok"
+   ],
+   "partial_patterns": [
+    "^(?:are you okay|you okay|whats up)$"
+   ],
+   "tests": {
+    "ok": [
+     "What’s bothering you?",
+     "what’s on your mind"
+    ],
+    "partial": [
+     "are you okay"
+    ],
+    "form_only": [],
+    "no": [
+     "bothering"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I’m worried about ___.",
+   "ko": "___가 걱정돼요.",
+   "help": {
+    "blank": "I’m ___ about my exam.",
+    "choices": [
+     "worried",
+     "married",
+     "hurried"
+    ]
+   },
+   "pattern": "^(?:im|i am|i feel)(?: (?:a bit|a little|really|so|kind of))? (?:worried|stressed|nervous|anxious) (?:about|that) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:worried|stressed|im worried|im stressed|i am worried|i am stressed)$"
+   ],
+   "tests": {
+    "ok": [
+     "I’m worried about my exam.",
+     "I’m a little stressed about work"
+    ],
+    "partial": [
+     "I’m stressed"
+    ],
+    "form_only": [],
+    "no": [
+     "worried about"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "It might help to ___.",
+   "ko": "___하면 도움이 될지도 몰라요.",
+   "help": {
+    "blank": "It might ___ to make a list.",
+    "choices": [
+     "help",
+     "hell",
+     "hold"
+    ]
+   },
+   "pattern": "^(?:maybe )?it (?:might|may|could|would) help (?:to|if you) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:you should|maybe you should|try to|why dont you) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "‘You should …’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "It might help to make a list.",
+     "maybe it would help if you talk to your boss"
+    ],
+    "partial": [
+     "you should rest"
+    ],
+    "form_only": [],
+    "no": [
+     "help"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, you look tired. What’s bothering you?"
+  },
+  {
+   "who": "partner",
+   "en": "I’m worried about my new project at work."
+  },
+  {
+   "who": "tori",
+   "en": "That sounds stressful. What’s the hardest part?"
+  },
+  {
+   "who": "partner",
+   "en": "There’s just too much to do."
+  },
+  {
+   "who": "tori",
+   "en": "It might help to make a to-do list."
+  },
+  {
+   "who": "partner",
+   "en": "Good idea. It might help to start early, too."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "im worried about my new project at work"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "good idea it might help to start early too",
+    "it might help to start early too"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "작은 고민이면 충분해요. 꾸며도 되고, 무거운 이야기는 하지 않아도 돼요.",
+ "story": [
+  {
+   "en": "What’s bothering you these days?",
+   "expect": "e2",
+   "model": "I’m worried about {x}.",
+   "screen_hint_ko": "작은 고민을: I’m worried about ___. (my English, work, the weather)",
+   "screen_blank": "I’m worried about ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "I see. That sounds stressful."
+    }
+   ]
+  },
+  {
+   "en": "I have a big presentation tomorrow. Any tips?",
+   "expect": "e3",
+   "screen_hint_ko": "도움말을 줘요: It might help to ___. (practice tonight)",
+   "screen_blank": "It might help to ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks! I’ll try that."
+    }
+   ]
+  }
+ ],
+ "fallback": "my English",
+ "korean_map": {
+  "영어": "my English",
+  "일": "work",
+  "시험": "my exam",
+  "날씨": "the weather",
+  "이사": "moving",
+  "발표": "my presentation",
+  "회사": "work"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you check on me. I look worried.",
+   "expect": "e1",
+   "screen_hint_ko": "물어봐요: What’s bothering you?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "I’m worried about the rain. I have a picnic!"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "도움말: It might help to check the weather.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good idea. Thanks!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Check on Moa.",
+  "hint_ko": "모아에게 무슨 걱정이 있는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "That sounds stressful.",
+  "I’ll try that.",
+  "Good idea. Thanks!"
+ ],
+ "privacy_ko": "고민은 기억에 남기지 않아요. 건강·돈·관계 같은 무거운 고민은 공통 민감 규칙이고, 토리는 전문 상담을 대신하지 않아요. 위기 신호는 안전 규칙이 먼저예요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

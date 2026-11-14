@@ -1,0 +1,236 @@
+{
+ "id": "L4-02",
+ "level": "L4",
+ "title_ko": "왜 골랐어요?",
+ "title_en": "Why did you choose it?",
+ "goal_ko": "고른 이유를 묻고 because로 이유를 말하고, 이해했다고 답하기",
+ "partner": "sola",
+ "offer_ko": "‘왜 골랐어요?’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "Why did you choose ___?",
+   "ko": "왜 ___를 골랐어요?",
+   "help": {
+    "blank": "Why did you ___ yoga?",
+    "choices": [
+     "choose",
+     "chose",
+     "cheese"
+    ]
+   },
+   "pattern": "^why did you (?:choose|pick|decide on) (?<x>[a-z ]{2,30})$",
+   "partial_patterns": [
+    "^why$",
+    "^why this [a-z ]{2,20}$"
+   ],
+   "tests": {
+    "ok": [
+     "Why did you choose this cafe?",
+     "why did you pick yoga"
+    ],
+    "partial": [
+     "why"
+    ],
+    "form_only": [],
+    "no": [
+     "choose"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I chose it because ___.",
+   "ko": "___라서 골랐어요.",
+   "help": {
+    "blank": "I chose it ___ it’s close.",
+    "choices": [
+     "because",
+     "before",
+     "become"
+    ]
+   },
+   "pattern": "^(?:i chose (?:it|this|that|[a-z ]{2,20}) because|because|mainly because|its because) (?<x>[a-z ]{3,50})$",
+   "partial_patterns": [
+    "^(?:its )?(?:close|cheap|quiet|fun|near|good|convenient|nice)$"
+   ],
+   "accept_note": "‘Because …’로만 답해도 목표 수행(자연스러운 대답).",
+   "tests": {
+    "ok": [
+     "I chose it because it’s close to my house.",
+     "because the coffee is good"
+    ],
+    "partial": [
+     "cheap"
+    ],
+    "form_only": [],
+    "no": [
+     "because"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That makes sense.",
+   "ko": "그렇군요(이해돼요).",
+   "help": {
+    "blank": "That makes ___.",
+    "choices": [
+     "sense",
+     "since",
+     "cents"
+    ]
+   },
+   "accept": [
+    "that makes sense",
+    "makes sense",
+    "oh that makes sense",
+    "i see that makes sense",
+    "that totally makes sense",
+    "that makes sense too",
+    "ah that makes sense"
+   ],
+   "partial_patterns": [
+    "^(?:i see|okay|good reason|that make sense)$"
+   ],
+   "accept_note": "‘That make sense’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "That makes sense.",
+     "makes sense"
+    ],
+    "partial": [
+     "I see",
+     "that make sense"
+    ],
+    "form_only": [],
+    "no": [
+     "sense"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, I joined a yoga class!"
+  },
+  {
+   "who": "tori",
+   "en": "Nice! Why did you choose yoga?"
+  },
+  {
+   "who": "partner",
+   "en": "I chose it because it’s good for stress."
+  },
+  {
+   "who": "tori",
+   "en": "That makes sense. Why did you choose that studio?"
+  },
+  {
+   "who": "partner",
+   "en": "Because it’s close to my office."
+  },
+  {
+   "who": "tori",
+   "en": "That makes sense, too!"
+  }
+ ],
+ "check": [
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "i chose it because its good for stress"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e2",
+   "line_accept": [
+    "because its close to my office"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내가 자주 가는 곳 이야기예요. 정해진 곳이 없으면 아무 곳이나 골라도 돼요.",
+ "story": [
+  {
+   "en": "Where do you often go for lunch?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "자주 가는 곳: I often go to ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Oh, nice place!"
+    }
+   ]
+  },
+  {
+   "en": "Why did you choose it?",
+   "expect": "e2",
+   "model": "I chose it because {x}.",
+   "screen_hint_ko": "이유를 말해요: I chose it because ___. (it’s cheap, the food is good)",
+   "screen_blank": "I chose it because ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "That makes sense!"
+    }
+   ]
+  }
+ ],
+ "fallback": "it’s close",
+ "korean_map": {
+  "가까워": "it’s close",
+  "가까워서": "it’s close",
+  "싸": "it’s cheap",
+  "싸서": "it’s cheap",
+  "맛있어": "the food is good",
+  "맛있어서": "the food is good",
+  "조용해": "it’s quiet",
+  "조용해서": "it’s quiet",
+  "친절해": "the staff are kind",
+  "친절해서": "the staff are kind"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "I started swimming last month. Ask me why.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: Why did you choose swimming?"
+  },
+  {
+   "en": "I chose it because it’s easy on my knees.",
+   "expect": "e3",
+   "screen_hint_ko": "이해했다고 말해요: That makes sense.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks! Come with me sometime."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola about yoga.",
+  "hint_ko": "솔라에게 요가를 고른 이유를 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Oh, nice place!",
+  "That makes sense!",
+  "Come with me sometime."
+ ],
+ "privacy_ko": "자주 가는 곳·이유는 기억에 남기지 않아요. 정확한 주소나 회사 이름은 묻지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

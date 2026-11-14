@@ -1,0 +1,215 @@
+{
+ "id": "L6-09",
+ "level": "L6",
+ "title_ko": "달라진 것",
+ "title_en": "It has become much busier.",
+ "goal_ko": "어떻게 변했는지 묻고, 변화를 말하고, 요즘 사람들 모습 말하기",
+ "partner": "sola",
+ "offer_ko": "‘달라진 것’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How has ___ changed?",
+   "ko": "___는 어떻게 변했어요?",
+   "help": {
+    "blank": "How has your neighborhood ___?",
+    "choices": [
+     "changed",
+     "chained",
+     "charged"
+    ]
+   },
+   "pattern": "^how (?:has|have) (?<x>[a-z]+(?: [a-z]+){0,5}?) changed(?: (?:over the years|recently|since then|a lot|in ten years))?$",
+   "partial_patterns": [
+    "^(?:how did [a-z]+(?: [a-z]+){0,5} change|what changed)$"
+   ],
+   "tests": {
+    "ok": [
+     "How has your neighborhood changed?",
+     "how have phones changed over the years"
+    ],
+    "partial": [
+     "what changed"
+    ],
+    "form_only": [],
+    "no": [
+     "changed"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "___ has become more ___.",
+   "ko": "___는 더 ___해졌어요.",
+   "help": {
+    "blank": "It has ___ much busier.",
+    "choices": [
+     "become",
+     "came",
+     "begun"
+    ]
+   },
+   "pattern": "^(?:it|[a-z]+(?: [a-z]+){0,4}) (?:has become|have become|has gotten|have gotten)(?: much| a lot| so| even)? (?:more|less) (?![a-z]+ier\\b)(?<x>[a-z]+(?: [a-z]+){0,6})$|^(?:it|[a-z]+(?: [a-z]+){0,4}) (?:has become|have become|has gotten|have gotten)(?: much| a lot| so| even)? (?<y>[a-z]+er)(?: [a-z]+){0,6}$",
+   "partial_patterns": [
+    "^(?:it is|its|it was|it got) (?:more|less|much) [a-z]+(?: [a-z]+){0,6}$"
+   ],
+   "tests": {
+    "ok": [
+     "My neighborhood has become more crowded.",
+     "It has become much busier.",
+     "things have become more expensive"
+    ],
+    "partial": [
+     "it got more crowded"
+    ],
+    "form_only": [],
+    "no": [
+     "become",
+     "My city has become more busier"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "These days, people ___.",
+   "ko": "요즘은 사람들이 ___해요.",
+   "help": {
+    "blank": "These ___, people order food online.",
+    "choices": [
+     "days",
+     "dates",
+     "daze"
+    ]
+   },
+   "pattern": "^(?:these days|nowadays)(?: most)? (?:people|everyone|we|young people|kids) (?<x>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^(?:people|everyone) [a-z]+(?: [a-z]+){1,12}$"
+   ],
+   "tests": {
+    "ok": [
+     "These days, people order food online.",
+     "nowadays everyone uses their phone on the subway"
+    ],
+    "partial": [
+     "people order food online"
+    ],
+    "form_only": [],
+    "no": [
+     "these days"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Look at this old photo of my neighborhood."
+  },
+  {
+   "who": "tori",
+   "en": "Wow! How has it changed?"
+  },
+  {
+   "who": "partner",
+   "en": "It has become much busier. There are cafes everywhere."
+  },
+  {
+   "who": "tori",
+   "en": "Interesting. Where do people meet now?"
+  },
+  {
+   "who": "partner",
+   "en": "These days, people meet at cafes, not at the park."
+  },
+  {
+   "who": "tori",
+   "en": "Things change so fast!"
+  }
+ ],
+ "check": [
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "it has become much busier",
+    "it has become much busier there are cafes everywhere"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "these days people meet at cafes not at the park"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내가 살던 동네나 고향 이야기예요. 구체적인 주소는 말하지 않아도 돼요.",
+ "story": [
+  {
+   "en": "How has your hometown changed?",
+   "expect": "e2",
+   "screen_hint_ko": "‘has become’로: My hometown has become more ___. (crowded)",
+   "screen_blank": "My hometown has become more ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Interesting!"
+    }
+   ]
+  },
+  {
+   "en": "What do people do differently now?",
+   "expect": "e3",
+   "screen_hint_ko": "‘These days’로: These days, people ___.",
+   "screen_blank": "These days, people ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s so true."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me about something. Phones? Music?",
+   "expect": "e1",
+   "screen_hint_ko": "물어봐요: How have phones changed?",
+   "branches": [
+    {
+     "when": "slot_in:phones|phone|smartphones",
+     "say": "They have become much smarter! These days, people do everything on them."
+    },
+    {
+     "when": "default",
+     "say": "Good question! It has become very different."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Sola about her neighborhood.",
+  "hint_ko": "솔라에게 동네가 어떻게 변했는지 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Interesting!",
+  "That’s so true.",
+  "Things change so fast!",
+  "Good question!"
+ ],
+ "privacy_ko": "사는 곳의 주소는 묻지 않아요. 이야기는 기억에 남기지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

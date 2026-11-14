@@ -1,0 +1,224 @@
+{
+ "id": "L6-08",
+ "level": "L6",
+ "title_ko": "문제 해결 회의",
+ "title_en": "The problem is that the trash area is messy.",
+ "goal_ko": "문제를 짚고, 해결책을 내고, 남의 해결책에 답하기",
+ "partner": "rino",
+ "offer_ko": "‘문제 해결 회의’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "The problem is that ___.",
+   "ko": "문제는 ___라는 거예요.",
+   "help": {
+    "blank": "The ___ is that the trash area is messy.",
+    "choices": [
+     "problem",
+     "program",
+     "probably"
+    ]
+   },
+   "pattern": "^(?:the (?:main |real |biggest )?problem is|the issue is)(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:its a problem|thats the problem)$"
+   ],
+   "tests": {
+    "ok": [
+     "The problem is that there aren’t enough parking spots.",
+     "the main problem is my desk is too small"
+    ],
+    "partial": [
+     "it’s a problem"
+    ],
+    "form_only": [],
+    "no": [
+     "problem"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "One solution could be ___.",
+   "ko": "한 가지 해결책은 ___일 수 있어요.",
+   "help": {
+    "blank": "One ___ could be clear signs.",
+    "choices": [
+     "solution",
+     "salutation",
+     "lotion"
+    ]
+   },
+   "pattern": "^(?:one (?:solution|idea|option) (?:could be|would be|is|might be)|a good solution would be) (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:we should|maybe we should|lets) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "One solution could be to put up clear signs.",
+     "one idea is a cleaning schedule"
+    ],
+    "partial": [
+     "we should put up signs"
+    ],
+    "form_only": [],
+    "no": [
+     "solution"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That might work.",
+   "ko": "그거 괜찮겠네요.",
+   "help": {
+    "blank": "That ___ work.",
+    "choices": [
+     "might",
+     "mate",
+     "night"
+    ]
+   },
+   "accept": [
+    "that might work",
+    "that could work",
+    "that might work actually",
+    "that might work lets try",
+    "good idea that might work",
+    "hmm that might work",
+    "that might work too",
+    "that could work too"
+   ],
+   "partial_patterns": [
+    "^(?:good idea|maybe|okay)$"
+   ],
+   "tests": {
+    "ok": [
+     "That might work.",
+     "that could work"
+    ],
+    "partial": [
+     "good idea"
+    ],
+    "form_only": [],
+    "no": [
+     "work"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "So, what’s the biggest issue in our building?"
+  },
+  {
+   "who": "partner",
+   "en": "The problem is that the trash area is always messy."
+  },
+  {
+   "who": "tori",
+   "en": "I agree. Any ideas?"
+  },
+  {
+   "who": "partner",
+   "en": "One solution could be to put up clear signs."
+  },
+  {
+   "who": "tori",
+   "en": "That might work. And maybe a cleaning schedule."
+  },
+  {
+   "who": "partner",
+   "en": "That might work, too!"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "the problem is that the trash area is always messy"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "one solution could be to put up clear signs"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "that might work too"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "집이나 회사의 작은 문제면 돼요. 꾸며도 되고, 이웃·동료 실명은 말하지 않아요.",
+ "story": [
+  {
+   "en": "Let’s fix something at your work or home. What’s a small problem?",
+   "expect": "e1",
+   "screen_hint_ko": "문제: The problem is that ___. (my desk is too small)",
+   "screen_blank": "The problem is that ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "I see. Any solutions?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "해결책: One solution could be ___.",
+   "screen_blank": "One solution could be ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That might work!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Here’s my problem. I always forget my keys. One solution could be a key hook.",
+   "expect": "e3",
+   "screen_hint_ko": "괜찮으면: That might work.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks! I’ll buy one."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Talk to Rino about the trash area.",
+  "hint_ko": "‘The problem is that…’으로 문제를 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Any ideas?",
+  "Any solutions?",
+  "That might work!",
+  "I’ll buy one."
+ ],
+ "privacy_ko": "이웃·동료 실명과 험담은 다루지 않아요. 문제 이야기는 기억에 남기지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

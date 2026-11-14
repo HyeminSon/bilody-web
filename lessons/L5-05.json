@@ -1,0 +1,241 @@
+{
+ "id": "L5-05",
+ "level": "L5",
+ "title_ko": "만드는 법 설명하기",
+ "title_en": "First, you need to cut the kimchi.",
+ "goal_ko": "만드는 법을 묻고, 순서대로 설명하고, 주의할 점 말하기",
+ "partner": "moa",
+ "offer_ko": "‘만드는 법 설명하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "How do you make ___?",
+   "ko": "___ 어떻게 만들어요?",
+   "help": {
+    "blank": "How do you ___ kimchi fried rice?",
+    "choices": [
+     "make",
+     "take",
+     "bake"
+    ]
+   },
+   "pattern": "^how do (?:you|i|we) (?:make|cook) (?<x>[a-z]+(?: [a-z]+){0,4})$",
+   "partial_patterns": [
+    "^(?:recipe|how to make [a-z ]{2,30})$"
+   ],
+   "tests": {
+    "ok": [
+     "How do you make kimchi fried rice?",
+     "how do I cook ramyeon"
+    ],
+    "partial": [
+     "recipe"
+    ],
+    "form_only": [],
+    "no": [
+     "make"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "First, you need to ___.",
+   "ko": "먼저 ___해야 해요.",
+   "help": {
+    "blank": "First, you ___ to cut the kimchi.",
+    "choices": [
+     "need",
+     "nod",
+     "knee"
+    ]
+   },
+   "pattern": "^(?:its easy )?first(?: of all)? (?:you need to|you have to|you should) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^first [a-z]+(?: [a-z]+){0,10}$",
+    "^(?:you need to|you have to) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "명령형(First, boil the water.)은 뜻 전달(부분). 이 과의 목표는 ‘you need to’.",
+   "tests": {
+    "ok": [
+     "First, you need to cut the kimchi.",
+     "first of all you have to boil water"
+    ],
+    "partial": [
+     "First, boil the water."
+    ],
+    "form_only": [],
+    "no": [
+     "first"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Make sure you ___.",
+   "ko": "꼭 ___하세요.",
+   "help": {
+    "blank": "Make ___ you use old kimchi.",
+    "choices": [
+     "sure",
+     "shore",
+     "short"
+    ]
+   },
+   "pattern": "^(?:and )?(?:make sure (?:you|to)|dont forget to|be careful not to) (?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^(?:dont|do not) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "tests": {
+    "ok": [
+     "Make sure you don’t burn it.",
+     "don’t forget to add salt",
+     "And make sure you don’t add too much oil."
+    ],
+    "partial": [
+     "don't burn it"
+    ],
+    "form_only": [],
+    "no": [
+     "make sure"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, your kimchi fried rice is amazing. How do you make it?"
+  },
+  {
+   "who": "partner",
+   "en": "It’s easy! First, you need to cut the kimchi."
+  },
+  {
+   "who": "tori",
+   "en": "Okay. Then what?"
+  },
+  {
+   "who": "partner",
+   "en": "Then you fry it with rice. Make sure you use old kimchi."
+  },
+  {
+   "who": "tori",
+   "en": "Old kimchi? Why?"
+  },
+  {
+   "who": "partner",
+   "en": "It tastes better. And make sure you don’t add too much oil."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "first you need to cut the kimchi",
+    "its easy first you need to cut the kimchi"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "make sure you use old kimchi",
+    "then you fry it with rice make sure you use old kimchi"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "and make sure you dont add too much oil",
+    "it tastes better and make sure you dont add too much oil"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "이제 내가 설명해요. 아는 간단한 음식(라면, 계란 프라이…)이면 돼요.",
+ "story": [
+  {
+   "en": "I want to cook something easy. What can I make?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "간단한 음식: You can make ___. (ramyeon, fried eggs)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Great! I love it."
+    }
+   ]
+  },
+  {
+   "en": "How do I start?",
+   "expect": "e2",
+   "screen_hint_ko": "첫 단계: First, you need to ___. (boil water)",
+   "screen_blank": "First, you need to ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Okay! Then what?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "다음 단계: Then ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Got it. Any tips?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "주의할 점: Make sure you ___. (don’t cook it too long)",
+   "screen_blank": "Make sure you ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Thanks! I’ll try it tonight."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me about my favorite food, pancakes.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: How do you make pancakes?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "First, you need to mix flour, eggs, and milk."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa.",
+  "hint_ko": "모아에게 김치볶음밥 만드는 법을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Then what?",
+  "Got it.",
+  "Any tips?",
+  "I’ll try it tonight."
+ ],
+ "privacy_ko": "알레르기·식단은 묻지 않아요. 요리 이야기는 기억에 남기지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

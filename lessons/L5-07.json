@@ -1,0 +1,238 @@
+{
+ "id": "L5-07",
+ "level": "L5",
+ "title_ko": "만약에",
+ "title_en": "What would you do if you had a month off?",
+ "goal_ko": "가정해서 묻고, If I …, I’d …로 답하고, 어려운 질문에 시간 벌기",
+ "partner": "nubi",
+ "offer_ko": "‘만약에’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What would you do if ___?",
+   "ko": "만약 ___라면 뭐 할래요?",
+   "help": {
+    "blank": "What would you do ___ you had a month off?",
+    "choices": [
+     "if",
+     "of",
+     "is"
+    ]
+   },
+   "pattern": "^what would you do if (?<x>[a-z]+(?: [a-z]+){1,10})$",
+   "partial_patterns": [
+    "^what if [a-z]+(?: [a-z]+){1,10}$"
+   ],
+   "tests": {
+    "ok": [
+     "What would you do if you had a month off?",
+     "what would you do if you were invisible"
+    ],
+    "partial": [
+     "what if you were rich"
+    ],
+    "form_only": [],
+    "no": [
+     "what would you do"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "If I ___, I’d ___.",
+   "ko": "만약 ___라면 ___할 거예요.",
+   "help": {
+    "blank": "If I had a month off, I’d ___ to Spain.",
+    "choices": [
+     "travel",
+     "trouble",
+     "travel and"
+    ]
+   },
+   "pattern": "^if i (?!will )(?!have )(?<x>[a-z]+(?: [a-z]+){0,8}) (?:id|i would) (?<y>[a-z]+(?: [a-z]+){0,10})$",
+   "partial_patterns": [
+    "^if i [a-z]+(?: [a-z]+){0,8} (?:i will|ill) [a-z]+(?: [a-z]+){0,10}$",
+    "^(?:i would|id) [a-z]+(?: [a-z]+){0,10}$"
+   ],
+   "accept_note": "‘If I have …, I will …’과 ‘I’d …’만은 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "If I had a month off, I’d travel to Spain.",
+     "if i could talk to animals i would talk to my cat"
+    ],
+    "partial": [
+     "I’d travel to Spain",
+     "If I have time, I will travel"
+    ],
+    "form_only": [],
+    "no": [
+     "if",
+     "If I will have time, I would travel"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That’s a tough question.",
+   "ko": "어려운 질문이네요.",
+   "help": {
+    "blank": "That’s a ___ question.",
+    "choices": [
+     "tough",
+     "touch",
+     "taught"
+    ]
+   },
+   "accept": [
+    "thats a tough question",
+    "thats a hard question",
+    "that is a tough question",
+    "good question",
+    "thats a good question",
+    "hmm thats a tough question",
+    "thats a tough one",
+    "tough question",
+    "wow thats a tough question"
+   ],
+   "partial_patterns": [
+    "^(?:i dont know|not sure|hmm)$"
+   ],
+   "tests": {
+    "ok": [
+     "That’s a tough question.",
+     "good question"
+    ],
+    "partial": [
+     "I don't know"
+    ],
+    "form_only": [],
+    "no": [
+     "question"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Tori, what would you do if you had a month off?"
+  },
+  {
+   "who": "tori",
+   "en": "That’s a tough question. Maybe I’d learn to surf."
+  },
+  {
+   "who": "partner",
+   "en": "Cool! If I had a month off, I’d travel around Europe."
+  },
+  {
+   "who": "tori",
+   "en": "Nice. What would you do if you won a big prize?"
+  },
+  {
+   "who": "partner",
+   "en": "That’s a tough question. I’d buy a house for my parents."
+  },
+  {
+   "who": "tori",
+   "en": "That’s so sweet!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "tori what would you do if you had a month off",
+    "what would you do if you had a month off"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "cool if i had a month off id travel around europe",
+    "if i had a month off id travel around europe"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "thats a tough question",
+    "thats a tough question id buy a house for my parents"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "상상 놀이예요. 정답은 없어요.",
+ "story": [
+  {
+   "en": "What would you do if you had a month off?",
+   "expect": "e2",
+   "screen_hint_ko": "‘If I’로: If I had a month off, I’d ___. (travel, sleep a lot)",
+   "screen_blank": "If I had a month off, I’d ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sounds wonderful!"
+    }
+   ]
+  },
+  {
+   "en": "What would you do if you could talk to animals?",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "어려우면: That’s a tough question. 아니면 If I could ___, I’d ___.",
+   "branches": [
+    {
+     "when": "matched:e2",
+     "say": "Ha, I love that!"
+    },
+    {
+     "when": "default",
+     "say": "Take your time. It’s just for fun!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me what I’d do if I were invisible.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What would you do if you were invisible?",
+   "branches": [
+    {
+     "when": "matched_text:invisible",
+     "say": "Ha! I’d visit the zoo at night."
+    },
+    {
+     "when": "default",
+     "say": "That’s a tough question! Let me think about it."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Nubi.",
+  "hint_ko": "누비에게 ‘What would you do if…?’로 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Sounds wonderful!",
+  "Take your time.",
+  "It’s just for fun!",
+  "I love that!"
+ ],
+ "privacy_ko": "상상 이야기는 기억에 남기지 않아요. 돈·복권 이야기를 길게 하지 않아요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

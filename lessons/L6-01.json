@@ -1,0 +1,223 @@
+{
+ "id": "L6-01",
+ "level": "L6",
+ "title_ko": "뉴스 이야기",
+ "title_en": "According to the news, …",
+ "goal_ko": "출처를 밝혀 소식을 전하고, 짐작을 말하고, 궁금한 점 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘뉴스 이야기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "According to ___, ___.",
+   "ko": "___에 따르면 ___래요.",
+   "help": {
+    "blank": "___ to the news, it’s going to snow.",
+    "choices": [
+     "According",
+     "Accordion",
+     "A cording"
+    ]
+   },
+   "pattern": "^according to (?<x>[a-z]+(?: [a-z]+){0,4}?) (?<y>[a-z]+(?: [a-z]+){2,14})$",
+   "partial_patterns": [
+    "^according to [a-z]+(?: [a-z]+){0,4}$"
+   ],
+   "tests": {
+    "ok": [
+     "According to the news, it’s going to snow tomorrow.",
+     "according to the article robots will cook for us"
+    ],
+    "partial": [
+     "according to the news"
+    ],
+    "form_only": [],
+    "no": [
+     "according"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "It seems (that) ___.",
+   "ko": "___인 것 같아요.",
+   "help": {
+    "blank": "It ___ that more people work from home.",
+    "choices": [
+     "seems",
+     "sees",
+     "sings"
+    ]
+   },
+   "pattern": "^it (?:seems|looks like|sounds like)(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:maybe|probably) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "It seems that more people are working from home.",
+     "it looks like prices are going up"
+    ],
+    "partial": [
+     "maybe prices are going up"
+    ],
+    "form_only": [],
+    "no": [
+     "it seems"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "I wonder if ___.",
+   "ko": "___일지 궁금해요.",
+   "help": {
+    "blank": "I ___ if people will trust them.",
+    "choices": [
+     "wonder",
+     "wander",
+     "under"
+    ]
+   },
+   "pattern": "^i (?:wonder|was wondering) (?:if|whether|why|how|what) (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^i wonder$"
+   ],
+   "tests": {
+    "ok": [
+     "I wonder if it will really happen.",
+     "i wonder why people like it"
+    ],
+    "partial": [
+     "I wonder"
+    ],
+    "form_only": [],
+    "no": [
+     "wonder"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Look. According to the news, our city is testing self-driving buses."
+  },
+  {
+   "who": "tori",
+   "en": "Wow. Are they safe?"
+  },
+  {
+   "who": "partner",
+   "en": "It seems that they’re pretty safe so far."
+  },
+  {
+   "who": "tori",
+   "en": "I wonder if people will trust them."
+  },
+  {
+   "who": "partner",
+   "en": "Good point. I wonder if they’ll be cheaper, too."
+  },
+  {
+   "who": "tori",
+   "en": "Let’s try one when they start!"
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "according to the news our city is testing self driving buses",
+    "look according to the news our city is testing self driving buses"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "it seems that theyre pretty safe so far"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "good point i wonder if theyll be cheaper too",
+    "i wonder if theyll be cheaper too"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "요즘 본 뉴스·기사 이야기예요(날씨, 기술, 스포츠, 동네 소식). 정치 이야기는 하지 않아요. 꾸며도 돼요.",
+ "story": [
+  {
+   "en": "Have you seen any interesting news lately?",
+   "expect": "e1",
+   "screen_hint_ko": "‘According to’로: According to the news, ___.",
+   "screen_blank": "According to the news, ___.",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "Oh, interesting. What do you think about it?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "alt_expect": [
+    "e3"
+   ],
+   "screen_hint_ko": "생각을 말해요: It seems that ___. 아니면 I wonder if ___.",
+   "screen_blank": "It seems that ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Hmm, good point."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "I read that coffee prices are going up again.",
+   "expect": "e3",
+   "alt_expect": [
+    "e2"
+   ],
+   "screen_hint_ko": "반응해요: I wonder if ___. (people will drink less coffee)",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good question. Maybe!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Share some news with Nubi.",
+  "hint_ko": "‘According to the news…’로 소식을 전해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Interesting.",
+  "What do you think about it?",
+  "Good point.",
+  "Good question. Maybe!"
+ ],
+ "privacy_ko": "정치·종교·사건사고 뉴스는 다루지 않아요(나오면 다른 주제를 제안). 토리는 뉴스 내용이 사실인지 확인해 주지 않아요(가상 대화).",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

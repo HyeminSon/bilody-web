@@ -1,0 +1,264 @@
+{
+ "id": "L4-10",
+ "level": "L4",
+ "title_ko": "전화로 예약하기",
+ "title_en": "I’d like to book a table.",
+ "goal_ko": "전화로 자리를 예약하고, 다른 시간을 묻고, 예약 이름을 말하기",
+ "partner": "nubi",
+ "offer_ko": "‘전화로 예약하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I’d like to book a table for ___.",
+   "ko": "___명 자리 예약하고 싶어요.",
+   "help": {
+    "blank": "I’d like to ___ a table for four.",
+    "choices": [
+     "book",
+     "look",
+     "cook"
+    ]
+   },
+   "pattern": "^(?:hi |hello )?(?:id like to|i would like to|can i|could i) (?:book a table|reserve a table|make a reservation) for (?<x>(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: people)?)(?: (?:tonight|tomorrow|on (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|this (?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)))?(?: at (?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?))?(?: please)?$",
+   "partial_patterns": [
+    "^(?:a )?(?:table|reservation)(?: for (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: people)?)?(?: please)?$",
+    "^i want (?:to book |to reserve )?a table(?: for (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: people)?)?$"
+   ],
+   "tests": {
+    "ok": [
+     "I’d like to book a table for four.",
+     "could I make a reservation for two people tonight at seven",
+     "Can I reserve a table for 3 tomorrow please",
+     "I’d like to book a table for four at seven."
+    ],
+    "partial": [
+     "table for four please",
+     "I want a table for two"
+    ],
+    "form_only": [],
+    "no": [
+     "four"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "Do you have anything at ___?",
+   "ko": "___에 자리 있어요?",
+   "help": {
+    "blank": "Do you have ___ at eight?",
+    "choices": [
+     "anything",
+     "everything",
+     "nothing"
+    ]
+   },
+   "pattern": "^(?:do you have anything|is there anything|do you have a table|is there a table|are there any tables)(?: available| free)? (?:at|around) (?<x>(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?|later|earlier)$",
+   "partial_patterns": [
+    "^(?:at |around )?(?:(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|[0-9]{1,2})(?: (?:oclock|thirty|fifteen|forty five|forty|twenty|ten|[0-5][0-9]))?(?: (?:am|pm|in the morning))?)$"
+   ],
+   "slot": {
+    "kind": "time",
+    "closed": true
+   },
+   "tests": {
+    "ok": [
+     "Do you have anything at eight?",
+     "is there a table available at 7:30"
+    ],
+    "partial": [
+     "at eight"
+    ],
+    "form_only": [],
+    "no": [
+     "anything"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Could you put it under ___?",
+   "ko": "예약 이름은 ___로 해 주세요.",
+   "help": {
+    "blank": "Could you put it ___ Kim?",
+    "choices": [
+     "under",
+     "on",
+     "over"
+    ]
+   },
+   "pattern": "^(?:could you|can you|please) put it under (?<x>.{1,30})$",
+   "partial_patterns": [
+    "^(?:its |the name is |my name is |under )(?<z>.{1,30})$"
+   ],
+   "slot": {
+    "kind": "name",
+    "closed": false
+   },
+   "accept_note": "이름은 별명이어도 돼요. 이름만 말하면 부분.",
+   "tests": {
+    "ok": [
+     "Could you put it under Kim?",
+     "can you put it under Hyemin please"
+    ],
+    "partial": [
+     "my name is Kim",
+     "under Kim"
+    ],
+    "form_only": [],
+    "no": [
+     "put it"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Hello, Green Table. How can I help you?"
+  },
+  {
+   "who": "partner",
+   "en": "Hi. I’d like to book a table for four at seven."
+  },
+  {
+   "who": "tori",
+   "en": "Sorry, seven is full tonight."
+  },
+  {
+   "who": "partner",
+   "en": "Do you have anything at eight?"
+  },
+  {
+   "who": "tori",
+   "en": "Yes, we do. What name is it under?"
+  },
+  {
+   "who": "partner",
+   "en": "Could you put it under Nubi?"
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "hi id like to book a table for four at seven",
+    "id like to book a table for four at seven"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "do you have anything at eight"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e3",
+   "line_accept": [
+    "could you put it under",
+    "could you put it under nubi"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 토요일 저녁에 식당을 예약해요. 이름은 별명이어도 돼요.",
+ "story": [
+  {
+   "en": "Hello, Green Table. How can I help you?",
+   "expect": "e1",
+   "model": "I’d like to book a table for two.",
+   "screen_hint_ko": "예약해요: I’d like to book a table for two.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sure. What time?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "시간을 말해요: At seven, please.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Sorry, that time is full."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "다른 시간을 물어요: Do you have anything at eight?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Yes, we do. What name is it under?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "model": "Could you put it under {x}?",
+   "screen_hint_ko": "이름을 말해요(별명도 좋아요): Could you put it under ___?",
+   "screen_blank": "Could you put it under ___?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Great. See you on Saturday!"
+    }
+   ]
+  }
+ ],
+ "fallback": "Alex",
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you’re the staff. Ring ring!",
+   "expect": null,
+   "free_answer": true,
+   "role": true,
+   "screen_hint_ko": "직원으로 받아요: Hello, Green Table. How can I help you?"
+  },
+  {
+   "en": "Hi. I’d like to book a table for three.",
+   "expect": null,
+   "free_answer": true,
+   "role": true,
+   "screen_hint_ko": "몇 시인지 물어요: What time?"
+  },
+  {
+   "en": "At six, please.",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Book a table.",
+  "hint_ko": "식당에 전화해 자리를 예약해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "How can I help you?",
+  "What time?",
+  "What name is it under?",
+  "See you on Saturday!",
+  "Ring ring!"
+ ],
+ "privacy_ko": "역할극이에요. 진짜 이름 대신 별명을 써도 되고 기억에 남기지 않아요. 전화번호는 묻지 않아요.",
+ "partner_name": "Nubi",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

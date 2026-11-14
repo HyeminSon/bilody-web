@@ -1,0 +1,234 @@
+{
+ "id": "L4-08",
+ "level": "L4",
+ "title_ko": "정중하게 반대하기",
+ "title_en": "I see your point, but…",
+ "goal_ko": "상대 생각을 인정하며 반대하고, 다른 안을 내고, 받아들이기",
+ "partner": "moa",
+ "offer_ko": "‘정중하게 반대하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I see your point, but ___.",
+   "ko": "무슨 말인지 알지만 ___.",
+   "help": {
+    "blank": "I see your ___, but it’s too far.",
+    "choices": [
+     "point",
+     "pint",
+     "paint"
+    ]
+   },
+   "pattern": "^(?:i see your point|i understand|i see what you mean|thats true|you have a point)(?: but| however) (?<x>[a-z]+(?: [a-z]+){1,12})$",
+   "partial_patterns": [
+    "^(?:but|no) [a-z]+(?: [a-z]+){1,12}$",
+    "^i see your point$"
+   ],
+   "tests": {
+    "ok": [
+     "I see your point, but it’s too far.",
+     "that's true but the beach is crowded",
+     "I see what you mean, but it’s expensive."
+    ],
+    "partial": [
+     "but it’s too far",
+     "I see your point"
+    ],
+    "form_only": [],
+    "no": [
+     "point"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "What if we ___ instead?",
+   "ko": "대신 ___하면 어때요?",
+   "help": {
+    "blank": "What ___ we go to the mountains instead?",
+    "choices": [
+     "if",
+     "is",
+     "of"
+    ]
+   },
+   "pattern": "^(?:what if we|maybe we could|we could) (?<x>[a-z]+(?: [a-z]+){0,7}?)(?: instead)?$",
+   "partial_patterns": [
+    "^(?:lets|how about) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "‘Let’s …’·‘How about …’는 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "What if we go to the mountains instead?",
+     "maybe we could go camping"
+    ],
+    "partial": [
+     "let’s go camping"
+    ],
+    "form_only": [],
+    "no": [
+     "instead",
+     "what if"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Fair enough. Let’s do that.",
+   "ko": "그러네요. 그렇게 해요.",
+   "help": {
+    "blank": "Fair ___. Let’s do that.",
+    "choices": [
+     "enough",
+     "enjoy",
+     "a nap"
+    ]
+   },
+   "accept": [
+    "fair enough lets do that",
+    "fair enough",
+    "okay lets do that",
+    "lets do that",
+    "sounds good lets do that",
+    "you win lets do that",
+    "okay fair enough",
+    "alright lets do that"
+   ],
+   "partial_patterns": [
+    "^(?:okay|ok|fine|sure)$"
+   ],
+   "tests": {
+    "ok": [
+     "Fair enough. Let’s do that.",
+     "let’s do that"
+    ],
+    "partial": [
+     "okay"
+    ],
+    "form_only": [],
+    "no": [
+     "enough"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "The weather is great. Let’s go to the beach!"
+  },
+  {
+   "who": "partner",
+   "en": "I see your point, but it’ll be so crowded."
+  },
+  {
+   "who": "tori",
+   "en": "Hmm, that’s true."
+  },
+  {
+   "who": "partner",
+   "en": "What if we go to the mountains instead?"
+  },
+  {
+   "who": "tori",
+   "en": "It’s cooler there. Fair enough. Let’s do that."
+  },
+  {
+   "who": "partner",
+   "en": "Great! I’ll bring snacks."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e1",
+   "line_accept": [
+    "i see your point but itll be so crowded"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e2",
+   "line_accept": [
+    "what if we go to the mountains instead"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "토리와 주말 계획을 정해요. 토리 생각에 반대해 봐요(연습이에요).",
+ "story": [
+  {
+   "en": "Let’s go to the amusement park this weekend!",
+   "expect": "e1",
+   "screen_hint_ko": "반대해요: I see your point, but ___. (it’s too expensive, it’s too crowded)",
+   "screen_blank": "I see your point, but ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Hmm, that’s true."
+    }
+   ]
+  },
+  {
+   "en": "Then where should we go?",
+   "expect": "e2",
+   "model": "What if we {x} instead?",
+   "screen_hint_ko": "다른 안을 내요: What if we ___ instead? (go to a museum, stay home)",
+   "screen_blank": "What if we ___ instead?",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good idea! Let’s do that."
+    }
+   ]
+  }
+ ],
+ "fallback": "go to a museum",
+ "korean_map": {
+  "영화": "see a movie",
+  "박물관": "go to a museum",
+  "캠핑": "go camping",
+  "집": "stay home",
+  "공원": "go to the park",
+  "카페": "go to a cafe",
+  "등산": "go hiking"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "My turn. Why don’t we go to the beach in winter?",
+   "expect": "e3",
+   "alt_expect": [
+    "e1"
+   ],
+   "screen_hint_ko": "좋으면: Fair enough. Let’s do that. 아니면 I see your point, but ___.",
+   "branches": [
+    {
+     "when": "matched:e1",
+     "say": "Ha, fair enough!"
+    },
+    {
+     "when": "default",
+     "say": "Yay! Let’s do that."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Disagree with Moa.",
+  "hint_ko": "모아의 의견에 정중하게 반대해 보세요: I see your point, but…",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Hmm, that’s true.",
+  "Good idea!",
+  "Fair enough!",
+  "Yay!"
+ ],
+ "privacy_ko": "정치·종교 같은 민감한 주제로 반대를 연습하지 않아요. 의견은 기억에 남기지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

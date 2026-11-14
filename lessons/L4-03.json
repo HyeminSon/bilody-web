@@ -1,0 +1,235 @@
+{
+ "id": "L4-03",
+ "level": "L4",
+ "title_ko": "조언하기",
+ "title_en": "If I were you, I’d take a break.",
+ "goal_ko": "조언을 구하고, If I were you로 조언하고, 조언에 답하기",
+ "partner": "rino",
+ "offer_ko": "‘조언하기’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What should I do?",
+   "ko": "어떻게 하면 좋을까요?",
+   "help": {
+    "blank": "What ___ I do?",
+    "choices": [
+     "should",
+     "shall",
+     "would"
+    ]
+   },
+   "pattern": "^(?:(?:[a-z]+ ){2,15})?(?:so )?(?:what should i do|what do you think i should do|any advice|what would you do)(?: about (?:it|this|that|[a-z ]{2,30}))?$",
+   "accept_note": "앞에 고민을 붙여 말해도 목표 수행(I’m always late. What should I do?).",
+   "tests": {
+    "ok": [
+     "What should I do?",
+     "any advice?",
+     "I always forget my umbrella. What should I do?"
+    ],
+    "partial": [],
+    "form_only": [],
+    "no": [
+     "do",
+     "what should"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "If I were you, I’d ___.",
+   "ko": "제가 당신이라면 ___할 거예요.",
+   "help": {
+    "blank": "If I ___ you, I’d take a break.",
+    "choices": [
+     "were",
+     "was",
+     "where"
+    ]
+   },
+   "pattern": "^if i (?:were|was) you (?:id|i would) (?<x>[a-z]+(?: [a-z]+){0,8})$|^(?:id|i would) (?<y>[a-z]+(?: [a-z]+){0,8}) if i (?:were|was) you$",
+   "partial_patterns": [
+    "^(?:you should|maybe you should|why dont you|id|i would) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "‘If I was you’도 인정(구어). ‘You should …’·‘I’d …’만은 뜻 전달(부분).",
+   "tests": {
+    "ok": [
+     "If I were you, I’d take a break.",
+     "if i was you i would talk to your boss",
+     "I’d ask for help if I were you"
+    ],
+    "partial": [
+     "You should take a break",
+     "I’d take a break"
+    ],
+    "form_only": [],
+    "no": [
+     "If I were you"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "That’s a good idea.",
+   "ko": "좋은 생각이에요.",
+   "help": {
+    "blank": "That’s a good ___.",
+    "choices": [
+     "idea",
+     "ideal",
+     "eye"
+    ]
+   },
+   "accept": [
+    "thats a good idea",
+    "that is a good idea",
+    "good idea",
+    "thats a great idea",
+    "great idea",
+    "sounds like a good idea",
+    "thats a good idea thanks",
+    "thanks thats a good idea",
+    "maybe youre right",
+    "youre right"
+   ],
+   "partial_patterns": [
+    "^(?:thanks|thank you|okay|i see)$"
+   ],
+   "tests": {
+    "ok": [
+     "That’s a good idea.",
+     "good idea"
+    ],
+    "partial": [
+     "thanks"
+    ],
+    "form_only": [],
+    "no": [
+     "idea"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "I’m always tired these days. What should I do?"
+  },
+  {
+   "who": "tori",
+   "en": "If I were you, I’d go to bed earlier."
+  },
+  {
+   "who": "partner",
+   "en": "That’s a good idea. Thanks, Tori!"
+  },
+  {
+   "who": "tori",
+   "en": "I have a problem, too. I can’t wake up early."
+  },
+  {
+   "who": "partner",
+   "en": "If I were you, I’d put your alarm far away."
+  },
+  {
+   "who": "tori",
+   "en": "Ha! That’s a good idea."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "im always tired these days what should i do",
+    "what should i do"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e3",
+   "line_accept": [
+    "thats a good idea",
+    "thats a good idea thanks",
+    "thats a good idea thanks tori"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e2",
+   "line_accept": [
+    "if i were you id put your alarm far away"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "토리의 고민에 조언해 줘요. 정답은 없어요.",
+ "story": [
+  {
+   "en": "I want to learn Spanish, but I’m always busy. What should I do?",
+   "expect": "e2",
+   "model": "If I were you, I’d {x}.",
+   "screen_hint_ko": "조언해요: If I were you, I’d ___. (study on the bus, use an app)",
+   "screen_blank": "If I were you, I’d ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s a good idea!"
+    }
+   ]
+  }
+ ],
+ "fallback": "study on the bus",
+ "korean_map": {
+  "버스에서 공부": "study on the bus",
+  "아침에 공부": "study in the morning",
+  "친구랑 연습": "practice with a friend",
+  "매일 조금씩": "study a little every day",
+  "앱": "use an app"
+ },
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now tell me a small problem. Then ask me what to do.",
+   "expect": "e1",
+   "screen_hint_ko": "작은 고민을 말하고 물어봐요(꾸며도 돼요). 예: I’m always late. What should I do?",
+   "branches": [
+    {
+     "when": "sensitive",
+     "say": "COMMON"
+    },
+    {
+     "when": "default",
+     "say": "If I were you, I’d take it one step at a time."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "답해요: That’s a good idea.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Good luck!"
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Rino for advice.",
+  "hint_ko": "리노에게 조언을 구해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "That’s a good idea!",
+  "Good luck!",
+  "One step at a time."
+ ],
+ "privacy_ko": "고민은 기억에 남기지 않아요. 무거운 고민은 공통 민감 규칙. 토리는 의료·법·돈 문제에 전문 조언을 하지 않아요.",
+ "partner_name": "Rino",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

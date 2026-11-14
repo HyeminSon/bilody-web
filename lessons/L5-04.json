@@ -1,0 +1,253 @@
+{
+ "id": "L5-04",
+ "level": "L5",
+ "title_ko": "주문이 잘못됐어요",
+ "title_en": "I’m afraid there’s been a mistake.",
+ "goal_ko": "정중하게 실수를 알리고, 무엇이 잘못됐는지 말하고, 해결을 부탁하기",
+ "partner": "sola",
+ "offer_ko": "‘주문이 잘못됐어요’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "I’m afraid there’s been a mistake.",
+   "ko": "죄송하지만 착오가 있는 것 같아요.",
+   "help": {
+    "blank": "I’m ___ there’s been a mistake.",
+    "choices": [
+     "afraid",
+     "a friend",
+     "afraid of"
+    ]
+   },
+   "accept": [
+    "im afraid theres been a mistake",
+    "i am afraid there has been a mistake",
+    "im afraid there was a mistake",
+    "excuse me im afraid theres been a mistake",
+    "i think theres been a mistake",
+    "i think there was a mistake",
+    "sorry but i think theres a mistake",
+    "excuse me i think theres been a mistake",
+    "im afraid there has been a mistake"
+   ],
+   "partial_patterns": [
+    "^(?:mistake|theres a mistake|there is a mistake|wrong|its wrong)$"
+   ],
+   "tests": {
+    "ok": [
+     "I’m afraid there’s been a mistake.",
+     "excuse me, I think there’s been a mistake"
+    ],
+    "partial": [
+     "there’s a mistake"
+    ],
+    "form_only": [],
+    "no": [
+     "afraid"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "I ordered ___, but I got ___.",
+   "ko": "___를 시켰는데 ___가 왔어요.",
+   "help": {
+    "blank": "I ordered a salad, ___ I got a burger.",
+    "choices": [
+     "but",
+     "and",
+     "bought"
+    ]
+   },
+   "pattern": "^i ordered (?<x>[a-z]+(?: [a-z]+){0,5}) (?:but|and) (?:i got|i received|you gave me|this is|it is|its) (?<y>[a-z]+(?: [a-z]+){0,5})$",
+   "partial_patterns": [
+    "^(?:this is not|this isnt|its not|it is not) (?:what i ordered|my order)$"
+   ],
+   "tests": {
+    "ok": [
+     "I ordered a salad, but I got a burger.",
+     "i ordered the chicken but this is beef"
+    ],
+    "partial": [
+     "This isn’t what I ordered."
+    ],
+    "form_only": [],
+    "no": [
+     "I ordered"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "Would it be possible to ___?",
+   "ko": "___해 주실 수 있을까요?",
+   "help": {
+    "blank": "Would it be ___ to change it?",
+    "choices": [
+     "possible",
+     "positive",
+     "popular"
+    ]
+   },
+   "pattern": "^(?:would it be possible|is it possible|would you be able) to (?<x>[a-z]+(?: [a-z]+){0,8})$|^could you possibly (?!to )(?<y>[a-z]+(?: [a-z]+){0,8})$",
+   "partial_patterns": [
+    "^(?:can you|could you|please) [a-z]+(?: [a-z]+){0,8}$"
+   ],
+   "accept_note": "‘Can you …?’는 뜻 전달(부분, 덜 정중함).",
+   "tests": {
+    "ok": [
+     "Would it be possible to change it?",
+     "is it possible to get a new one",
+     "Could you possibly change it?"
+    ],
+    "partial": [
+     "Can you change it?",
+     "Could you possibly to change it"
+    ],
+    "form_only": [],
+    "no": [
+     "possible",
+     "Would it be possible change it"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "partner",
+   "en": "Excuse me. I’m afraid there’s been a mistake."
+  },
+  {
+   "who": "tori",
+   "en": "Oh, I’m sorry. What’s the problem?"
+  },
+  {
+   "who": "partner",
+   "en": "I ordered a salad, but I got a burger."
+  },
+  {
+   "who": "tori",
+   "en": "I’m so sorry about that."
+  },
+  {
+   "who": "partner",
+   "en": "Would it be possible to change it?"
+  },
+  {
+   "who": "tori",
+   "en": "Of course. It’ll be ready in five minutes."
+  }
+ ],
+ "check": [
+  {
+   "line": 0,
+   "expression": "e1",
+   "line_accept": [
+    "excuse me im afraid theres been a mistake",
+    "im afraid theres been a mistake"
+   ]
+  },
+  {
+   "line": 2,
+   "expression": "e2",
+   "line_accept": [
+    "i ordered a salad but i got a burger"
+   ]
+  },
+  {
+   "line": 4,
+   "expression": "e3",
+   "line_accept": [
+    "would it be possible to change it"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "역할극: 온라인으로 파란 셔츠를 주문했는데 빨간 셔츠가 왔어요. 토리는 고객센터 직원이에요.",
+ "story": [
+  {
+   "en": "Hello, customer service. How can I help you?",
+   "expect": "e1",
+   "screen_hint_ko": "착오가 있다고 해요: I’m afraid there’s been a mistake.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Oh, I’m sorry. What happened?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "model": "I ordered a blue shirt, but I got a red one.",
+   "screen_hint_ko": "무엇이 잘못 왔는지: I ordered a blue shirt, but I got a red one.",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "I’m so sorry about that."
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "바꿔 줄 수 있는지: Would it be possible to exchange it?",
+   "role": true,
+   "branches": [
+    {
+     "when": "default",
+     "say": "Of course. We’ll send a new one."
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now you work here. I’m the customer.",
+   "expect": null,
+   "screen_hint_ko": "역할극: 이번엔 내가 직원이에요.",
+   "role": true
+  },
+  {
+   "en": "Excuse me. I ordered tea, but I got coffee.",
+   "expect": null,
+   "free_answer": true,
+   "role": true,
+   "screen_hint_ko": "사과해요: I’m so sorry about that."
+  },
+  {
+   "en": "Would it be possible to change it?",
+   "expect": null,
+   "free_answer": true,
+   "role": true,
+   "screen_hint_ko": "들어줘요: Of course."
+  },
+  {
+   "en": "Thank you so much!",
+   "expect": null,
+   "role": true
+  }
+ ],
+ "recall": {
+  "voice": "Tell the staff.",
+  "hint_ko": "식당 직원에게 주문이 잘못 나왔다고 정중히 말해 보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "What happened?",
+  "I’m so sorry about that.",
+  "We’ll send a new one.",
+  "Thank you so much!"
+ ],
+ "privacy_ko": "모두 역할극이에요. 주문 번호·연락처는 묻지 않아요.",
+ "partner_name": "Sola",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}

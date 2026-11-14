@@ -1,0 +1,233 @@
+{
+ "id": "L6-02",
+ "level": "L6",
+ "title_ko": "의견과 근거",
+ "title_en": "The main reason is that I save time.",
+ "goal_ko": "의견을 묻고, 가장 큰 이유를 말하고, 예를 들기",
+ "partner": "moa",
+ "offer_ko": "‘의견과 근거’ 표현을 잠깐 익혀 볼까요?",
+ "expressions": [
+  {
+   "id": "e1",
+   "en": "What’s your take on ___?",
+   "ko": "___에 대해 어떻게 생각해요?",
+   "help": {
+    "blank": "What’s your ___ on working from home?",
+    "choices": [
+     "take",
+     "tag",
+     "tape"
+    ]
+   },
+   "pattern": "^(?:whats|what is) your (?:take|opinion|view) on (?<x>[a-z]+(?: [a-z]+){0,6})$|^how do you feel about (?<y>[a-z]+(?: [a-z]+){0,6})$",
+   "partial_patterns": [
+    "^what do you think (?:about|of) [a-z]+(?: [a-z]+){0,6}$"
+   ],
+   "accept_note": "‘What do you think about …?’(3단계 표현)은 부분.",
+   "tests": {
+    "ok": [
+     "What’s your take on working from home?",
+     "what is your opinion on online shopping"
+    ],
+    "partial": [
+     "what do you think about homework"
+    ],
+    "form_only": [],
+    "no": [
+     "your take"
+    ]
+   }
+  },
+  {
+   "id": "e2",
+   "en": "The main reason is that ___.",
+   "ko": "가장 큰 이유는 ___예요.",
+   "help": {
+    "blank": "The main ___ is that I save time.",
+    "choices": [
+     "reason",
+     "region",
+     "raisin"
+    ]
+   },
+   "pattern": "^(?:the main reason is|the biggest reason is|mainly because|its mainly because)(?: that)? (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^because [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "The main reason is that I save time.",
+     "mainly because it’s cheaper"
+    ],
+    "partial": [
+     "because it’s cheaper"
+    ],
+    "form_only": [],
+    "no": [
+     "main reason"
+    ]
+   }
+  },
+  {
+   "id": "e3",
+   "en": "For example, ___.",
+   "ko": "예를 들어 ___.",
+   "help": {
+    "blank": "For ___, I don’t have to commute.",
+    "choices": [
+     "example",
+     "exam",
+     "a sample"
+    ]
+   },
+   "pattern": "^(?:for example|for instance) (?<x>[a-z]+(?: [a-z]+){1,14})$",
+   "partial_patterns": [
+    "^(?:like|such as) [a-z]+(?: [a-z]+){1,14}$"
+   ],
+   "tests": {
+    "ok": [
+     "For example, I don’t have to commute.",
+     "for instance I can cook lunch at home"
+    ],
+    "partial": [
+     "like I can cook lunch"
+    ],
+    "form_only": [],
+    "no": [
+     "for example"
+    ]
+   }
+  }
+ ],
+ "scene": [
+  {
+   "who": "tori",
+   "en": "Moa, what’s your take on working from home?"
+  },
+  {
+   "who": "partner",
+   "en": "I love it. The main reason is that I save so much time."
+  },
+  {
+   "who": "tori",
+   "en": "That makes sense. Any downsides?"
+  },
+  {
+   "who": "partner",
+   "en": "Sometimes I feel lonely. For example, I miss lunch with my team."
+  },
+  {
+   "who": "tori",
+   "en": "I get that. What’s your take on a four-day week?"
+  },
+  {
+   "who": "partner",
+   "en": "Great idea! The main reason is that people need rest."
+  }
+ ],
+ "check": [
+  {
+   "line": 1,
+   "expression": "e2",
+   "line_accept": [
+    "i love it the main reason is that i save so much time",
+    "the main reason is that i save so much time"
+   ]
+  },
+  {
+   "line": 3,
+   "expression": "e3",
+   "line_accept": [
+    "for example i miss lunch with my team",
+    "sometimes i feel lonely for example i miss lunch with my team"
+   ]
+  },
+  {
+   "line": 5,
+   "expression": "e2",
+   "line_accept": [
+    "great idea the main reason is that people need rest",
+    "idea the main reason is that people need rest",
+    "the main reason is that people need rest"
+   ]
+  }
+ ],
+ "time_skip_before": null,
+ "story_notice_ko": "정답은 없어요. 일을 안 해도 상상해서 말해도 돼요.",
+ "story": [
+  {
+   "en": "What’s your take on working from home?",
+   "expect": null,
+   "free_answer": true,
+   "screen_hint_ko": "생각부터: I like it. / I don’t like it.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "I see. Why is that?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e2",
+   "screen_hint_ko": "이유: The main reason is that ___.",
+   "screen_blank": "The main reason is that ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "Can you give me an example?"
+    }
+   ]
+  },
+  {
+   "en": null,
+   "expect": "e3",
+   "screen_hint_ko": "예: For example, ___.",
+   "screen_blank": "For example, ___.",
+   "branches": [
+    {
+     "when": "default",
+     "say": "That’s a clear example!"
+    }
+   ]
+  }
+ ],
+ "fallback": null,
+ "korean_map": {},
+ "plural_words": [],
+ "ask_me": [
+  {
+   "en": "Now ask me about anything. Pick a topic.",
+   "expect": "e1",
+   "screen_hint_ko": "토리에게 물어봐요: What’s your take on online shopping?",
+   "branches": [
+    {
+     "when": "slot_in:online shopping",
+     "say": "I like it. The main reason is that it saves time."
+    },
+    {
+     "when": "default",
+     "say": "Good question! I think it has pros and cons."
+    }
+   ]
+  }
+ ],
+ "recall": {
+  "voice": "Ask Moa her opinion.",
+  "hint_ko": "모아에게 ‘What’s your take on…?’로 의견을 물어보세요",
+  "expect": "e1"
+ },
+ "extra_guides": [
+  "Why is that?",
+  "Can you give me an example?",
+  "That’s a clear example!",
+  "I get that.",
+  "Good question!"
+ ],
+ "privacy_ko": "정치·종교·성별 같은 민감한 주제는 다루지 않아요. 의견은 기억에 남기지 않아요.",
+ "partner_name": "Moa",
+ "credit_ko": "bilody가 직접 만든 대화예요.",
+ "topics_en": [],
+ "img": null,
+ "hint_delay": true
+}
