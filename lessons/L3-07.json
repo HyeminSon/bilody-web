@@ -221,6 +221,10 @@
      "say": "Okay, that works for me!"
     },
     {
+     "when": "declined",
+     "say": "Okay, no problem. Maybe another day!"
+    },
+    {
      "when": "default",
      "say": "Great! See you Monday."
     }
