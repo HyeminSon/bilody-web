@@ -1,8 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.8.10";
-import { Chat } from "./rt.js?v=0.8.10";
-import { byId } from "./characters.js?v=0.8.10";
+import * as api from "./api.js?v=0.8.11";
+import { Chat } from "./rt.js?v=0.8.11";
+import { byId } from "./characters.js?v=0.8.11";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
@@ -13,7 +13,7 @@ const packs = new Map();
 const urls = new Map();
 function loadPack(id) {
   if (!packs.has(id)) {
-    packs.set(id, fetch(`story/${id}.pack`).then((r) => { if (!r.ok) throw new Error("pack"); return r.arrayBuffer(); }).then((buf) => {
+    packs.set(id, fetch(`story/${id}.pack${id === "common" ? "?v=50" : ""}`).then((r) => { if (!r.ok) throw new Error("pack"); return r.arrayBuffer(); }).then((buf) => {
       const n = new DataView(buf).getUint32(0, true);
       const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, n)));
       return { buf, base: 4 + n, head };

@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.10";
-import { PRESET } from "./config.js?v=0.8.10";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.10";
+import * as api from "./api.js?v=0.8.11";
+import { PRESET } from "./config.js?v=0.8.11";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.11";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -53,9 +53,9 @@ export class Chat {
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
-      } catch {
+      } catch (e) {
         stream = null;
-        this.set({ notice: "마이크를 쓸 수 없어요. 브라우저 설정에서 마이크를 허용하거나, 아래에 글로 입력해 주세요." });
+        this.set({ notice: micHelp(e) });
       }
       if (stale()) return abandon();
       this.stream = stream;
@@ -620,4 +620,21 @@ function preload(url) {
     img.onload = () => { clearTimeout(t); ok(true); }; img.onerror = () => { clearTimeout(t); ok(false); };
     img.src = url;
   });
+}
+
+// 11/14 시험자 제보(아이폰 다른 브라우저에서 마이크 막힘): 막힌 까닭과 기기에 맞춰 고치는 방법을 알려 준다
+function micHelp(e) {
+  const ua = navigator.userAgent || "";
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  const inApp = /KAKAOTALK|NAVER|Instagram|FBAN|FBAV|Line\//i.test(ua);
+  const iosOther = ios && /CriOS|EdgiOS|FxiOS|OPiOS|Whale/i.test(ua);
+  const tail = " 그동안은 아래에 글로 이야기할 수 있어요.";
+  if (inApp) return "이 앱 안에서 연 화면에서는 마이크를 쓸 수 없어요. 오른쪽 위 메뉴에서 ‘다른 브라우저로 열기’를 눌러 " + (ios ? "사파리로" : "크롬으로") + " 열어 주세요." + tail;
+  const name = e?.name ?? "";
+  if (!navigator.mediaDevices || name === "TypeError") return "이 브라우저에서는 마이크를 쓸 수 없어요. " + (ios ? "사파리로" : "크롬으로") + " 열어 주세요." + tail;
+  if (name === "NotFoundError" || name === "OverconstrainedError") return "마이크를 찾지 못했어요. 이어폰이나 마이크 연결을 확인하고 ‘다시 시작’을 눌러 주세요." + tail;
+  if (name === "NotReadableError" || name === "AbortError") return "다른 앱이 마이크를 쓰고 있어요. 통화·녹음 앱을 끄고 ‘다시 시작’을 눌러 주세요." + tail;
+  if (iosOther) return "마이크가 막혀 있어요. 아이폰 ‘설정’ 앱에서 이 브라우저를 찾아 ‘마이크’를 켜고, 이 화면을 새로고침해 주세요. 사파리로 열면 더 쉬워요." + tail;
+  if (ios) return "마이크가 막혀 있어요. 주소창 왼쪽 ‘가가’ → ‘웹 사이트 설정’ → ‘마이크’를 ‘허용’으로 바꾸고 새로고침해 주세요. 그래도 안 되면 아이폰 ‘설정’ → ‘Safari’ → ‘마이크’를 확인해 주세요." + tail;
+  return "마이크가 막혀 있어요. 주소창 왼쪽 자물쇠(사이트 정보) 버튼에서 마이크를 ‘허용’으로 바꾸고 새로고침해 주세요." + tail;
 }

@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.10";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.10";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.10";
-import { GUIDE } from "./guide.js?v=0.8.10";
-import { Player } from "./audio.js?v=0.8.10";
-import { Chat } from "./rt.js?v=0.8.10";
-import * as story from "./story.js?v=0.8.10";
-import * as push from "./push.js?v=0.8.10";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.10";
+import * as api from "./api.js?v=0.8.11";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.11";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.11";
+import { GUIDE } from "./guide.js?v=0.8.11";
+import { Player } from "./audio.js?v=0.8.11";
+import { Chat } from "./rt.js?v=0.8.11";
+import * as story from "./story.js?v=0.8.11";
+import * as push from "./push.js?v=0.8.11";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -304,9 +304,11 @@ function renderStory() {
   return `<div class="story" id="story" style="background:${esc(u.bg)}">
     <div class="st-head"><div class="grow"><b id="stTitle">${esc(u.title)}</b><div id="stSub"></div>
       ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">그림책은 토리가 읽어 줘요</div>` : ""}</div>
+      <button class="st-txtbtn" id="stTxtBtn" data-act="storyText" aria-label="글 보기">${I("subject")}글</button>
       <span class="micchip" id="stMic">${I("mic_off")}마이크 꺼짐</span></div>
     <div class="st-main" id="stMain"><div class="st-pages" id="stPages"></div>
       <img id="stTori" class="st-tori" src="${animSrc("tori", "idle")}" alt=""></div>
+    <p id="stText" class="st-text" hidden></p>
     <p id="stLine" class="st-line"></p><p id="stNotice" class="error st-pad"></p>
     <p id="stCredit" class="st-credit"></p>
     <div class="controls st-pad" id="stCtl"></div>
@@ -329,6 +331,10 @@ function updateStory() {
     pages.querySelectorAll(".chip").forEach((c) => { const on = c.dataset.v === u.picture; c.classList.toggle("on", on); if (on) { c.classList.remove("pop"); void c.offsetWidth; c.classList.add("pop"); } });
     const big = pages.querySelector(".bigpic"); if (big) { big.classList.remove("pop"); void big.offsetWidth; big.classList.add("pop"); }
   }
+  // 11/14 실장님: 그림책 글은 기본으로 숨기고, 보호자가 ‘글’ 버튼으로 켠다(이 기기에 기억)
+  const showText = pref.get("storyText", false); const pgText = !u.quiz && st.book ? (st.book.pages[u.page - 1]?.text ?? "") : "";
+  $("#stTxtBtn").classList.toggle("on", showText);
+  const stx = $("#stText"); stx.hidden = !(showText && pgText); if (stx.textContent !== pgText) stx.textContent = pgText;
   $("#stLine").textContent = pref.get("subtitles", false) ? u.line : "";
   $("#stNotice").textContent = u.notice ?? u.talkNotice ?? "";
   const mic = $("#stMic"); const mk = u.micOn ? "on" : "off";
@@ -626,9 +632,10 @@ function renderDialog() {
     return box(`<h2>그림책 보기 · ${lib.stories.length}권</h2>
       <p class="warn small">⚠ 어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 그림책으로 이어집니다.</p>
       <button class="pill dark" data-act="storyStart" data-v="resume">${rb ? `▶ 이어 듣기: ${esc(rb.titleKo)} (처음부터)` : "▶ 처음부터 듣기"}</button>
-      <div class="book-list">${lib.stories.map((b) => `<button class="book" data-act="storyStart" data-v="${b.id}">
+      <div class="book-list">${lib.stories.map((b) => `<div class="book-row"><button class="book" data-act="storyStart" data-v="${b.id}" data-longpress="${b.id}">
         ${story.thumbUrl(b.id) ? `<img src="${story.thumbUrl(b.id)}" alt="">` : ""}
-        <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>`).join("")}</div>
+        <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>
+        <button class="book-txt" data-act="storyBookText" data-v="${b.id}">${I("subject")}글 보기</button></div>`).join("")}</div>
       <div class="row end"><button class="link" data-act="closeDialog">닫기</button><button class="link" data-act="credits">그림 출처</button></div>`);
   }
   // 11/14 실장님: 9단계 모두 넣어 두기. 단계는 CEFR를 참고한 bilody 내부 단계(인증 아님)
@@ -655,6 +662,12 @@ function renderDialog() {
     <p class="lesson-pick-h"><b>익히고 싶은 표현 고르기</b></p>
     ${lessonPicker(d, lv, done)}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
+  }
+  if (d.kind === "storyText") {
+    const b = d.lib.stories.find((x) => x.id === d.id); if (!b) return "";
+    return box(`<h2>${esc(b.titleKo)}</h2><p class="muted small">${esc(b.title)} · ${b.pages.length}쪽 · 토리가 읽는 영어 글이에요.</p>
+      <ol class="book-text">${b.pages.map((p) => `<li>${esc(p.text)}</li>`).join("")}</ol>
+      <div class="row end"><button class="link" data-act="storyPickBack">목록으로</button><button class="link" data-act="storyStart" data-v="${b.id}">이 책 듣기</button></div>`);
   }
   if (d.kind === "credits") return box(`<h2>단어 그림 출처</h2>
     <p class="muted small">단어 그림 대부분은 Microsoft Fluent Emoji(3D)를 썼어요. Copyright (c) Microsoft Corporation, MIT License — github.com/microsoft/fluentui-emoji. 배경 카드를 더하고 빨간 모자는 색을 바꿨어요. 벌집·탁자·베개·그네·모래성·풀 그림은 bilody가 직접 그렸어요.</p>
@@ -723,6 +736,9 @@ app.addEventListener("click", async (e) => {
     }
     case "credits": S.dialog = { kind: "credits", lib: await story.loadLib() }; render(); break;
     case "storyStart": await startStory(v); break;
+    case "storyBookText": if (S.dialog?.lib) { S.dialog = { kind: "storyText", lib: S.dialog.lib, id: v }; render(); } break;
+    case "storyPickBack": if (S.dialog?.lib) { S.dialog = { kind: "storyPick", lib: S.dialog.lib }; render(); } break;
+    case "storyText": pref.set("storyText", !pref.get("storyText", false)); updateStory(); break;
     case "storyTap": {
       const st = S.story; if (!st) break;
       el.querySelector("span")?.classList.add("shown");     // 누른 단어는 이름이 보인다
@@ -842,6 +858,17 @@ app.addEventListener("click", async (e) => {
     case "confirmYes": { const f = S.dialog.onYes; S.dialog = null; render(); await f(); break; }
   }
 });
+
+let lpTimer = null, lpFired = false, lpXY = null;
+app.addEventListener("pointerdown", (e) => {
+  const b = e.target.closest("[data-longpress]"); if (!b) return;
+  lpFired = false; lpXY = [e.clientX, e.clientY]; clearTimeout(lpTimer);
+  lpTimer = setTimeout(() => { if (S.dialog?.lib) { lpFired = true; S.dialog = { kind: "storyText", lib: S.dialog.lib, id: b.dataset.longpress }; render(); } }, 600);
+});
+app.addEventListener("pointermove", (e) => { if (lpXY && Math.hypot(e.clientX - lpXY[0], e.clientY - lpXY[1]) > 10) { clearTimeout(lpTimer); lpXY = null; } });
+["pointerup", "pointercancel"].forEach((t) => app.addEventListener(t, () => { clearTimeout(lpTimer); lpXY = null; }));
+app.addEventListener("click", (e) => { if (lpFired) { lpFired = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
+app.addEventListener("contextmenu", (e) => { if (e.target.closest("[data-longpress]")) e.preventDefault(); });
 
 app.addEventListener("change", async (e) => {
   const t = e.target; const p = S.profile;

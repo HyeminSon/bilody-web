@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.10";
-import { CHARACTERS } from "./characters.js?v=0.8.10";
+import * as api from "./api.js?v=0.8.11";
+import { CHARACTERS } from "./characters.js?v=0.8.11";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
@@ -58,7 +58,7 @@ const RANK = { ok: 3, form_only: 2, partial: 1 };
 let lib = null;
 export async function loadLib() {
   if (lib) return lib;
-  const idx = await fetch("lessons/index.json?v=0.8.10").then((r) => r.json());
+  const idx = await fetch("lessons/index.json?v=0.8.11").then((r) => r.json());
   lib = { ...idx, byId: Object.fromEntries(idx.lessons.map((l) => [l.id, l])), cache: {} };
   return lib;
 }
@@ -66,14 +66,14 @@ let upper = null;
 /** 7단계 의견 과제·8~9단계 대화 주제(11/14 실장님: 모든 단계를 넣어 두기). */
 export async function loadUpper() {
   if (upper) return upper;
-  const [t, p] = await Promise.all([fetch("lessons/L7.json?v=0.8.10").then((r) => r.json()), fetch("lessons/L8L9.json?v=0.8.10").then((r) => r.json())]);
+  const [t, p] = await Promise.all([fetch("lessons/L7.json?v=0.8.11").then((r) => r.json()), fetch("lessons/L8L9.json?v=0.8.11").then((r) => r.json())]);
   upper = { tasks: t, topics: p, taskById: Object.fromEntries(t.tasks.map((x) => [x.id, x])), topicById: Object.fromEntries(Object.values(p.topics).flat().map((x) => [x.id, x])) };
   return upper;
 }
 async function loadLesson(id) {
   const l = await loadLib();
   if (!l.cache[id]) {
-    const les = await fetch(`lessons/${id}.json?v=0.8.10`).then((r) => r.json());
+    const les = await fetch(`lessons/${id}.json?v=0.8.11`).then((r) => r.json());
     les.scene = les.scene.map((x) => ({ ...x, who: x.who === "tori" ? "tori" : les.partner }));   // 상대 줄은 상대 캐릭터 id(목소리)
     l.cache[id] = les;
   }
