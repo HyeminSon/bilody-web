@@ -19,7 +19,7 @@
      "had"
     ]
    },
-   "pattern": "^(?:oh no )?i (?:should have|shouldve) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish)\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "pattern": "^(?:oh no )?i (?:should have|shouldve) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish|be|am|is|are|was|were|become|come|run|grow|throw|fly|draw|hide|bite|shake|steal|freeze|has|have)\\b|[a-z]+ing\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
    "partial_patterns": [
     "^i should of [a-z]+(?: [a-z]+){0,8}$",
     "^i (?:should|must) (?:bring|check|take|leave|go|sleep|study|call)(?: [a-z]+){0,8}$",
@@ -35,7 +35,9 @@
     "partial": [
      "I should bring an umbrella",
      "I should of left early",
-     "I should have go home"
+     "I should have go home",
+     "I should have be careful",
+     "I should have going"
     ],
     "form_only": [],
     "no": [
@@ -55,7 +57,7 @@
      "hat"
     ]
    },
-   "pattern": "^i wish (?:i had|id|i hadnt|i had not) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish)\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
+   "pattern": "^i wish (?:i had|id|i hadnt|i had not) (?!(?:go|do|eat|see|take|buy|bring|leave|tell|write|give|know|sleep|wake|forget|drink|drive|ride|speak|choose|begin|fall|feel|find|keep|lose|meet|pay|send|sit|spend|stand|think|wear|win|catch|teach|hear|say|sell|sing|swim|break|get|make|study|check|call|ask|listen|wait|start|stay|watch|save|book|order|finish|be|am|is|are|was|were|become|come|run|grow|throw|fly|draw|hide|bite|shake|steal|freeze|has|have)\\b|[a-z]+ing\\b)(?<x>[a-z]+(?: [a-z]+){0,10})$",
    "partial_patterns": [
     "^i wish i [a-z]+(?: [a-z]+){0,10}$"
    ],
@@ -68,7 +70,8 @@
     ],
     "partial": [
      "I wish I studied harder",
-     "I wish I had go home"
+     "I wish I had go home",
+     "I wish I had be careful"
     ],
     "form_only": [],
     "no": [

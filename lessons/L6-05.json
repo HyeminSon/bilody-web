@@ -51,9 +51,10 @@
      "night"
     ]
    },
-   "pattern": "^(?:it|that|this|they|we|you) (?:might|may|could) (?:be |have been )?(?!(?:is|are|was|to)\\b)(?<x>[a-z]+(?: [a-z]+){0,8})$",
+   "pattern": "^(?:it|that|this|they|we|you) (?:might|may|could) (?:be |have been )?(?!(?:is|are|was|to|a|an|the|my|your|his|her|their|our|some|this|that|these|those)\\b)(?<x>[a-z]+(?: [a-z]+){0,8})$|^(?:it|that|this|they|we|you) (?:might|may|could) (?:be|have been) (?<y>[a-z]+(?: [a-z]+){0,8})$",
    "partial_patterns": [
-    "^(?:maybe|perhaps|probably) (?:its |it is )?[a-z]+(?: [a-z]+){0,8}$"
+    "^(?:maybe|perhaps|probably) (?:its |it is )?[a-z]+(?: [a-z]+){0,8}$",
+    "^(?:it|that|this|they) (?:might|may|could) (?:a|an|the|my|your|some) [a-z]+(?: [a-z]+){0,6}$"
    ],
    "tests": {
     "ok": [
@@ -62,7 +63,8 @@
      "It might snow."
     ],
     "partial": [
-     "maybe it’s a book"
+     "maybe it’s a book",
+     "It might a book"
     ],
     "form_only": [],
     "no": [

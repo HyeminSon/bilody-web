@@ -161,6 +161,10 @@
    "screen_hint_ko": "정리해 확인해요: So you’re saying we might cancel?",
    "branches": [
     {
+     "when": "matched_text:not cancel|dont cancel|do not cancel|shouldnt cancel|should not cancel|wont cancel|will not cancel|never cancel|not postpone|dont postpone",
+     "say": "Hmm, so we still go? I mean the weather might be bad, so we might cancel."
+    },
+    {
      "when": "matched_text:cancel|not go|postpone|another day|change the plan|stay home",
      "say": "Exactly. Let’s check on Friday."
     },
@@ -219,6 +223,10 @@
    "expect": "e3",
    "screen_hint_ko": "정리해 확인해요: So you’re saying you didn’t like it?",
    "branches": [
+    {
+     "when": "matched_text:not strange|wasnt strange|was not strange|not weird|wasnt weird|not bad|wasnt bad|not boring|liked it|loved it|enjoyed it|it was good|it was great",
+     "say": "Oh, you liked it? I mean it was a little strange."
+    },
     {
      "when": "matched_text:didnt like|did not like|not good|boring|strange|weird|bad|not great",
      "say": "Ha, exactly!"

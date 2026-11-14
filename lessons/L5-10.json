@@ -164,6 +164,10 @@
      "say": "COMMON"
     },
     {
+     "when": "matched_text:never complains|never complain|doesnt complain|does not complain|never late|never rude|never angry|never gets angry|never lies|not rude|not lazy|not selfish|not mean",
+     "say": "They sound really nice!"
+    },
+    {
      "when": "matched_text:never|rude|lazy|always late|complains|selfish",
      "say": "Hmm, that sounds hard sometimes."
     },
