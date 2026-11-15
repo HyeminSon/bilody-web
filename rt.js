@@ -395,7 +395,7 @@ export class Chat {
         this.set({ webPicture: { kind: "word", word, meaning: clip(args.meaning_ko, 60), example: clip(args.example_en, 90), exampleKo: clip(args.example_ko, 90), seq } });
         this.pictureTurns = 0; this.closePictureLater(seq);
         this.addLine("assistant", `[${word}] ${clip(args.meaning_ko, 60)}`, false);
-        output = { shown: true };
+        output = { shown: true, kind: "word_card", note: "A word card (not a picture) is now on the screen. Do not call it a picture." };
       } else output = { shown: false };
       this.log("word_card", { word });
     } else output = { error: "unknown_tool" };
