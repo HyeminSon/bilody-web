@@ -18,7 +18,7 @@ export class Player {
   }
 
   setVolume(v) { this.volume = v; if (this.gain) this.gain.gain.value = v; }
-  duck(on) { if (this.gain) this.gain.gain.setTargetAtTime(on ? this.volume * 0.25 : this.volume, this.ctx.currentTime, 0.05); }
+  duck(on) { if (this.gain) this.gain.gain.setTargetAtTime(on ? this.volume * 0.6 : this.volume, this.ctx.currentTime, 0.05); }
 
   /** PCM 한 덩어리를 틀고, 다 끝나면 resolve(true). 중간에 stop()하면 resolve(false). */
   play(pcm, rate) {

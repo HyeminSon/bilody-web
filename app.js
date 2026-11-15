@@ -1,13 +1,13 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.13";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.13";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.13";
-import { GUIDE } from "./guide.js?v=0.8.13";
-import { Player } from "./audio.js?v=0.8.13";
-import { Chat } from "./rt.js?v=0.8.13";
-import * as story from "./story.js?v=0.8.13";
-import * as push from "./push.js?v=0.8.13";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.13";
+import * as api from "./api.js?v=0.8.14";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.14";
+import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.14";
+import { GUIDE } from "./guide.js?v=0.8.14";
+import { Player } from "./audio.js?v=0.8.14";
+import { Chat } from "./rt.js?v=0.8.14";
+import * as story from "./story.js?v=0.8.14";
+import * as push from "./push.js?v=0.8.14";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.14";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -225,7 +225,10 @@ function updateChat() {
     const old = $("#webPic").firstElementChild;
     if (!wp && old) {   // 닫힐 때: 살짝 위로 사라진 뒤 지운다
       old.classList.add("leave"); setTimeout(() => { if ($("#webPic")?.dataset.key === "") $("#webPic").innerHTML = ""; }, 220);
-    } else $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
+    } else if (wp?.kind === "word") $("#webPic").innerHTML = `<div class="card wordcard enter" data-act="dismissWebPicture">
+      <div class="accent tiny b">단어 뜻</div><div class="wc-word">${esc(wp.word)}</div>${wp.meaning ? `<div class="wc-mean">${esc(wp.meaning)}</div>` : ""}
+      ${wp.example ? `<div class="wc-ex">${esc(wp.example)}${wp.exampleKo ? `<span>${esc(wp.exampleKo)}</span>` : ""}</div>` : ""}</div>`;
+    else $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
       <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
   }
   const card = u?.card;

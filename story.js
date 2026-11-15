@@ -1,19 +1,19 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.8.13";
-import { Chat } from "./rt.js?v=0.8.13";
-import { byId } from "./characters.js?v=0.8.13";
+import * as api from "./api.js?v=0.8.14";
+import { Chat } from "./rt.js?v=0.8.14";
+import { byId } from "./characters.js?v=0.8.14";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
-export const loadLib = () => (libP ??= fetch("story/lib.json").then((r) => r.json()));
+export const loadLib = () => (libP ??= fetch("story/lib.json?v=52").then((r) => r.json()));
 
 // ---------- 묶음 파일 ----------
 const packs = new Map();
 const urls = new Map();
 function loadPack(id) {
   if (!packs.has(id)) {
-    packs.set(id, fetch(`story/${id}.pack${id === "common" ? "?v=51" : ""}`).then((r) => { if (!r.ok) throw new Error("pack"); return r.arrayBuffer(); }).then((buf) => {
+    packs.set(id, fetch(`story/${id}.pack${id === "common" ? "?v=52" : ""}`).then((r) => { if (!r.ok) throw new Error("pack"); return r.arrayBuffer(); }).then((buf) => {
       const n = new DataView(buf).getUint32(0, true);
       const head = JSON.parse(new TextDecoder().decode(new Uint8Array(buf, 4, n)));
       return { buf, base: 4 + n, head };

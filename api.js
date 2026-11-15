@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.13";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.14";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -123,7 +123,7 @@ export async function saveTurn(sessionId, seq, role, text) {
 }
 export async function finishSession(sessionId) { try { await fn("end-session", { sessionId }); } catch { /* 기억 정리 실패는 대화를 막지 않음 */ } }
 // features: 이 앱이 할 수 있는 것(사진 카드). 서버는 사진 사이트 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
-export const realtimeKey = (presetId, speed) => fn("realtime-session", { presetId, speed, features: ["picture"] });
+export const realtimeKey = (presetId, speed) => fn("realtime-session", { presetId, speed, features: ["picture", "word"] });
 
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
 export async function say(text, voice, speed, sessionId, preview = false) {

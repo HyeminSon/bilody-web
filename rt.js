@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.13";
-import { PRESET } from "./config.js?v=0.8.13";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.13";
+import * as api from "./api.js?v=0.8.14";
+import { PRESET } from "./config.js?v=0.8.14";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.14";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -244,6 +244,8 @@ export class Chat {
 
   enqueue(r, sentence) {
     if (r.epoch !== this.epoch) return;
+    // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
+    if (!this.story && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
     const voice = this.voiceId, speed = this.story ? 1 : this.speed, sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
@@ -277,6 +279,13 @@ export class Chat {
   onReplyPlayed(r) {
     if (r.epoch !== this.epoch || this.resp !== r) return;
     this.finishReply(r, true);
+    if (r.koDropped && !r.played.length && !this.story && this.pc && !this.closed) {
+      this.resp = null;
+      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
+        text: "Note from the app: your last reply had Korean words, so the learner could not hear it. Say it again now in simple English only, with no Korean letters at all." }] } });
+      this.send({ type: "response.create" }); this.set({ state: "thinking" });
+      return;
+    }
     if (!this.story) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
     this.resp = null;
     if (!this.greeted) this.openMic();
@@ -377,6 +386,18 @@ export class Chat {
         } else output = { shown: false, reason: res.error || "not_found" };
       } catch { output = { shown: false, reason: "picture_failed" }; }
       this.log("picture_used", { ok: shown, ms: Date.now() - c.at });
+    } else if (c.name === "show_word") {
+      // 11/15 실장님: 형용사·동사처럼 그림이 안 맞는 말은 뜻을 글 카드로(한국어 뜻은 화면에만, 친구 목소리는 영어만)
+      const clip = (x, n) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+      const word = clip(args.word, 40);
+      if (word && !this.closed) {
+        const seq = (this.ui.webPicture?.seq ?? 0) + 1;
+        this.set({ webPicture: { kind: "word", word, meaning: clip(args.meaning_ko, 60), example: clip(args.example_en, 90), exampleKo: clip(args.example_ko, 90), seq } });
+        this.pictureTurns = 0; this.closePictureLater(seq);
+        this.addLine("assistant", `[${word}] ${clip(args.meaning_ko, 60)}`, false);
+        output = { shown: true };
+      } else output = { shown: false };
+      this.log("word_card", { word });
     } else output = { error: "unknown_tool" };
     this.set({ searching: false });
     if (this.closed || !this.pc) return;

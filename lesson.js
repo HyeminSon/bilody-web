@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.13";
-import { CHARACTERS } from "./characters.js?v=0.8.13";
+import * as api from "./api.js?v=0.8.14";
+import { CHARACTERS } from "./characters.js?v=0.8.14";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */
@@ -577,7 +577,8 @@ export class LessonManager {
     // 다른 이야기로 보는 것: 한국어 문장, 또는 질문·끼어들기 말로 시작하고 목표 문장과 거의 안 겹치는 말.
     const t = String(text ?? "").trim();
     const hangul = (t.match(/[가-힣]/g) ?? []).length;
-    if (hangul >= 6 && !Object.keys(this.lesson?.korean_map ?? {}).some((k) => t.includes(k))) return true;
+    const latin = (t.match(/[A-Za-z]/g) ?? []).length;   // 11/15: 영어 대답에 한국어 낱말이 섞인 것(“my major is 비트코인화폐철학”)은 다른 이야기가 아님
+    if (hangul >= 6 && hangul > latin && !Object.keys(this.lesson?.korean_map ?? {}).some((k) => t.includes(k))) return true;
     const n = normalize(t); const w = n.split(" ").filter(Boolean);
     const tw = new Set(normalize(target ?? "").split(" "));
     const overlap = w.filter((x) => tw.has(x)).length / Math.max(1, w.length);
