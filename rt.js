@@ -1,9 +1,9 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.14";
-import { PRESET } from "./config.js?v=0.8.14";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.14";
+import * as api from "./api.js?v=0.8.15";
+import { PRESET } from "./config.js?v=0.8.15";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.15";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -251,7 +251,14 @@ export class Chat {
     job.catch(() => {});
     r.chain = r.chain.then(async () => {
       if (r.epoch !== this.epoch || r.blocked) return;
-      let s; try { s = await job; } catch (e) { if (r.first) this.set({ notice: e?.code === "daily_voice_limit" ? "오늘 친구 목소리를 만들 수 있는 양을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요." : "목소리를 만들지 못했어요. 다시 말해 주거나 글로 입력해 주세요." }); return; }
+      // 11/15 T10: 첫마디만 나가고 뒤 문장이 실패하면 안내가 없어 친구가 대답을 피하는 것처럼 보였음 → 중간에 끊겨도 알린다
+      let s; try { s = await job; } catch (e) {
+        const limit = e?.code === "daily_voice_limit";
+        this.set({ notice: limit ? "오늘 친구 목소리를 만들 수 있는 양을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요."
+          : r.first ? "목소리를 만들지 못했어요. 다시 말해 주거나 글로 입력해 주세요." : "목소리를 다 만들지 못해 대답이 중간에 끊겼어요. 다시 말해 주세요." });
+        if (!r.first) this.log("tts_cut", { code: e?.code ?? "error" });
+        return;
+      }
       if (r.epoch !== this.epoch) return;
       const spoken = s.fixed ?? sentence;
       if (s.result !== "ok") r.blocked = true;   // 안전검사에 걸리면 고정 문장 하나만 들려주고 나머지는 버린다(앱과 같음)
