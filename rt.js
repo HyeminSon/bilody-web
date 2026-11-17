@@ -1,10 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.9.0";
-import { PRESET } from "./config.js?v=0.9.0";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.9.0";
-import { sceneVoice } from "./characters.js?v=0.9.0";
+import * as api from "./api.js?v=0.9.1";
+import { PRESET } from "./config.js?v=0.9.1";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.9.1";
+import { sceneVoice } from "./characters.js?v=0.9.1";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -29,7 +29,7 @@ export class Chat {
     this.soft = false; this.softHeld = false; this.ignoredResp = null; this.ignoreUntil = 0;
     this.tSpeechStopped = 0; this.lastSpeechStart = 0; this.startedDuringPlayback = false;
     this.maxMsg = 65536; this.limitReached = false; this.cameraHold = false;
-    this.slots = 0; this.waiters = []; this.sceneGen = 0;
+    this.slots = 0; this.waiters = []; this.sceneGen = 0; this.lessonGen = 0;
     this.lessonItems = new Map(); this.holdSeq = 0; this.lessonMicOn = false;   // 말 id → 그 말을 시작한 수업 번호(수업 밖이면 -1)
   }
 
@@ -52,7 +52,7 @@ export class Chat {
     try {
       if (!this.sessionId) this.sessionId = await api.startSession(this.presetId, this.lesson ? "+lesson" : "");
       if (stale()) return abandon();
-      const key = await api.realtimeKey(this.presetId, this.speed, this.character, this.lesson?.info ?? null);
+      const key = await api.realtimeKey(this.presetId, this.speed, this.character, this.lesson?.info ?? null, this.sessionId);
       if (stale()) return abandon();
       if (key.voice) this.voiceId = key.voice;
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
@@ -112,9 +112,12 @@ export class Chat {
 
   requestGreeting() {
     if (this.story) { this.openMic(); return; }
-    if (this.lesson) {   // 수업: 첫 단계부터(끊겼다 다시 이어지면 하던 단계를 다시 알려 줌)
+    if (this.lesson) {   // 수업: 첫 단계부터. 끊겼다 이어지면 장면 단계는 장면을 처음부터(마이크는 끝난 뒤), 나머지는 하던 단계를 다시
       this.greeted = true;
-      if (this.lessonStep < 0) this.startLessonStep(0); else { this.openMic(); this.sendStepTeach(this.lessonStep, true); }
+      const cur = this.lesson.steps[this.lessonStep];
+      if (this.lessonStep < 0) this.startLessonStep(0);
+      else if (cur?.type === "dialogue" && cur.play) this.playScene(cur);
+      else { this.openMic(); this.sendStepTeach(this.lessonStep, true); }
       return;
     }   // 동화: 인사 없이 바로 마이크(동화는 이미 흐르고 있다)
     this.send({ type: "response.create" });
@@ -124,6 +127,7 @@ export class Chat {
   openMic() {
     if (this.closed || !this.pc) return;
     this.greeted = true;
+    if (this.ui.lessonScene) return;   // 0.9 헤니 검토: 교재 장면 중에는 어떤 경로로도 마이크를 켜지 않는다
     if (this.track && !this.cameraHold) { this.track.enabled = true; this.set({ micOn: true }); }
   }
 
@@ -617,8 +621,9 @@ export class Chat {
 
   async sendStepTeach(i, resumed = false) {
     const L = this.lesson; const step = L?.steps[i]; if (!step) return;
+    const gen = this.lessonGen;
     for (let w = 0; this.resp && w < 4000; w += 100) await sleep(100);
-    if (this.closed || !this.pc) return;
+    if (this.closed || !this.pc || gen !== this.lessonGen || i !== this.lessonStep) return;
     const teach = step.teach || "Continue the lesson, then call next_step.";
     const note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
       `Lesson step ${i + 1} of ${L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
@@ -634,21 +639,29 @@ export class Chat {
     if (this.track) this.track.enabled = false;
     this.set({ lessonScene: true, micOn: false, state: "speaking" });
     const sid = this.sessionId, sp = this.speed;
+    let failed = 0;
     const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid); } finally { this.release(); } })(); j.catch(() => {}); return j; });
     for (let k = 0; k < lines.length; k++) {
       if (my !== this.sceneGen || this.closed || !this.pc) return;
       this.set({ lessonHiLine: k });
-      let s = null; try { s = await jobs[k]; } catch { /* 한 줄 못 만들면 건너뜀 */ }
+      let s = null; try { s = await jobs[k]; } catch { failed++; }   // 한 줄 못 만들면 건너뛰고 알린다(헤니 검토)
       if (my !== this.sceneGen || this.closed) return;
       if (s) { this.recentFriend = (this.recentFriend + " " + plain(lines[k].en)).slice(-400); await this.player.play(s.pcm, s.rate); }
     }
     if (my !== this.sceneGen || this.closed || !this.pc) return;
-    this.set({ lessonScene: false, lessonHiLine: -1, state: "listening" });
+    this.set({ lessonScene: false, lessonHiLine: -1, state: "listening", ...(failed ? { notice: `장면 대사 ${failed}줄을 소리로 만들지 못했어요. 화면의 글로 읽어 주세요.` } : {}) });
     this.openMic();
     this.sendStepTeach(this.lessonStep);
   }
 
   async runLessonTool(c) {
+    // 0.9 헤니 검토: 같은 호출은 한 번만, 멈춘 뒤 늦게 끝난 작업은 진도·단계를 건드리지 않는다
+    this.handledCalls ??= new Set();
+    if (c.callId && this.handledCalls.has(c.callId)) return;
+    if (c.callId) this.handledCalls.add(c.callId);
+    const gen = this.lessonGen;
+    const stale = () => this.closed || !this.pc || gen !== this.lessonGen;
+    if (stale()) return;
     let a = {}; try { a = JSON.parse(c.args || "{}") ?? {}; } catch { /* */ }
     const reply = (create) => {
       this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: '{"ok":true}' } });
@@ -658,23 +671,23 @@ export class Chat {
     if (c.name === "highlight_line") { this.set({ lessonHiLine: (parseInt(a.line, 10) || 0) - 1 }); reply(true); }
     else if (c.name === "highlight_word") { this.set({ lessonHiWord: String(a.word ?? "").trim() || null }); reply(true); }
     else if (c.name === "next_step") {
-      reply(false); await waitQuiet(); if (this.closed || !this.pc) return;
+      reply(false); await waitQuiet(); if (stale()) return;
       const n = this.lessonStep + 1;
       if (n >= this.lesson.steps.length) this.finishLesson([], []); else this.startLessonStep(n);
     } else if (c.name === "finish_session") {
-      reply(false); await waitQuiet();
+      reply(false); await waitQuiet(); if (stale()) return;
       this.finishLesson(Array.isArray(a.practiced) ? a.practiced.map(String) : [], Array.isArray(a.fixed) ? a.fixed.map(String) : []);
     }
   }
 
   finishLesson(practiced, fixed) {
-    const L = this.lesson; if (!L || this.ui.lessonDone) return;
+    const L = this.lesson; if (!L || this.ui.lessonDone || this.closed || !this.pc) return;
     const minutes = Math.max(1, Math.round((Date.now() - (this.lessonStartedAt || Date.now())) / 60000));
     const done = { practiced: practiced.length ? practiced : L.expressions.slice(0, 5), fixed, minutes, said: this.lessonSaid };
     this.onLessonDone?.(L);
     this.set({ lessonDone: done });
     this.log("lesson_done", { lesson: L.id, session: L.session, minutes, said: this.lessonSaid });
-    setTimeout(() => this.stopInternal("USER_STOP", null), 600);
+    const g = this.lessonGen; setTimeout(() => { if (g === this.lessonGen && this.pc) this.stopInternal("USER_STOP", null); }, 600);
   }
 
   // ---------------- 이용 시간 ----------------
@@ -698,11 +711,14 @@ export class Chat {
 
   // ---------------- 멈춤·종료 ----------------
   stop() { this.stopInternal("USER_STOP", null); }
-  pauseForBackground() { if (this.pc && !this.cameraHold) this.stopInternal("APP_BACKGROUND", "대화를 멈췄어요. 이어서 하려면 다시 시작을 눌러 주세요."); }
+  pauseForBackground() {
+    // 0.9 헤니 검토: 연결하는 중(pc가 생기기 전)에 화면을 나가도 늦은 연결이 이어지지 않게 끊는다
+    if ((this.pc || this.ui.state === "connecting") && !this.cameraHold) this.stopInternal("APP_BACKGROUND", "대화를 멈췄어요. 이어서 하려면 다시 시작을 눌러 주세요.");
+  }
   lost() { if (this.pc) { this.stopInternal("NETWORK", "인터넷 연결이 끊겼어요. 연결을 확인한 뒤 다시 시작을 눌러 주세요."); this.set({ state: "disconnected" }); } }
 
   stopInternal(reason, notice) {
-    this.connGen++; this.sceneGen++;
+    this.connGen++; this.sceneGen++; this.lessonGen = (this.lessonGen ?? 0) + 1;
     if (this.ui.lessonScene) this.set({ lessonScene: false, lessonHiLine: -1 });   // 진행 중인 연결이 있으면 끝나는 대로 버린다
     this.player.stop(); this.player.duck(false);
     if (this.resp) { this.epoch++; this.finishReply(this.resp, false); this.resp = null; }

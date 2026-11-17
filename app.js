@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.0";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.0";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.0";
-import * as L9 from "./lesson09.js?v=0.9.0";
-import { GUIDE } from "./guide.js?v=0.9.0";
-import { Player } from "./audio.js?v=0.9.0";
-import { Chat } from "./rt.js?v=0.9.0";
-import * as story from "./story.js?v=0.9.0";
-import * as push from "./push.js?v=0.9.0";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.0";
+import * as api from "./api.js?v=0.9.1";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.1";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.1";
+import * as L9 from "./lesson09.js?v=0.9.1";
+import { GUIDE } from "./guide.js?v=0.9.1";
+import { Player } from "./audio.js?v=0.9.1";
+import { Chat } from "./rt.js?v=0.9.1";
+import * as story from "./story.js?v=0.9.1";
+import * as push from "./push.js?v=0.9.1";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.1";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -314,23 +314,30 @@ async function openLessonHome(bookId) {
 }
 
 async function startLesson(lessonId, session) {
-  const H = S.lh; if (!H?.index) return;
+  const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
   const book = H.index.books.find((b) => b.id === H.bookId) ?? H.index.books[0];
   H.busy = true; render();
   let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
   H.busy = false;
+  // 0.9 헤니 검토: 교재를 받는 사이 수업 홈을 닫았거나 다른 화면(대화·그림책·다른 수업)으로 갔으면 아무것도 시작하지 않는다
+  if (S.lh !== H || S.chat || S.story || S.kids || S.tab !== "chat") return;
   if (!L) { H.error = "수업을 불러오지 못했어요. 인터넷을 확인해 주세요."; return render(); }
   pref.set("lp_last", book.id);
   const run = L9.makeRun(book, L, session);
   player.unlock(); player.setVolume(pref.get("volume", 1));
   S.lh = null;
-  if (run.kids) { S.kids = new L9.KidsRun(run, player, pref.get("speed", 1), () => render()); render(); S.kids.go(0); return; }
+  if (run.kids) {
+    // 어린이 수업: 어떤 마이크 연결도 남기지 않는다(불변 조건: 어린이 화면 = 마이크 세션 0개)
+    if (S.chat) { const c = S.chat; S.chat = null; S.lesson = null; await c.close(); }
+    if (S.story) await endStory();
+    S.kids = new L9.KidsRun(run, player, pref.get("speed", 1), () => render()); render(); S.kids.go(0); return;
+  }
   const t = L9.progress.teacher(pref); const p = S.profile;
-  S.chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
-  S.chat.onLessonDone = (r) => L9.progress.done(pref, r);
-  S.lesson = null;
+  const chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
+  chat.onLessonDone = (r) => { if (S.chat === chat) L9.progress.done(pref, r); };
+  S.chat = chat; S.lesson = null;
   render();
-  await S.chat.start();
+  await chat.start();
 }
 
 async function endLesson(toHome = true) {
@@ -467,6 +474,7 @@ function zoomWord(pic, fromEl) {
 
 async function startStory(id) {
   player.unlock(); player.setVolume(pref.get("volume", 1));
+  if (S.kids) { S.kids.stop(); S.kids = null; }
   S.dialog = null;
   S.story = new story.StoryPlayer({ player, onChange: () => updateChat() });
   render();
@@ -481,6 +489,8 @@ async function endStory() {
 
 async function startChat() {
   player.unlock();
+  if (S.kids) { S.kids.stop(); S.kids = null; }   // 0.9: 화면은 한 번에 하나(어린이 수업·대화가 겹치지 않게)
+  S.lh = null;
   const p = S.profile; const c = byId(p?.character);
   player.setVolume(pref.get("volume", 1));
   S.chat = new Chat({ voiceId: c.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat() });

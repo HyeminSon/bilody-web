@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.9.0";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.0";
+import * as api from "./api.js?v=0.9.1";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.1";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -22,7 +22,9 @@ const plain = (s) => String(s ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 /** 교재 한 회차 실행 정보(앱 LessonRun과 같음). */
 export function makeRun(book, L, session) {
   const sessions = L.sessions ?? [];
-  const steps = (sessions.find((x) => x.n === session) ?? sessions[0])?.steps ?? [];
+  const sess = sessions.find((x) => x.n === session) ?? sessions[0];
+  session = sess?.n ?? 1;   // 없는 회차 번호는 실제로 여는 회차 번호로(헤니 검토)
+  const steps = sess?.steps ?? [];
   const expressions = sessions.flatMap((x) => x.steps).filter((x) => x.type === "card").map((x) => plain(x.en));
   const run = { id: L.id, kids: L.kind === "kids", title: L.title ?? "", titleEn: L.title_en ?? "", koreanOk: !!L.korean_ok, steps, expressions, session,
     bookId: book.id, bookNo: book.no, no: L.no, sessionCount: sessions.length || 1, teacher: L.teacher, letter: L.letter, lesson: L };
@@ -59,19 +61,23 @@ export function renderHome(H, esc, I) {
   const books = H.index.books; const book = books.find((b) => b.id === H.bookId) ?? books[0];
   const kids = book.kind === "kids";
   const [nn, ns] = H.next;
+  // 마지막 과까지 마치면 1과로 되돌아가 보이지 않게(헤니 검토)
+  const done = book.lessons.length > 0 && nn > Math.max(...book.lessons.map((x) => x.no));
   const L = book.lessons.find((x) => x.no === nn) ?? book.lessons[0];
+  const nextBook = books[books.indexOf(book) + 1];
   const t = byId(H.teacher);
   return `<div class="lh">
     <div class="lh-top"><h2>1:1 수업</h2><button class="round lilac" data-act="lhClose" aria-label="닫기">${I("close")}</button></div>
     <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${b.kind === "kids" ? `어린이 ${b.no}권` : `${b.no}권`}</button>`).join("")}</div>
     <p class="muted small">${esc(kids ? book.title_ko : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
-    <div class="card today">
+    ${done ? `<div class="card today"><div class="today-title">이 권을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 과 고르기’에서 복습할 과를 고르거나 다음 권으로 넘어가요.</p>
+      ${nextBook && nextBook.kind === book.kind ? `<button class="pill primary" data-act="lhBook" data-v="${nextBook.id}">${nextBook.no}권으로 넘어가기</button>` : `<button class="pill secondary" data-act="lhAll">과 목록 펼치기</button>`}</div>` : `<div class="card today">
       <div class="row"><b class="accent small grow">오늘 할 분량</b><span class="muted small">약 10분</span></div>
       <div class="lh-row"><img class="today-img" src="${imgUrl(`img/s/${L.id}.jpg`)}" alt="">
         <div class="grow"><div class="muted small">${kids ? `${L.no}과` : `${book.no}권 ${L.no}과 · ${ns}회차`}</div><div class="today-title">${esc(L.title)}</div>${L.title_en ? `<div class="muted small">${esc(L.title_en)}</div>` : ""}</div></div>
       ${kids ? `<p class="muted small">어린이 수업은 마이크 없이 선생님 말을 듣고 화면을 눌러서 해요.</p>` : `<div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>`}
       <button class="pill primary" data-act="lhStart" data-v="${L.id}" data-s="${kids ? 1 : ns}" ${H.busy ? "disabled" : ""}>${I("play_arrow")}${H.busy ? "불러오는 중…" : "수업 시작"}</button>
-    </div>
+    </div>`}
     ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${kids ? `어린이 ${book.no}권` : `${book.no}권`} 교재 PDF 받기</a>` : ""}
     <div class="row"><b class="grow">다른 과 고르기</b><button class="link" data-act="lhAll">${H.all ? "접기" : "펼치기"}</button></div>
     ${H.all ? `<div class="lh-list">${book.lessons.map((x) => `<button class="lh-item" data-act="lhStart" data-v="${x.id}" data-s="1"><b>${x.no}과</b><span class="grow">${esc(x.title)}</span>${x.no < nn ? I("check", "ok") : ""}</button>`).join("")}</div>` : ""}
@@ -152,9 +158,14 @@ export class KidsRun {
     this.i = 0; this.gen = 0; this.speaking = false; this.bubble = ""; this.stars = 0; this.hiLine = -1; this.picked = []; this.found = [];
     this.letter = run.letter ?? "A"; this.snd = KID_SOUND[this.letter.toUpperCase()] ?? this.letter;
     this.voice = byId(run.teacher ?? "grace").voice;
+    // X처럼 끝소리를 배우는 과: 고르기 정답 낱말이 글자로 시작하지 않으면 "end with"로 안내(헤니 검토)
+    const pick = run.steps.find((x) => x.type === "k_pick");
+    this.endSound = !!pick && (pick.items ?? []).filter((w) => w.ok).every((w) => !String(w.en).toLowerCase().startsWith(this.letter.toLowerCase()));
   }
   get step() { return this.run.steps[this.i]; }
   tts(t) { return String(t).replace(/\/[^/]+\//g, this.snd); }
+  /** 하던 소리를 끊고 새 차례 번호를 받는다(헤니 검토: 한 번에 한 소리만, 나가면 0개) */
+  cut() { this.gen++; this.player.stop(); this.speaking = false; return this.gen; }
   async say(text, voice = this.voice, gen = this.gen) {
     if (!text || gen !== this.gen) return;
     this.bubble = text; this.onChange();
@@ -165,7 +176,7 @@ export class KidsRun {
     if (gen === this.gen) { this.speaking = false; this.onChange(); }
   }
   async go(n) {
-    this.player.stop(); const gen = ++this.gen;
+    const gen = this.cut();
     this.i = Math.max(0, Math.min(n, this.run.steps.length - 1)); this.hiLine = -1; this.picked = []; this.found = []; this.speaking = false; this.onChange();
     const s = this.step; const say = (t, v) => this.say(t, v, gen);
     switch (s.type) {
@@ -173,17 +184,24 @@ export class KidsRun {
       case "dialogue": for (let k = 0; k < (s.lines ?? []).length; k++) { if (gen !== this.gen) return; this.hiLine = k; this.onChange(); await say(this.tts(plain(s.lines[k].en)), sceneVoice(s.lines[k].who?.id)); } if (gen === this.gen) { this.hiLine = -1; this.onChange(); } break;
       case "k_words": await say("Let's learn some words!"); for (const w of s.items ?? []) await say(w.en); break;
       case "k_chant": for (const l of s.lines ?? []) await say(this.tts(l)); break;
-      case "k_pick": await say(`Tap the pictures that start with ${this.snd}!`); break;
+      case "k_pick": await say(`Tap the pictures that ${this.endSound ? "end" : "start"} with ${this.snd}!`); break;
       case "k_hunt": await say(`Find all the big ${this.letter} and little ${this.letter.toLowerCase()}!`); break;
       case "k_say": await say("Say it with me!"); await say(String(s.model ?? "").replace("___", "Haru")); break;
       case "k_stars": await say("Great job today! See you next time!"); break;
     }
   }
-  tapWord(en) { const gen = this.gen; this.say(en, this.voice, gen); }
-  pick(en, ok) { if (this.picked.includes(en)) return; this.picked.push(en); const gen = this.gen; this.onChange(); (async () => { await this.say(en, this.voice, gen); await this.say(ok ? "Yes!" : `Hmm, listen: ${en}.`, this.voice, gen); })(); }
-  hunt(key, ch) { if (this.found.includes(key)) return; this.found.push(key); this.onChange(); if (ch.toLowerCase() === this.letter.toLowerCase()) this.say(ch, this.voice, this.gen); }
+  tapWord(en) { const gen = this.cut(); this.say(en, this.voice, gen); }
+  pick(en, ok) { if (this.picked.includes(en)) return; this.picked.push(en); const gen = this.cut(); this.onChange(); (async () => { await this.say(en, this.voice, gen); await this.say(ok ? "Yes!" : `Hmm, listen: ${en}.`, this.voice, gen); })(); }
+  hunt(key, ch) { if (this.found.includes(key)) return; this.found.push(key); this.onChange(); if (ch.toLowerCase() === this.letter.toLowerCase()) { const gen = this.cut(); this.say(ch, this.voice, gen); } }
   next() { if (["k_pick", "k_hunt", "k_say"].includes(this.step?.type)) this.stars = Math.min(3, this.stars + 1); this.go(this.i + 1); }
-  stop() { this.gen++; this.player.stop(); }
+  stop() { this.cut(); }
+}
+
+/** 숨은 글자를 모두 찾았는지(답은 그때만 보여 준다, 헤니 검토) */
+function huntDone(s, k) {
+  const t = String(s.target).toLowerCase(); const all = (s.grid ?? []).flat().filter((c) => c.toLowerCase() === t).length;
+  const hits = k.found.filter((key) => { const [r, c] = key.split(":").map(Number); return String(s.grid?.[r]?.[c] ?? "").toLowerCase() === t; }).length;
+  return all > 0 && hits >= all;
 }
 
 export function renderKids(k, esc, I) {
@@ -198,7 +216,7 @@ export function renderKids(k, esc, I) {
     case "k_pick": body = `<p class="center-text small">${m(s.say)}</p><div class="k-grid">${(s.items ?? []).map((w) => { const on = k.picked.includes(w.en);
       return `<button class="k-word ${on ? (w.ok ? "good" : "bad") : ""}" data-act="kPick" data-v="${esc(w.en)}" data-ok="${w.ok ? 1 : 0}"><img src="${imgUrl(w.img)}" alt=""><b>${esc(w.en)}</b></button>`; }).join("")}</div>`; break;
     case "k_hunt": body = `<p class="center-text small">${m(s.say)}</p><div class="k-hunt">${(s.grid ?? []).map((row, r) => row.map((ch, c) => { const key = `${r}:${c}`; const on = k.found.includes(key); const hit = ch.toLowerCase() === String(s.target).toLowerCase();
-      return `<button class="k-cell ${on ? (hit ? "hit" : "miss") : ""}" data-act="kHunt" data-v="${key}" data-ch="${esc(ch)}">${esc(ch)}</button>`; }).join("")).join("")}</div>${k.found.length >= 6 && s.answer ? `<p class="muted small center-text">${esc(s.answer)}</p>` : ""}`; break;
+      return `<button class="k-cell ${on ? (hit ? "hit" : "miss") : ""}" data-act="kHunt" data-v="${key}" data-ch="${esc(ch)}">${esc(ch)}</button>`; }).join("")).join("")}</div>${huntDone(s, k) && s.answer ? `<p class="ok small b center-text">다 찾았어요! ${esc(s.answer)}</p>` : ""}`; break;
     case "k_say": body = `<p class="center-text small">${m(s.say)}</p><div class="k-model">${esc(s.model)}</div>${s.hint ? `<p class="muted small center-text">${esc(s.hint)}</p>` : ""}<p class="ok small b center-text">소리 내어 따라 말해 보세요. (마이크는 쓰지 않아요)</p>`; break;
     case "k_stars": body = `<h2 class="center-text">오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>⭐ ${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`; break;
   }

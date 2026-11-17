@@ -23,6 +23,8 @@ export class Player {
   /** PCM 한 덩어리를 틀고, 다 끝나면 resolve(true). 중간에 stop()하면 resolve(false). */
   play(pcm, rate) {
     this.unlock(); this.jingleStop();
+    // 0.9 헤니 검토: 이미 나오는 소리가 있으면 먼저 끈다(소리가 겹치거나 stop() 뒤에 남지 않게)
+    if (this.current) { const c = this.current; this.current = null; try { c.src.onended = null; c.src.stop(); } catch { /* */ } c.resolve(false); }
     const gen = this.gen;
     return new Promise((resolve) => {
       if (!pcm || pcm.length === 0) return resolve(true);
