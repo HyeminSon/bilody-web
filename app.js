@@ -1,13 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.15";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.15";
-import { CHARACTERS, byId, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.15";
-import { GUIDE } from "./guide.js?v=0.8.15";
-import { Player } from "./audio.js?v=0.8.15";
-import { Chat } from "./rt.js?v=0.8.15";
-import * as story from "./story.js?v=0.8.15";
-import * as push from "./push.js?v=0.8.15";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.15";
+import * as api from "./api.js?v=0.9.0";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.0";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.0";
+import * as L9 from "./lesson09.js?v=0.9.0";
+import { GUIDE } from "./guide.js?v=0.9.0";
+import { Player } from "./audio.js?v=0.9.0";
+import { Chat } from "./rt.js?v=0.9.0";
+import * as story from "./story.js?v=0.9.0";
+import * as push from "./push.js?v=0.9.0";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.0";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -118,7 +119,10 @@ function renderConsent() {
 }
 
 function charPicker(sel) {
-  return `<div class="picker">${CHARACTERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
+  // 0.9: 선생님(사람)도 대화 상대로 고를 수 있다(시험자 의견). 앱 CharacterPicker와 같게 선생님 줄이 위.
+  return `<b class="small">선생님</b><div class="picker teachers">${TEACHERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
+    <img src="${teacherImg(c.id)}" alt=""><span>${c.ko}</span></button>`).join("")}</div>
+  <b class="small">bilody 친구</b><div class="picker">${CHARACTERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
     <img src="img/char_${c.id}.webp" alt=""><span>${c.ko}</span></button>`).join("")}</div>`;
 }
 
@@ -126,7 +130,7 @@ function renderNames() {
   const c = byId(S.nameDraft?.character ?? S.profile?.character);
   const d = S.nameDraft ??= { character: c.id, friend: S.profile?.friend_name ?? c.en, me: S.profile?.my_name ?? "" };
   return `<div class="page center-col">
-    <h1>함께 이야기할 친구를 골라요</h1>
+    <h1>함께 이야기할 상대를 골라요</h1>
     <div class="stage"><img class="friend big" src="${animSrc(d.character, "idle")}" alt=""></div>
     <p class="muted center-text">${esc(byId(d.character).intro)}</p>
     ${charPicker(d.character)}
@@ -156,6 +160,9 @@ function renderMain() {
 // ---------------- 대화 ----------------
 function renderChat() {
   if (S.story) return renderStory();
+  if (S.kids) return L9.renderKids(S.kids, esc, I);
+  if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
+  if (S.lh) return L9.renderHome(S.lh, esc, I);
   const p = S.profile; const c = byId(p?.character); const pr = S.progress;
   const chat = S.chat; const fname = esc(p?.friend_name ?? c.en);
   const r = S.reminder;
@@ -188,6 +195,7 @@ function renderChat() {
     <div id="lines" class="lines"></div>
     ${guide}
     <p id="notice" class="error"></p>
+    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button></div>`}
     <div class="controls ${!chat && S.profile?.is_staff === true ? "home3" : ""}" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
       ${S.profile?.is_staff === true ? `<button class="pill secondary grow" data-act="homeLesson">${I("menu_book")}표현 익히기</button>` : ""}
@@ -208,6 +216,8 @@ const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0
 function updateChat() {
   if (S.stage !== "main" || S.tab !== "chat") return;
   if (S.story) return updateStory();
+  if (S.kids || S.lh) return;
+  if (S.chat?.lesson) return updateStage();
   const chat = S.chat; const u = chat?.ui; const c = byId(S.profile?.character);
   const img = $("#friendImg"); if (!img) return;
   const src = animSrc(c.id, u?.state ?? "idle"); if (!img.src.endsWith(src)) img.src = src;
@@ -260,6 +270,74 @@ function updateChat() {
     renderLesson();
     $("#inputbar").classList.remove("hidden");
   }
+}
+
+
+// ---------------- 0.9 1:1 수업 화면(앱 LessonStage와 같음) ----------------
+function updateStage() {
+  const chat = S.chat; const u = chat.ui; const run = chat.lesson;
+  if (u.lessonDone) { if (!$(".ls-done")) render(); return; }
+  if (!$("#lsBody")) return render();
+  const i = Math.max(0, u.lessonStep); const step = run.steps[i];
+  $("#lsSub").textContent = `${run.session}회차 · ${L9.stepLabel(step)}`;
+  $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
+  const pg = $("#lsPage"); pg.textContent = step?.page ? `교재 ${step.page}쪽` : ""; pg.hidden = !step?.page;
+  const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord]);
+  const body = $("#lsBody");
+  if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }
+  $("#lsNotice").textContent = u.notice ?? "";
+  const myTurn = u.micOn && u.state === "listening" && !u.lessonScene;
+  const tl = [...u.lines].reverse().find((l) => l.role === "assistant")?.text;
+  const t = byId(chat.character);
+  $("#lsTurn").textContent = u.lessonScene ? "장면을 듣고 있어요" : myTurn ? "내 차례예요. 말해 보세요" : "";
+  $("#lsTurn").className = `small ${myTurn ? "ok" : "muted"}`;
+  $("#lsSay").textContent = tl ?? `${t.ko} 선생님이 준비하고 있어요…`;
+  const st = u.lessonScene ? "idle" : u.state === "speaking" ? "speak" : u.state === "listening" ? "listen" : u.state === "thinking" ? "wait" : "idle";
+  const src = teacherImg(t.id, st); const face = $("#lsFace"); if (!face.src.endsWith(src)) face.src = src;
+  face.className = st === "listen" ? "listen" : u.lessonScene ? "scene" : "";
+  $("#lsState").textContent = u.lessonScene ? "장면 재생 중" : { speak: "말하는 중", listen: "듣는 중", wait: "생각 중" }[st] ?? t.ko;
+  const running = !["stopped", "disconnected", "idle"].includes(u.state);
+  const ck = `${running}|${u.canRestart}|${u.lessonScene}`;
+  if ($("#lsCtl").dataset.k !== ck) {
+    $("#lsCtl").dataset.k = ck; const can = running && !u.lessonScene;
+    $("#lsCtl").innerHTML = `<button class="ls-btn" data-act="lsSlow" ${can ? "" : "disabled"}>${I("replay")}<span>천천히 다시</span></button>
+      ${running ? `<button class="round big dark" data-act="pause" aria-label="잠깐 멈추기">${I("pause")}</button>` : `<button class="round big dark" data-act="restart" aria-label="다시 시작" ${u.canRestart ? "" : "disabled"}>${I("refresh")}</button>`}
+      <button class="ls-btn" data-act="lsSkip" ${can ? "" : "disabled"}>${I("skip_next")}<span>넘어가기</span></button>`;
+  }
+}
+
+async function openLessonHome(bookId) {
+  const H = S.lh = { index: S.lh?.index ?? null, bookId: bookId ?? L9.progress.lastBook(pref), teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+  H.next = L9.progress.next(pref, H.bookId);
+  render();
+  if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
+}
+
+async function startLesson(lessonId, session) {
+  const H = S.lh; if (!H?.index) return;
+  const book = H.index.books.find((b) => b.id === H.bookId) ?? H.index.books[0];
+  H.busy = true; render();
+  let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
+  H.busy = false;
+  if (!L) { H.error = "수업을 불러오지 못했어요. 인터넷을 확인해 주세요."; return render(); }
+  pref.set("lp_last", book.id);
+  const run = L9.makeRun(book, L, session);
+  player.unlock(); player.setVolume(pref.get("volume", 1));
+  S.lh = null;
+  if (run.kids) { S.kids = new L9.KidsRun(run, player, pref.get("speed", 1), () => render()); render(); S.kids.go(0); return; }
+  const t = L9.progress.teacher(pref); const p = S.profile;
+  S.chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
+  S.chat.onLessonDone = (r) => L9.progress.done(pref, r);
+  S.lesson = null;
+  render();
+  await S.chat.start();
+}
+
+async function endLesson(toHome = true) {
+  const c = S.chat; S.chat = null; S.lesson = null;
+  if (c) await c.close();
+  try { S.progress = await api.myProgress(); } catch { /* */ }
+  if (toHome) await openLessonHome(c?.lesson?.bookId); else render();
 }
 
 // ---------------- 교재 카드(11/14): 그림은 lesson.js lessonShell·lessonBody ----------------
@@ -342,7 +420,7 @@ function updateStory() {
   $("#stNotice").textContent = u.notice ?? u.talkNotice ?? "";
   const mic = $("#stMic"); const mk = u.micOn ? "on" : "off";
   if (mic.dataset.k !== mk) { mic.dataset.k = mk; mic.classList.toggle("on", !!u.micOn); mic.innerHTML = u.micOn ? `${I("mic")}마이크 켜짐` : `${I("mic_off")}마이크 꺼짐`; }
-  $("#stCredit").textContent = u.credit ? `${u.credit} · StoryWeaver` : "";
+  $("#stCredit").textContent = u.credit ? (u.creditVia ? `${u.credit} · ${u.creditVia}` : u.credit) : "";   // 0.9: StoryWeaver 책에만 붙인다
   const live = u.state !== "stopped";
   const ck = `${u.canRestart}|${live}`;
   if ($("#stCtl").dataset.k !== ck) {
@@ -421,7 +499,7 @@ async function endChat() {
   if (c) await c.close();
   S.progress = await api.myProgress();
   // 그날 첫 대화를 마칠 때 짧은 설문(내가 한 말이 있는 대화만, 답할 때까지 하루 두 번까지)
-  if (c && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
+  if (c && !c.lesson && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
   render();
 }
 
@@ -542,13 +620,13 @@ function renderSettings() {
   const r = S.reminder;
   const fname = p.friend_name ?? c.en;
   return `<div class="list">
-    ${section("friend", "친구", `${c.ko} · 이름 ${fname} · 속도 ${speed.toFixed(1)}배`, "face", `
-      <p class="muted small">함께 이야기할 친구를 골라요. 친구마다 성격과 목소리가 달라요. 바꿔도 기억과 대화 기록은 그대로예요.</p>
+    ${section("friend", "대화 상대", `${c.teacher ? `${c.ko} 선생님` : `${c.ko} · 이름 ${fname}`} · 속도 ${speed.toFixed(1)}배`, "face", `
+      <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있고, 바꿔도 기억과 대화 기록은 그대로예요. 1:1 수업 선생님은 수업 화면에서 따로 골라요.</p>
       ${charPicker(c.id)}
       <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview">▶ 목소리 듣기</button></div>
-      <div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
+      ${c.teacher ? "" : `<div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
       <p class="muted tiny">한글이나 영어로 1~8자. 이름을 바꿔도 성격과 목소리는 그대로예요.</p>
-      ${fname !== c.en ? `<button class="link" data-act="resetFriend">원래 이름(${esc(c.en)})으로</button>` : ""}
+      ${fname !== c.en ? `<button class="link" data-act="resetFriend">원래 이름(${esc(c.en)})으로</button>` : ""}`}
       <hr><b class="h">말 속도  <span id="speedV">${speed.toFixed(1)}</span>배</b>
       <p class="muted small">1.0배가 보통 원어민 대화 속도예요. 바꾸면 다음 문장부터 적용돼요.</p>
       <input type="range" id="speed" min="0.7" max="1.5" step="0.1" value="${speed}">
@@ -602,6 +680,7 @@ function renderDialog() {
     ${CHECKIN_ISSUES.map(([v, l]) => `<label class="radio"><input type="checkbox" data-ck="${v}"> ${l}</label>`).join("")}
     <textarea id="cknote" rows="2" maxlength="500" placeholder="무슨 일이 있었는지 한 줄로 (선택) 예: 여행 얘기를 했는데 계속 다른 질문만 했어요"></textarea>
     <div class="row end"><button class="link" data-act="closeDialog">다음에 할게요</button><button class="link" data-act="sendCheckin" ${d.rating ? "" : "disabled"}>보내기</button></div>`);
+  if (d.kind === "teacherPick") return box(`<h2>선생님 고르기</h2>${L9.renderTeacherPick(L9.progress.teacher(pref), esc)}<div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "postDone") return box(`<h2>마지막 설문</h2><p>이미 답해 주셨어요. 정말 고마워요! 🙏</p><div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "post") return `<div class="overlay full"><div class="guide-page survey">
     <div class="subhead"><button class="iconbtn" data-act="closeDialog" aria-label="닫기">${I("arrow_back")}</button><b>bilody 1차 시험 마지막 설문</b></div>
@@ -703,8 +782,9 @@ app.addEventListener("click", async (e) => {
         if (d.friend.trim() === byId(d.character).en) d.friend = byId(v).en;
         d.character = v; render();
       } else if (v !== p?.character) {
-        const c = byId(v);
-        confirm(`${c.ko}로 바꿀까요?`, `친구 이름도 ${c.en}로 바뀌어요. 지금까지의 기억과 대화 기록은 그대로 남아요.`, "바꾸기", async () => {
+        const c = byId(v); const who = isTeacher(v) ? `${c.ko} 선생님` : c.ko;
+        confirm(`${who}으로 바꿀까요?`.replace(/([가-힣])으로/, (m, ch) => ((ch.charCodeAt(0) - 0xAC00) % 28 === 0 || (ch.charCodeAt(0) - 0xAC00) % 28 === 8 ? ch + "로" : ch + "으로")),
+          isTeacher(v) ? `대화하기에서 ${c.ko} 선생님과 이야기해요. 지금까지의 기억과 대화 기록은 그대로 남아요.` : `친구 이름도 ${c.en}로 바뀌어요. 지금까지의 기억과 대화 기록은 그대로 남아요.`, "바꾸기", async () => {
           await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: c.colorId, character: c.id }); S.profile = await api.loadProfile(); });
           toast(S.chat ? `${c.ko}로 바꿨어요. 다음 대화부터 ${c.ko}가 이야기해요.` : `${c.ko}로 바꿨어요.`);
         });
@@ -722,6 +802,7 @@ app.addEventListener("click", async (e) => {
     case "tab": {
       if (v === "history" && S.chat) await endChat();
       if (v === "history" && S.story) await endStory();
+      if (v === "history" && S.kids) { S.kids.stop(); S.kids = null; }
       S.tab = v; S.error = null; S.turns = null; render();
       if (v === "history") loadHistory();
       if (v === "settings") { try { S.memories = await api.memories(); } catch { /* */ } render(); }
@@ -731,6 +812,25 @@ app.addEventListener("click", async (e) => {
     case "showGuideCard": pref.set("guideSeen", false); toast("대화 화면에 안내를 다시 띄웠어요."); break;
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
+    // ---- 0.9 1:1 수업 ----
+    case "lhOpen": await openLessonHome(); break;
+    case "lhClose": S.lh = null; render(); break;
+    case "lhBook": S.lh.bookId = v; S.lh.next = L9.progress.next(pref, v); S.lh.all = false; render(); break;
+    case "lhAll": S.lh.all = !S.lh.all; render(); break;
+    case "lhTeacher": S.dialog = { kind: "teacherPick" }; render(); break;
+    case "lhPickTeacher": pref.set("lp_teacher", v); if (S.lh) S.lh.teacher = v; S.dialog = null; render(); break;
+    case "lhStart": player.unlock(); await startLesson(v, Number(el.dataset.s) || 1); break;   // 아이폰: 누른 순간에 소리를 열어 둔다
+    case "lsExit": await endLesson(true); break;
+    case "lsTalk": await endLesson(false); await startChat(); break;
+    case "lsSlow": S.chat?.sendText("Sorry, could you say that again slowly?"); break;
+    case "lsSkip": S.chat?.sendText("Let's move on to the next part, please."); break;
+    case "kWord": S.kids?.tapWord(v); break;
+    case "kPick": S.kids?.pick(v, el.dataset.ok === "1"); break;
+    case "kHunt": S.kids?.hunt(v, el.dataset.ch); break;
+    case "kPrev": S.kids?.go(S.kids.i - 1); break;
+    case "kNext": S.kids?.next(); break;
+    case "kDone": { const k = S.kids; k.stop(); L9.progress.done(pref, k.run); S.kids = null; await openLessonHome(k.run.bookId); break; }
+    case "kExit": { const k = S.kids; k?.stop(); S.kids = null; await openLessonHome(k?.run.bookId); break; }
     // ---- 동화 듣기 ----
     case "storyPick": {
       try { const lib = await story.loadLib(); S.dialog = { kind: "storyPick", lib }; render(); await story.loadCommon(); if (S.dialog?.kind === "storyPick") render(); }
@@ -919,7 +1019,7 @@ app.addEventListener("touchend", (e) => {
 app.addEventListener("keydown", (e) => { if (e.target.id === "say" && e.key === "Enter" && e.target.value.trim()) { S.chat?.sendText(e.target.value); e.target.value = ""; const b = $("[data-act=send]"); if (b) b.disabled = true; } });
 
 // 다른 앱으로 나가면 대화와 마이크를 멈춘다(사진 고르러 간 경우는 제외). 돌아와도 저절로 말하지 않는다.
-document.addEventListener("visibilitychange", () => { if (document.hidden) { S.chat?.pauseForBackground(); if (S.story && S.story.ui.state !== "stopped") S.story.pause(); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden) { S.chat?.pauseForBackground(); S.kids?.stop(); if (S.story && S.story.ui.state !== "stopped") S.story.pause(); } });
 window.addEventListener("focus", () => { setTimeout(() => { if (S.chat?.cameraHold) S.chat.holdForCamera(false); }, 1500); });
 
 push.register();

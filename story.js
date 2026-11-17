@@ -1,8 +1,8 @@
 // 동화 듣기(안드로이드 RealtimeController의 동화 부분을 옮김). 시험자는 마이크 없이 터치로만 논다(OPS-004).
 // 소리·그림은 story/*.pack 묶음에서 꺼내 쓴다(안드로이드 res/raw·drawable-nodpi와 같은 자료).
-import * as api from "./api.js?v=0.8.15";
-import { Chat } from "./rt.js?v=0.8.15";
-import { byId } from "./characters.js?v=0.8.15";
+import * as api from "./api.js?v=0.9.0";
+import { Chat } from "./rt.js?v=0.9.0";
+import { byId } from "./characters.js?v=0.9.0";
 
 const KIDS_PRESET = "kids-demo";
 let libP = null;
@@ -82,7 +82,7 @@ export class StoryPlayer {
     this.pack = await loadPack(b.id);
     savePosition(b.id, page);
     this.set({ title: b.titleKo, titleEn: b.title, pages: b.pages.length, page: page + 1, image: null, picture: null, storyId: b.id, bg: b.bg,
-      credit: (b.credit.split(" 바꾼 점")[0].split(", via StoryWeaver")[0]) });
+      credit: (b.credit.split(" 바꾼 점")[0].split(", via StoryWeaver")[0]), creditVia: /via StoryWeaver/.test(b.credit) ? "StoryWeaver" : "" });
   }
   // ---------- 동화 중 대화(11/13: 시험자도 마이크로 대화, 앱과 같음) ----------
   /** 토리와 말로 이야기하는 연결을 연다. 마이크를 못 쓰면 동화는 터치로 계속된다. */

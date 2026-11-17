@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.15";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.9.0";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -114,8 +114,9 @@ export async function saveConsents(items, version) {
 }
 
 // ---------- 대화 ----------
-export async function startSession(presetId) {
-  const r = await rest("sessions?select=id", { method: "POST", body: { user_id: userId(), preset_id: presetId, app_version: VERSION }, prefer: "return=representation" });
+export async function startSession(presetId, tag = "") {
+  // 0.9: 수업 대화는 app_version에 +lesson을 붙인다(서버가 친구 대화 문맥에서 뺀다)
+  const r = await rest("sessions?select=id", { method: "POST", body: { user_id: userId(), preset_id: presetId, app_version: VERSION + tag }, prefer: "return=representation" });
   return r[0].id;
 }
 export async function saveTurn(sessionId, seq, role, text) {
@@ -123,7 +124,9 @@ export async function saveTurn(sessionId, seq, role, text) {
 }
 export async function finishSession(sessionId) { try { await fn("end-session", { sessionId }); } catch { /* 기억 정리 실패는 대화를 막지 않음 */ } }
 // features: 이 앱이 할 수 있는 것(사진 카드). 서버는 사진 사이트 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
-export const realtimeKey = (presetId, speed) => fn("realtime-session", { presetId, speed, features: ["picture", "word"] });
+// 0.9: character = 대화 상대(선생님 포함), lesson = 1:1 수업 정보(있으면 수업 모드)
+export const realtimeKey = (presetId, speed, character = null, lesson = null) => fn("realtime-session", {
+  presetId, speed, features: ["picture", "word"], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : {}) });
 
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
 export async function say(text, voice, speed, sessionId, preview = false) {

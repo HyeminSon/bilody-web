@@ -1,9 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.15";
-import { PRESET } from "./config.js?v=0.8.15";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.8.15";
+import * as api from "./api.js?v=0.9.0";
+import { PRESET } from "./config.js?v=0.9.0";
+import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.9.0";
+import { sceneVoice } from "./characters.js?v=0.9.0";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -13,11 +14,14 @@ export class Chat {
    * story: 동화 듣기 중 대화(앱과 같음, 11/13). { onSpeechStart, onReplyDone, onNoise, onCue(pic), isNarrating(), pictureFor(word) }
    * 동화 모드에서는 인사·도움 카드·기록 저장·쉬는 시간 멈춤이 없고, 이용 시간은 동화 쪽이 잰다.
    */
-  constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null }) {
+  constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null, character = null, lesson = null }) {
     this.voiceId = voiceId; this.speed = speed; this.saveTranscripts = saveTranscripts;
+    // 0.9 1:1 수업: lesson = lesson09.js의 run(교재 한 회차). character = 대화 상대(선생님이면 선생님 말투)
+    this.character = character; this.lesson = lesson; this.lessonStep = -1; this.lessonSaid = 0;
     this.player = player; this.onChange = onChange; this.presetId = presetId; this.story = story;
     this.connGen = 0;
-    this.ui = { state: "idle", micOn: false, lines: [], card: null, notice: null, remainingMinutes: null, lastLatencyMs: null, canRestart: false, speech: false, photo: null };
+    this.ui = { state: "idle", micOn: false, lines: [], card: null, notice: null, remainingMinutes: null, lastLatencyMs: null, canRestart: false, speech: false, photo: null,
+      lessonStep: -1, lessonHiLine: -1, lessonHiWord: null, lessonScene: false, lessonDone: null };
     this.sessionId = sessionId; this.seq = 0; this.closed = false;
     this.pc = null; this.dc = null; this.stream = null; this.track = null;
     this.epoch = 0; this.resp = null; this.greeted = false;
@@ -25,7 +29,7 @@ export class Chat {
     this.soft = false; this.softHeld = false; this.ignoredResp = null; this.ignoreUntil = 0;
     this.tSpeechStopped = 0; this.lastSpeechStart = 0; this.startedDuringPlayback = false;
     this.maxMsg = 65536; this.limitReached = false; this.cameraHold = false;
-    this.slots = 0; this.waiters = [];
+    this.slots = 0; this.waiters = []; this.sceneGen = 0;
     this.lessonItems = new Map(); this.holdSeq = 0; this.lessonMicOn = false;   // 말 id → 그 말을 시작한 수업 번호(수업 밖이면 -1)
   }
 
@@ -46,10 +50,11 @@ export class Chat {
     let stream = null, pc = null;
     const abandon = () => { stream?.getTracks().forEach((t) => t.stop()); try { pc?.close(); } catch { /* */ } };
     try {
-      if (!this.sessionId) this.sessionId = await api.startSession(this.presetId);
+      if (!this.sessionId) this.sessionId = await api.startSession(this.presetId, this.lesson ? "+lesson" : "");
       if (stale()) return abandon();
-      const key = await api.realtimeKey(this.presetId, this.speed);
+      const key = await api.realtimeKey(this.presetId, this.speed, this.character, this.lesson?.info ?? null);
       if (stale()) return abandon();
+      if (key.voice) this.voiceId = key.voice;
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -106,7 +111,12 @@ export class Chat {
   }
 
   requestGreeting() {
-    if (this.story) { this.openMic(); return; }   // 동화: 인사 없이 바로 마이크(동화는 이미 흐르고 있다)
+    if (this.story) { this.openMic(); return; }
+    if (this.lesson) {   // 수업: 첫 단계부터(끊겼다 다시 이어지면 하던 단계를 다시 알려 줌)
+      this.greeted = true;
+      if (this.lessonStep < 0) this.startLessonStep(0); else { this.openMic(); this.sendStepTeach(this.lessonStep, true); }
+      return;
+    }   // 동화: 인사 없이 바로 마이크(동화는 이미 흐르고 있다)
     this.send({ type: "response.create" });
     setTimeout(() => { if (!this.greeted) this.openMic(); }, 8000);
   }
@@ -177,6 +187,7 @@ export class Chat {
           break;
         }
         if (t && !this.story) this.onLearnerText?.(t);
+        if (t && this.lesson && /\p{L}/u.test(t)) this.lessonSaid++;
         if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
         break;
       }
@@ -230,7 +241,7 @@ export class Chat {
           r.pending = ""; r.done = true; r.chain.then(() => this.onReplyPlayed(r));
         }
         const call = this.pendingCall; this.pendingCall = null;
-        if (call) { this.runTool(call); break; }
+        if (call) { if (this.lesson && LESSON_TOOLS.has(call.name)) this.runLessonTool(call); else this.runTool(call); break; }
         if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else if (Date.now() - (this.lastEchoAt ?? 0) > 5000) this.nudge(Date.now()); }   // 메아리 뒤에는 다시 청하지 않음(16:06)
         break;
       }
@@ -245,7 +256,7 @@ export class Chat {
   enqueue(r, sentence) {
     if (r.epoch !== this.epoch) return;
     // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
-    if (!this.story && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
+    if (!this.story && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
     const voice = this.voiceId, speed = this.story ? 1 : this.speed, sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
@@ -293,7 +304,7 @@ export class Chat {
       this.send({ type: "response.create" }); this.set({ state: "thinking" });
       return;
     }
-    if (!this.story) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
+    if (!this.story && !this.lesson) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
     this.resp = null;
     if (!this.greeted) this.openMic();
     if (this.pc) this.set({ state: "listening" });
@@ -306,7 +317,7 @@ export class Chat {
     const played = r.played.join(" ").trim();
     if (!complete || played !== r.text.trim()) this.fixServerContext(r, played);
     if (played) this.persist("assistant", played);
-    if (played && !this.story) { this.trackPractice(played); this.noteCorrection(played); this.noteQuestion(played); }
+    if (played && !this.story && !this.lesson) { this.trackPractice(played); this.noteCorrection(played); this.noteQuestion(played); }
     this.closeAssistantLine(!complete);
   }
 
@@ -433,7 +444,7 @@ export class Chat {
     }
   }
   afterReplyNotes() {
-    if (this.story) return;
+    if (this.story || this.lesson) return;
     if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
       this.correctionNoted = true;
       this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
@@ -592,6 +603,80 @@ export class Chat {
     this.set({ micOn: want && !!this.track });
   }
 
+
+  // ---------------- 0.9 1:1 수업(앱 RealtimeController와 같음) ----------------
+  startLessonStep(i) {
+    const L = this.lesson; if (!L) return;
+    const step = L.steps[i]; if (!step) return this.finishLesson([], []);
+    if (!this.lessonStartedAt) this.lessonStartedAt = Date.now();
+    this.lessonStep = i;
+    this.set({ lessonStep: i, lessonHiLine: -1, lessonHiWord: null });
+    this.log("lesson_step", { lesson: L.id, session: L.session, step: i, type: step.type });
+    if (step.type === "dialogue" && step.play) this.playScene(step); else { this.openMic(); this.sendStepTeach(i); }
+  }
+
+  async sendStepTeach(i, resumed = false) {
+    const L = this.lesson; const step = L?.steps[i]; if (!step) return;
+    for (let w = 0; this.resp && w < 4000; w += 100) await sleep(100);
+    if (this.closed || !this.pc) return;
+    const teach = step.teach || "Continue the lesson, then call next_step.";
+    const note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
+      `Lesson step ${i + 1} of ${L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
+    this.send({ type: "response.create" });
+    this.set({ state: "thinking" });
+  }
+
+  /** 교재 장면: 인물마다 제 목소리로 차례로 들려준다. 그동안 마이크는 끈다. */
+  async playScene(step) {
+    const lines = step.lines ?? [];
+    const my = ++this.sceneGen;
+    if (this.track) this.track.enabled = false;
+    this.set({ lessonScene: true, micOn: false, state: "speaking" });
+    const sid = this.sessionId, sp = this.speed;
+    const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid); } finally { this.release(); } })(); j.catch(() => {}); return j; });
+    for (let k = 0; k < lines.length; k++) {
+      if (my !== this.sceneGen || this.closed || !this.pc) return;
+      this.set({ lessonHiLine: k });
+      let s = null; try { s = await jobs[k]; } catch { /* 한 줄 못 만들면 건너뜀 */ }
+      if (my !== this.sceneGen || this.closed) return;
+      if (s) { this.recentFriend = (this.recentFriend + " " + plain(lines[k].en)).slice(-400); await this.player.play(s.pcm, s.rate); }
+    }
+    if (my !== this.sceneGen || this.closed || !this.pc) return;
+    this.set({ lessonScene: false, lessonHiLine: -1, state: "listening" });
+    this.openMic();
+    this.sendStepTeach(this.lessonStep);
+  }
+
+  async runLessonTool(c) {
+    let a = {}; try { a = JSON.parse(c.args || "{}") ?? {}; } catch { /* */ }
+    const reply = (create) => {
+      this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: '{"ok":true}' } });
+      if (create) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
+    };
+    const waitQuiet = async () => { for (let w = 0; (this.player.isPlaying || this.resp) && w < 15000; w += 150) await sleep(150); };
+    if (c.name === "highlight_line") { this.set({ lessonHiLine: (parseInt(a.line, 10) || 0) - 1 }); reply(true); }
+    else if (c.name === "highlight_word") { this.set({ lessonHiWord: String(a.word ?? "").trim() || null }); reply(true); }
+    else if (c.name === "next_step") {
+      reply(false); await waitQuiet(); if (this.closed || !this.pc) return;
+      const n = this.lessonStep + 1;
+      if (n >= this.lesson.steps.length) this.finishLesson([], []); else this.startLessonStep(n);
+    } else if (c.name === "finish_session") {
+      reply(false); await waitQuiet();
+      this.finishLesson(Array.isArray(a.practiced) ? a.practiced.map(String) : [], Array.isArray(a.fixed) ? a.fixed.map(String) : []);
+    }
+  }
+
+  finishLesson(practiced, fixed) {
+    const L = this.lesson; if (!L || this.ui.lessonDone) return;
+    const minutes = Math.max(1, Math.round((Date.now() - (this.lessonStartedAt || Date.now())) / 60000));
+    const done = { practiced: practiced.length ? practiced : L.expressions.slice(0, 5), fixed, minutes, said: this.lessonSaid };
+    this.onLessonDone?.(L);
+    this.set({ lessonDone: done });
+    this.log("lesson_done", { lesson: L.id, session: L.session, minutes, said: this.lessonSaid });
+    setTimeout(() => this.stopInternal("USER_STOP", null), 600);
+  }
+
   // ---------------- 이용 시간 ----------------
   startMeter() {
     clearInterval(this.meter); this.lastMeter = Date.now();
@@ -617,7 +702,8 @@ export class Chat {
   lost() { if (this.pc) { this.stopInternal("NETWORK", "인터넷 연결이 끊겼어요. 연결을 확인한 뒤 다시 시작을 눌러 주세요."); this.set({ state: "disconnected" }); } }
 
   stopInternal(reason, notice) {
-    this.connGen++;   // 진행 중인 연결이 있으면 끝나는 대로 버린다
+    this.connGen++; this.sceneGen++;
+    if (this.ui.lessonScene) this.set({ lessonScene: false, lessonHiLine: -1 });   // 진행 중인 연결이 있으면 끝나는 대로 버린다
     this.player.stop(); this.player.duck(false);
     if (this.resp) { this.epoch++; this.finishReply(this.resp, false); this.resp = null; }
     clearTimeout(this.idleTimer); clearTimeout(this.softTimer); this.soft = false;
@@ -643,6 +729,10 @@ export class Chat {
     if (this.sessionId) await api.finishSession(this.sessionId);
   }
 }
+
+const LESSON_TOOLS = new Set(["next_step", "highlight_line", "highlight_word", "finish_session"]);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const plain = (x) => String(x ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 
 /** 사진을 미리 받아 둔다(카드가 빈 채로 뜨지 않게). 8초 안에 못 받으면 실패. */
 function preload(url) {
