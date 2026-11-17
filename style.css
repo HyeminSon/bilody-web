@@ -464,3 +464,4 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 /* 0.9.3 처음 화면으로 */
 .lh-home { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--plum); }
 .ls-bubble #lsSay.muted { color: var(--muted, #8a7f95); }
+.k-word.hi { border-color: var(--accent, #8B5CF6); }

@@ -195,7 +195,7 @@ function renderChat() {
     <div id="lines" class="lines"></div>
     ${guide}
     <p id="notice" class="error"></p>
-    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button></div>`}
+    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button><button class="pill secondary grow" data-act="lhOpenKids">${I("child_care")}어린이 수업</button></div>`}
     <div class="controls" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
       ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
@@ -278,10 +278,10 @@ function updateStage() {
   if (u.lessonDone) { if (!$(".ls-done")) render(); return; }
   if (!$("#lsBody")) return render();
   const i = Math.max(0, u.lessonStep); const step = run.steps[i];
-  $("#lsSub").textContent = `${run.session}회차 · ${L9.stepLabel(step)}`;
+  $("#lsSub").textContent = run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : `${run.session}회차 · ${L9.stepLabel(step)}`;
   $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
   const pg = $("#lsPage"); pg.textContent = step?.page ? `교재 ${step.page}쪽` : ""; pg.hidden = !step?.page;
-  const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord]);
+  const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord, run.kTapN ?? 0]);
   const body = $("#lsBody");
   if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }
   $("#lsNotice").textContent = u.notice ?? "";
@@ -307,9 +307,10 @@ function updateStage() {
   }
 }
 
-async function openLessonHome(bookId) {
-  let bid = bookId ?? L9.progress.lastBook(pref); if (/^K/.test(bid)) bid = "A1";   // 0.9.3 어린이 수업 숨김
-  const H = S.lh = { index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+async function openLessonHome(bookId, kidsMode = /^K/.test(bookId ?? "")) {
+  // 0.9.3 어린이 수업은 1:1 수업과 따로(첫 화면에서 따로 들어옴). 0.9.4 어린이 수업도 AI 선생님이 듣는다.
+  let bid = bookId ?? L9.progress.lastBook(pref); if (/^K/.test(bid) !== kidsMode) bid = kidsMode ? "K1" : "A1";
+  const H = S.lh = { kidsMode, index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
   H.next = L9.progress.next(pref, H.bookId);
   render();
   if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
@@ -317,7 +318,7 @@ async function openLessonHome(bookId) {
 
 async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
-  const book = H.index.books.find((b) => b.id === H.bookId && b.kind !== "kids") ?? H.index.books.find((b) => b.kind !== "kids");
+  const book = H.index.books.find((b) => b.id === H.bookId && (b.kind === "kids") === !!H.kidsMode) ?? H.index.books.find((b) => (b.kind === "kids") === !!H.kidsMode);
   H.busy = true; render();
   let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
   H.busy = false;
@@ -328,8 +329,8 @@ async function startLesson(lessonId, session) {
   const run = L9.makeRun(book, L, session);
   player.unlock(); player.setVolume(pref.get("volume", 1));
   S.lh = null;
-  if (run.kids) {
-    // 어린이 수업: 어떤 마이크 연결도 남기지 않는다(불변 조건: 어린이 화면 = 마이크 세션 0개)
+  if (false) {
+    // (0.9.3까지) 어린이 수업: 어떤 마이크 연결도 남기지 않는다(불변 조건: 어린이 화면 = 마이크 세션 0개)
     if (S.chat) { const c = S.chat; S.chat = null; S.lesson = null; await c.close(); }
     if (S.story) await endStory();
     S.kids = new L9.KidsRun(run, player, pref.get("speed", 1), () => render()); render(); S.kids.go(0); return;
@@ -825,7 +826,32 @@ app.addEventListener("click", async (e) => {
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
     // ---- 0.9 1:1 수업 ----
-    case "lhOpen": await openLessonHome(); break;
+    case "lhOpen": await openLessonHome(undefined, false); break;
+    case "lhOpenKids": await openLessonHome(undefined, true); break;
+    // 0.9.4 어린이 수업: 누른 그림·글자를 선생님에게 알린다
+    case "lkTap": {
+      const c = S.chat; const run = c?.lesson; if (!run) break;
+      const step = run.steps[Math.max(0, c.ui.lessonStep)]; if (!step) break;
+      const w = (step.items ?? []).find((x) => x.en === v); if (!w) break;
+      if (step.type === "k_words") { c.lessonNote(`The child tapped the picture: ${v}.`); break; }
+      const t = run.kTap ??= {}; const picked = t[step.id] ??= []; if (picked.includes(v)) break;
+      picked.push(v); run.kTapN = (run.kTapN ?? 0) + 1; updateStage();
+      const left = (step.items ?? []).filter((x) => x.ok && !picked.includes(x.en)).length;
+      c.lessonNote(`The child tapped: ${v} (${w.ok ? "right" : `not a ${run.letter ?? ""} word`}). ${left === 0 ? "All the right pictures are found." : `${left} right pictures left.`}`);
+      break;
+    }
+    case "lkHunt": {
+      const c = S.chat; const run = c?.lesson; if (!run) break;
+      const step = run.steps[Math.max(0, c.ui.lessonStep)]; if (step?.type !== "k_hunt") break;
+      const [r, col] = v.split(":").map(Number); const ch = step.grid?.[r]?.[col] ?? ""; const tg = String(step.target).toLowerCase();
+      if (ch.toLowerCase() !== tg) break;
+      const t = run.kTap ??= {}; const found = t[step.id] ??= []; if (found.includes(v)) break;
+      found.push(v); run.kTapN = (run.kTapN ?? 0) + 1; updateStage();
+      const all = (step.grid ?? []).flat().filter((x) => x.toLowerCase() === tg).length;
+      if (found.length >= all) c.lessonNote(`The child found all of them (${all} letters).`);
+      else if (found.length === 1 || found.length % 4 === 0) c.lessonNote(`The child has found ${found.length} of ${all}.`);
+      break;
+    }
     case "lhClose": S.lh = null; render(); break;
     case "lhBook": S.lh.bookId = v; S.lh.next = L9.progress.next(pref, v); S.lh.all = false; render(); break;
     case "lhAll": S.lh.all = !S.lh.all; render(); break;

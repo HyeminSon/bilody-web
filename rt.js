@@ -632,6 +632,14 @@ export class Chat {
     this.set({ state: "thinking" });
   }
 
+  /** 0.9.4 학습자가 교재 화면에서 누른 것을 선생님에게 알린다(학습자 말로 기록하지 않음). */
+  lessonNote(text) {
+    if (!this.lesson || this.closed || !this.pc || this.ui.lessonScene) return;
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: `(App: ${String(text).slice(0, 200)})` }] } });
+    if (!this.resp && !this.player.isPlaying) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
+    this.log("lesson_tap", { note: String(text).slice(0, 80) });
+  }
+
   /** 교재 장면: 인물마다 제 목소리로 차례로 들려준다. 그동안 마이크는 끈다. */
   async playScene(step) {
     const lines = step.lines ?? [];

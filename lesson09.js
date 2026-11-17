@@ -52,14 +52,15 @@ export function marked(s, esc) {
 
 const STEP_LABEL = { intro: "오늘 배울 것", card: "오늘의 표현", tf: "맞으면 T, 틀리면 F", frame: "문장 틀", grammar: "핵심 문법·자주 틀리는 표현", drill: "이럴 땐 뭐라고 해요?",
   done: "마무리", review: "지난 시간 복습", more: "같이 익히는 표현", tips: "알아 두면 좋은 것", pics: "낱말 그림", words: "낱말", my: "내 이야기", read: "읽을거리", can: "오늘 할 수 있게 된 것" };
+Object.assign(STEP_LABEL, { k_letter: "오늘의 글자", k_words: "그림 낱말", k_chant: "챈트", k_pick: "그림 고르기", k_hunt: "글자 찾기", k_say: "말해 보기", k_stars: "오늘 할 일 끝" });
 export const stepLabel = (s) => (s?.type === "dialogue" ? (s.play ? "장면 듣기" : "역할 읽기") : s?.type === "card" ? `오늘의 표현 ${s.n ?? ""}` : STEP_LABEL[s?.type] ?? "");
 
 // ---------- 수업 홈 ----------
 export function renderHome(H, esc, I) {
-  if (H.error) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><p class="error">${esc(H.error)}</p></div>`;
-  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><div class="spinner"></div></div>`;
+  if (H.error) return `<div class="lh"><div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><p class="error">${esc(H.error)}</p></div>`;
+  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><div class="spinner"></div></div>`;
   // 0.9.3(11/17 실장님): 어린이 수업은 1:1 수업과 나누고, 다시 설계할 때까지 숨긴다
-  const books = H.index.books.filter((b) => b.kind !== "kids"); const book = books.find((b) => b.id === H.bookId) ?? books[0];
+  const books = H.index.books.filter((b) => (b.kind === "kids") === !!H.kidsMode); const book = books.find((b) => b.id === H.bookId) ?? books[0];
   const kids = book.kind === "kids";
   const [nn, ns] = H.next;
   // 마지막 과까지 마치면 1과로 되돌아가 보이지 않게(헤니 검토)
@@ -68,8 +69,9 @@ export function renderHome(H, esc, I) {
   const nextBook = books[books.indexOf(book) + 1];
   const t = byId(H.teacher);
   return `<div class="lh">
-    <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    <p class="muted small">말하기 교재 1~9권 · 중학생부터 어른까지</p>
+    <div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
+    <p class="muted small">${H.kidsMode ? "초등 저학년 · 그림과 노래로" : "말하기 교재 1~9권 · 중학생부터 어른까지"}</p>
+    ${H.kidsMode ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
     <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${b.kind === "kids" ? `어린이 ${b.no}권` : `${b.no}권`}</button>`).join("")}</div>
     <p class="muted small">${esc(kids ? book.title_ko : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
     ${done ? `<div class="card today"><div class="today-title">이 권을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 과 고르기’에서 복습할 과를 고르거나 다음 권으로 넘어가요.</p>
@@ -77,7 +79,7 @@ export function renderHome(H, esc, I) {
       <div class="row"><b class="accent small grow">오늘 할 분량</b><span class="muted small">약 10분</span></div>
       <div class="lh-row"><img class="today-img" src="${imgUrl(`img/s/${L.id}.jpg`)}" alt="">
         <div class="grow"><div class="muted small">${kids ? `${L.no}과` : `${book.no}권 ${L.no}과 · ${ns}회차`}</div><div class="today-title">${esc(L.title)}</div>${L.title_en ? `<div class="muted small">${esc(L.title_en)}</div>` : ""}</div></div>
-      ${kids ? `<p class="muted small">어린이 수업은 마이크 없이 선생님 말을 듣고 화면을 눌러서 해요.</p>` : `<div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>`}
+      ${`<div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>`}
       <button class="pill primary" data-act="lhStart" data-v="${L.id}" data-s="${kids ? 1 : ns}" ${H.busy ? "disabled" : ""}>${I("play_arrow")}${H.busy ? "불러오는 중…" : "수업 시작"}</button>
     </div>`}
     ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${kids ? `어린이 ${book.no}권` : `${book.no}권`} 교재 PDF 받기</a>` : ""}
@@ -95,7 +97,7 @@ export function renderTeacherPick(sel, esc) {
 export function renderStageShell(run, I, esc) {
   return `<div class="ls">
     <div class="ls-top"><button class="round lilac" data-act="lsExit" aria-label="과 목록으로">${I("arrow_back")}</button>
-      <div class="grow"><b class="ls-title">${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div>
+      <div class="grow"><b class="ls-title">${run.kids ? "어린이 " : ""}${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div>
       <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.bookNo}.pdf"></a>
       <button class="round lilac" data-act="lsHome" aria-label="처음 화면으로">${I("home")}</button></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
@@ -135,6 +137,23 @@ export function stepHtml(s, u, run, esc, I) {
     case "my": return (s.role ? card(`<b class="accent">역할 카드로 연습해요</b><div class="small">${m(s.role)}</div>`) : "") + card((s.items ?? []).map((q, i) => `<div class="ls-q b">${i + 1}. ${esc(q[0])}</div><div class="muted tiny">도움: ${esc(q[1] ?? "")}</div>`).join(""));
     case "read": return card(`<div class="row"><b class="ls-q grow">${esc(s.title)}</b>${s.face ? `<img class="face" src="${imgUrl(s.face)}" alt="">` : ""}</div><div class="ls-read">${m(s.text)}</div><div class="muted tiny">${esc(s.gloss)}</div>${(s.questions ?? []).map((q, i) => `<div class="accent b small">Q${i + 1}. ${esc(q)}</div>`).join("")}`);
     case "can": return card(`<div class="accent small b">오늘 할 수 있게 된 것</div>${(s.items ?? []).map((x) => `<div>${I("check", "ok")} ${esc(x)}</div>`).join("")}`);
+    // 0.9.4 어린이 수업(AI 선생님이 듣고 가르침). 누른 것은 선생님에게 (App: …) 메모로.
+    case "k_letter": return `<img class="ls-scene" src="${imgUrl(s.scene)}" alt=""><div class="k-letter">${esc(s.letter)} ${esc(String(s.letter).toLowerCase())}</div><p class="center-text accent">${esc(s.name_ko)} · 소리 ‘${esc(s.sound_ko ?? "")}’</p>`;
+    case "k_words": case "k_pick": {
+      const pick = s.type === "k_pick"; const t = run.kTap ??= {}; const picked = t[s.id] ??= [];
+      return `${pick ? `<p class="center-text b accent">${esc(s.say)}</p>` : ""}<div class="k-grid">${(s.items ?? []).map((w) => { const on = pick && picked.includes(w.en);
+        const hi = u.lessonHiWord && u.lessonHiWord.toLowerCase() === String(w.en).toLowerCase();
+        return `<button class="k-word ${on ? (w.ok ? "good" : "bad") : ""} ${hi ? "hi" : ""}" data-act="lkTap" data-v="${esc(w.en)}"><img src="${imgUrl(w.img)}" alt="">${!pick || on ? `<b>${esc(w.en)}</b>` : ""}${pick ? "" : `<span class="muted tiny">${esc(w.ko)}</span>`}</button>`; }).join("")}</div>`;
+    }
+    case "k_chant": return card((s.lines ?? []).map((l) => `<div class="k-chant">${esc(l)}</div>`).join(""));
+    case "k_hunt": {
+      const t = run.kTap ??= {}; const found = t[s.id] ??= []; const tg = String(s.target).toLowerCase();
+      const all = (s.grid ?? []).flat().filter((c) => c.toLowerCase() === tg).length;
+      return `<p class="center-text small">${m(s.say)}</p><div class="k-hunt">${(s.grid ?? []).map((row, r) => row.map((ch, c) => { const key = `${r}:${c}`; const on = found.includes(key); const hit = ch.toLowerCase() === tg;
+        return `<button class="k-cell ${on && hit ? "hit" : ""}" data-act="lkHunt" data-v="${key}">${esc(ch)}</button>`; }).join("")).join("")}</div>${found.length >= all && all ? `<p class="ok b center-text">다 찾았어요! ${esc(s.answer ?? "")}</p>` : ""}`;
+    }
+    case "k_say": return card(`<div class="accent small b">${esc(s.say)}</div><div class="k-model">${esc(s.model)}</div>${s.hint ? `<div class="muted small">${esc(s.hint)}</div>` : ""}`);
+    case "k_stars": return card(`<h2>오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>⭐ ${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`);
     default: return card(`<div class="accent small b">마무리</div>${run.expressions.map((x) => `<div class="ls-q b">${esc(x)}</div>`).join("")}`);
   }
 }
