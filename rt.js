@@ -1,10 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.9.1";
-import { PRESET } from "./config.js?v=0.9.1";
-import { takeSentences, decideCard, confused, wantsText, lastQuote } from "./text.js?v=0.9.1";
-import { sceneVoice } from "./characters.js?v=0.9.1";
+import * as api from "./api.js?v=0.9.2";
+import { PRESET } from "./config.js?v=0.9.2";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.9.2";
+import { sceneVoice } from "./characters.js?v=0.9.2";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -327,7 +327,7 @@ export class Chat {
 
   /** 앱과 같게: 문장 전체 따라 말하기가 세 번 연달아 나오면 다음엔 넘어가라는 메모를 넣는다(두 번까지는 정상, 11/13). */
   trackPractice(played) {
-    this.practiceStreak = /(we usually say|can you say that|can you try that)/i.test(played) ? (this.practiceStreak ?? 0) + 1 : 0;
+    this.practiceStreak = hasPracticeQuote(played) ? (this.practiceStreak ?? 0) + 1 : 0;   // 0.9.2: 말투가 다양해져 따옴표로 판단
     if (this.practiceStreak < 3) return;
     this.practiceStreak = 0;
     this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
@@ -432,7 +432,7 @@ export class Chat {
 
   // ---------- 교정 빈도(11/13 실장님: 학습자 말 4번에 한 번쯤, 자주 틀리는 표현은 꼭) — 앱과 같음 ----------
   noteCorrection(played) {
-    const m = /(we usually say|a more natural way to say|let's try it in parts|listen once more|you can say,)/i.exec(played); if (!m) return;
+    const m = /(we usually say|a more natural way to say|let's try it in parts|listen once more|you can say,)/i.exec(played) ?? (hasPracticeQuote(played) ? ["", "quote"] : null); if (!m) return;
     this.learnerTurns = 0; this.correctionNoted = false;
     this.log("correction", { kind: m[1].toLowerCase().slice(0, 24) });
   }

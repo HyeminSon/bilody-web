@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.1";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.1";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.1";
-import * as L9 from "./lesson09.js?v=0.9.1";
-import { GUIDE } from "./guide.js?v=0.9.1";
-import { Player } from "./audio.js?v=0.9.1";
-import { Chat } from "./rt.js?v=0.9.1";
-import * as story from "./story.js?v=0.9.1";
-import * as push from "./push.js?v=0.9.1";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.1";
+import * as api from "./api.js?v=0.9.2";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.2";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.2";
+import * as L9 from "./lesson09.js?v=0.9.2";
+import { GUIDE } from "./guide.js?v=0.9.2";
+import { Player } from "./audio.js?v=0.9.2";
+import { Chat } from "./rt.js?v=0.9.2";
+import * as story from "./story.js?v=0.9.2";
+import * as push from "./push.js?v=0.9.2";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -196,9 +196,8 @@ function renderChat() {
     ${guide}
     <p id="notice" class="error"></p>
     ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button></div>`}
-    <div class="controls ${!chat && S.profile?.is_staff === true ? "home3" : ""}" id="controls">${chat ? "" : `
+    <div class="controls" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
-      ${S.profile?.is_staff === true ? `<button class="pill secondary grow" data-act="homeLesson">${I("menu_book")}표현 익히기</button>` : ""}
       ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
       <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
@@ -495,8 +494,8 @@ async function startChat() {
   player.setVolume(pref.get("volume", 1));
   S.chat = new Chat({ voiceId: c.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat() });
   // 교재로 배우기(11/14): 운영자 계정에서만 먼저 켠다
-  S.lesson = p?.is_staff === true ? new LessonManager({ chat: S.chat, player, speed: pref.get("speed", 1), store: pref, onChange: () => updateChat(), toast }) : null;
-  S.lesson?.preload().catch(() => {});
+  // 0.9.2(11/17 실장님): ‘표현 익히기’(대화 속 교재 카드)는 뺌 — 교재 공부는 1:1 수업에서
+  S.lesson = null;
   render();
   await S.chat.start();
 }
@@ -578,7 +577,7 @@ function niceDate(iso) {
 
 function renderHistory() {
   if (S.turns) {
-    const practiced = [...new Set(S.turns.filter((t) => t.role !== "user").map((t) => /(?:usually say|we say|you can say),?\s*["“]([^"”]{2,120})["”]/i.exec(t.text)?.[1]).filter(Boolean))];
+    const practiced = [...new Set(S.turns.filter((t) => t.role !== "user").map((t) => /["“]([^"”]*[A-Za-z][^"”]*\s[^"”]{1,118})["”]/.exec(t.text)?.[1]).filter(Boolean))];
     return `<div class="list">
       <div class="subhead"><button class="iconbtn" data-act="closeSession" aria-label="목록으로">${I("arrow_back")}</button><b>대화 보기</b></div>
       ${practiced.length ? `<div class="card lilac"><div class="accent small b">이 대화에서 연습한 표현</div>${practiced.map((p) => `<p class="b">“${esc(p)}”</p>`).join("")}</div>` : ""}

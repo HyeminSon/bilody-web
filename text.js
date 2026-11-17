@@ -36,7 +36,9 @@ export function takeSentences(buf, final) {
 
 const confusedRe = /(i don'?t (understand|get it|know what you mean)|i didn'?t (get|understand|catch)|what do you mean|pardon|say (that|it) again|one more time|repeat (that|it|please)|^(what|huh|pardon)[.?!]*$|(didn'?t|couldn'?t|can'?t) hear|^(oh,? )?sorry[.?!]*$|뭐라고|못 들|안 들려|무슨 (말|뜻)|모르겠|이해가 안|이해 못|못 알아|다시 (말해|한 ?번))/i;
 const quoteRe = /["“]([^"”]{1,160})["”]/g;
-const practiceRe = /(we usually say|can you say|\bsay:|in parts|\bnow:|all together|try (it )?(once )?(more|again))/i;
+// 0.9.2: 교정 말투를 여러 가지로 바꿈(“We usually say…”만 쓰지 않음). 큰따옴표는 따라 말할 말에만 쓰기로 했으므로 큰따옴표 안 영어 문장이 있으면 따라 말하기로 본다.
+const practiceRe = /(we usually say|can you say|\bsay:|in parts|\bnow:|all together|try (it )?(once )?(more|again)|your turn|give it a (try|go)|say it with me|try it like this|more natural|native speakers|small fix|you can say|once more|one more time|want to try|how about you)/i;
+export const hasPracticeQuote = (t) => { const q = lastQuote(t); return !!q && q.trim().split(/\s+/).length >= 2 && !/^here it is\b/i.test(t.trim()); };
 const rephraseRe = /^let me say it another way[.!,]?\s*/i;
 /** 11/13: 처음 두 번(교정·한 번 더 듣기)은 소리로만, 두 번째도 틀려 구절별 연습으로 넘어가면 그때 글 카드를 보여 준다. */
 const partsRe = /(in parts|\bsay:|\bnow:|all together)/i;
@@ -57,7 +59,7 @@ export function decideCard(reply, target, helpWanted) {
   const quotes = [...text.matchAll(quoteRe)];
   const q = quotes.length ? quotes[quotes.length - 1][1].trim() : null;
   const quote = q && /\p{L}/u.test(q) ? q : null;
-  if (quote && practiceRe.test(text)) {
+  if (quote && (practiceRe.test(text) || hasPracticeQuote(text))) {
     if (!partsRe.test(text)) return { card: null, target: target && norm(target).includes(norm(quote)) ? target : quote };
     if (target && norm(quote) !== norm(target) && norm(target).includes(norm(quote)))
       return { card: { practice: true, text: target, chunk: quote }, target };
