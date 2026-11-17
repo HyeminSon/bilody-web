@@ -26,7 +26,7 @@ export function makeRun(book, L, session) {
   session = sess?.n ?? 1;   // 없는 회차 번호는 실제로 여는 회차 번호로(헤니 검토)
   const steps = sess?.steps ?? [];
   const expressions = sessions.flatMap((x) => x.steps).filter((x) => x.type === "card").map((x) => plain(x.en));
-  const run = { id: L.id, kids: L.kind === "kids", title: L.title ?? "", titleEn: L.title_en ?? "", koreanOk: !!L.korean_ok, steps, expressions, session,
+  const run = { id: L.id, kids: L.kind === "kids", title: L.title ?? "", titleEn: L.title_en ?? "", koreanOk: true /* 0.9.3: 한국어 정도는 서버가 권에 따라 정함 */, steps, expressions, session,
     bookId: book.id, bookNo: book.no, no: L.no, sessionCount: sessions.length || 1, teacher: L.teacher, letter: L.letter, lesson: L };
   run.info = { id: run.id, session, title: run.title, title_en: run.titleEn, goal: L.goal ?? "", book: book.no, korean_ok: run.koreanOk, expressions };
   return run;
@@ -56,9 +56,10 @@ export const stepLabel = (s) => (s?.type === "dialogue" ? (s.play ? "장면 듣�
 
 // ---------- 수업 홈 ----------
 export function renderHome(H, esc, I) {
-  if (H.error) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="round lilac" data-act="lhClose" aria-label="닫기">${I("close")}</button></div><p class="error">${esc(H.error)}</p></div>`;
-  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="round lilac" data-act="lhClose" aria-label="닫기">${I("close")}</button></div><div class="spinner"></div></div>`;
-  const books = H.index.books; const book = books.find((b) => b.id === H.bookId) ?? books[0];
+  if (H.error) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><p class="error">${esc(H.error)}</p></div>`;
+  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><div class="spinner"></div></div>`;
+  // 0.9.3(11/17 실장님): 어린이 수업은 1:1 수업과 나누고, 다시 설계할 때까지 숨긴다
+  const books = H.index.books.filter((b) => b.kind !== "kids"); const book = books.find((b) => b.id === H.bookId) ?? books[0];
   const kids = book.kind === "kids";
   const [nn, ns] = H.next;
   // 마지막 과까지 마치면 1과로 되돌아가 보이지 않게(헤니 검토)
@@ -67,7 +68,8 @@ export function renderHome(H, esc, I) {
   const nextBook = books[books.indexOf(book) + 1];
   const t = byId(H.teacher);
   return `<div class="lh">
-    <div class="lh-top"><h2>1:1 수업</h2><button class="round lilac" data-act="lhClose" aria-label="닫기">${I("close")}</button></div>
+    <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
+    <p class="muted small">말하기 교재 1~9권 · 중학생부터 어른까지</p>
     <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${b.kind === "kids" ? `어린이 ${b.no}권` : `${b.no}권`}</button>`).join("")}</div>
     <p class="muted small">${esc(kids ? book.title_ko : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
     ${done ? `<div class="card today"><div class="today-title">이 권을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 과 고르기’에서 복습할 과를 고르거나 다음 권으로 넘어가요.</p>
@@ -92,9 +94,10 @@ export function renderTeacherPick(sel, esc) {
 // ---------- 어른 수업 화면 ----------
 export function renderStageShell(run, I, esc) {
   return `<div class="ls">
-    <div class="ls-top"><button class="round lilac" data-act="lsExit" aria-label="수업 나가기">${I("close")}</button>
+    <div class="ls-top"><button class="round lilac" data-act="lsExit" aria-label="과 목록으로">${I("arrow_back")}</button>
       <div class="grow"><b class="ls-title">${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div>
-      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.bookNo}.pdf"></a></div>
+      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.bookNo}.pdf"></a>
+      <button class="round lilac" data-act="lsHome" aria-label="처음 화면으로">${I("home")}</button></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
     <p id="lsNotice" class="error small"></p>
@@ -222,8 +225,9 @@ export function renderKids(k, esc, I) {
   }
   const last = k.i >= run.steps.length - 1;
   return `<div class="ls kids">
-    <div class="ls-top"><button class="round lilac" data-act="kExit" aria-label="나가기">${I("close")}</button><b class="grow">어린이 ${run.bookNo}권 · ${esc(run.title)}</b>
-      <span class="k-stars">${[0, 1, 2].map((x) => `<span class="${x < k.stars ? "on" : ""}">★</span>`).join("")}</span></div>
+    <div class="ls-top"><button class="round lilac" data-act="kExit" aria-label="과 목록으로">${I("arrow_back")}</button><b class="grow">어린이 ${run.bookNo}권 · ${esc(run.title)}</b>
+      <span class="k-stars">${[0, 1, 2].map((x) => `<span class="${x < k.stars ? "on" : ""}">★</span>`).join("")}</span>
+      <button class="round lilac" data-act="kHome" aria-label="처음 화면으로">${I("home")}</button></div>
     <div class="ls-bar"><i style="width:${((k.i + 1) / run.steps.length) * 100}%"></i></div>
     <div class="ls-body">${body}</div>
     <div class="ls-teacher"><div class="ls-bubble grow">${esc(k.bubble)}</div>

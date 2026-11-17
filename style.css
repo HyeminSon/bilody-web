@@ -461,3 +461,6 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .k-cell.hit { background: #0E7C66; color: #fff; } .k-cell.miss { color: rgba(91, 82, 102, .3); }
 .k-model { font-size: 30px; font-weight: 800; color: var(--deep); text-align: center; }
 .k-stars span { color: #E4DAF5; font-size: 20px; } .k-stars span.on { color: #F5B301; }
+/* 0.9.3 처음 화면으로 */
+.lh-home { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--plum); }
+.ls-bubble #lsSay.muted { color: var(--muted, #8a7f95); }

@@ -290,7 +290,9 @@ function updateStage() {
   const t = byId(chat.character);
   $("#lsTurn").textContent = u.lessonScene ? "장면을 듣고 있어요" : myTurn ? "내 차례예요. 말해 보세요" : "";
   $("#lsTurn").className = `small ${myTurn ? "ok" : "muted"}`;
-  $("#lsSay").textContent = tl ?? `${t.ko} 선생님이 준비하고 있어요…`;
+  // 0.9.3(11/17 실장님): 선생님 말은 기본으로 숨긴다(귀로 듣기). 설정 ‘자막’을 켜면 보인다
+  $("#lsSay").textContent = tl == null ? `${t.ko} 선생님이 준비하고 있어요…` : pref.get("subtitles", false) ? tl : (u.lessonScene || myTurn ? "" : `${t.ko} 선생님 말을 잘 들어 보세요`);
+  $("#lsSay").classList.toggle("muted", tl != null && !pref.get("subtitles", false));
   const st = u.lessonScene ? "idle" : u.state === "speaking" ? "speak" : u.state === "listening" ? "listen" : u.state === "thinking" ? "wait" : "idle";
   const src = teacherImg(t.id, st); const face = $("#lsFace"); if (!face.src.endsWith(src)) face.src = src;
   face.className = st === "listen" ? "listen" : u.lessonScene ? "scene" : "";
@@ -306,7 +308,8 @@ function updateStage() {
 }
 
 async function openLessonHome(bookId) {
-  const H = S.lh = { index: S.lh?.index ?? null, bookId: bookId ?? L9.progress.lastBook(pref), teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+  let bid = bookId ?? L9.progress.lastBook(pref); if (/^K/.test(bid)) bid = "A1";   // 0.9.3 어린이 수업 숨김
+  const H = S.lh = { index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
   H.next = L9.progress.next(pref, H.bookId);
   render();
   if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
@@ -314,7 +317,7 @@ async function openLessonHome(bookId) {
 
 async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
-  const book = H.index.books.find((b) => b.id === H.bookId) ?? H.index.books[0];
+  const book = H.index.books.find((b) => b.id === H.bookId && b.kind !== "kids") ?? H.index.books.find((b) => b.kind !== "kids");
   H.busy = true; render();
   let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
   H.busy = false;
@@ -641,7 +644,7 @@ function renderSettings() {
       <input type="range" id="speed" min="0.7" max="1.5" step="0.1" value="${speed}">
       <b class="h">목소리 크기</b><input type="range" id="volume" min="0.2" max="1" step="0.05" value="${vol}">`)}
     ${section("subs", "자막", subs ? "켜짐" : "꺼짐", "subtitles", `
-      <div class="row top"><span class="grow"><b class="h">대화 중 자막</b><br><span class="muted small">켜면 나와 친구의 말이 대화 화면에 글자로 나와요. 꺼도 기록에는 남고, 따라 말하기·쉽게 다시 말하기 카드는 그대로 보여요.</span></span>
+      <div class="row top"><span class="grow"><b class="h">대화·수업 중 자막</b><br><span class="muted small">켜면 친구·선생님의 말이 화면에 글자로 나와요(대화에서는 내 말도). 꺼도 기록에는 남고, 교재와 따라 말하기·쉽게 다시 말하기 카드는 그대로 보여요.</span></span>
       ${toggle("subs", subs)}</div>`)}
     ${section("memory", "기억", `${memOn ? "켜짐" : "꺼짐"} · ${S.memories.length}개`, "psychology", `
       <div class="row top"><span class="grow muted small">내가 직접 말한 사실만 대화가 끝날 때 기억해요. 끄면 기억을 새로 만들거나 대화에 쓰지 않아요(지우지는 않아요).</span>
@@ -830,6 +833,7 @@ app.addEventListener("click", async (e) => {
     case "lhPickTeacher": pref.set("lp_teacher", v); if (S.lh) S.lh.teacher = v; S.dialog = null; render(); break;
     case "lhStart": player.unlock(); await startLesson(v, Number(el.dataset.s) || 1); break;   // 아이폰: 누른 순간에 소리를 열어 둔다
     case "lsExit": await endLesson(true); break;
+    case "lsHome": await endLesson(false); break;
     case "lsTalk": await endLesson(false); await startChat(); break;
     case "lsSlow": S.chat?.sendText("Sorry, could you say that again slowly?"); break;
     case "lsSkip": S.chat?.sendText("Let's move on to the next part, please."); break;
@@ -840,6 +844,7 @@ app.addEventListener("click", async (e) => {
     case "kNext": S.kids?.next(); break;
     case "kDone": { const k = S.kids; k.stop(); L9.progress.done(pref, k.run); S.kids = null; await openLessonHome(k.run.bookId); break; }
     case "kExit": { const k = S.kids; k?.stop(); S.kids = null; await openLessonHome(k?.run.bookId); break; }
+    case "kHome": { const k = S.kids; k?.stop(); S.kids = null; S.lh = null; render(); break; }
     // ---- 동화 듣기 ----
     case "storyPick": {
       try { const lib = await story.loadLib(); S.dialog = { kind: "storyPick", lib }; render(); await story.loadCommon(); if (S.dialog?.kind === "storyPick") render(); }
