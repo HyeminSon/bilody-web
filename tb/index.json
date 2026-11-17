@@ -1761,16 +1761,166 @@
    "kind": "kids",
    "no": 1,
    "file": "K1.json",
-   "title_ko": "어린이 1권 · 알파벳 마을",
+   "title_ko": "어린이 1권 · Hello, ABC!",
+   "pdf": "lessons/pdf/bilody_kids_1.pdf",
    "lessons": [
     {
      "id": "K1-1",
      "no": 1,
      "title": "A · 에이",
      "sessions": 1
+    },
+    {
+     "id": "K1-2",
+     "no": 2,
+     "title": "B · 비",
+     "sessions": 1
+    },
+    {
+     "id": "K1-3",
+     "no": 3,
+     "title": "C · 씨",
+     "sessions": 1
+    },
+    {
+     "id": "K1-4",
+     "no": 4,
+     "title": "D · 디",
+     "sessions": 1
+    },
+    {
+     "id": "K1-5",
+     "no": 5,
+     "title": "E · 이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-6",
+     "no": 6,
+     "title": "F · 에프",
+     "sessions": 1
+    },
+    {
+     "id": "K1-7",
+     "no": 7,
+     "title": "G · 쥐",
+     "sessions": 1
+    },
+    {
+     "id": "K1-8",
+     "no": 8,
+     "title": "H · 에이치",
+     "sessions": 1
+    },
+    {
+     "id": "K1-9",
+     "no": 9,
+     "title": "I · 아이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-10",
+     "no": 10,
+     "title": "J · 제이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-11",
+     "no": 11,
+     "title": "K · 케이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-12",
+     "no": 12,
+     "title": "L · 엘",
+     "sessions": 1
+    },
+    {
+     "id": "K1-13",
+     "no": 13,
+     "title": "M · 엠",
+     "sessions": 1
+    },
+    {
+     "id": "K1-14",
+     "no": 14,
+     "title": "N · 엔",
+     "sessions": 1
+    },
+    {
+     "id": "K1-15",
+     "no": 15,
+     "title": "O · 오",
+     "sessions": 1
+    },
+    {
+     "id": "K1-16",
+     "no": 16,
+     "title": "P · 피",
+     "sessions": 1
+    },
+    {
+     "id": "K1-17",
+     "no": 17,
+     "title": "Q · 큐",
+     "sessions": 1
+    },
+    {
+     "id": "K1-18",
+     "no": 18,
+     "title": "R · 아르",
+     "sessions": 1
+    },
+    {
+     "id": "K1-19",
+     "no": 19,
+     "title": "S · 에스",
+     "sessions": 1
+    },
+    {
+     "id": "K1-20",
+     "no": 20,
+     "title": "T · 티",
+     "sessions": 1
+    },
+    {
+     "id": "K1-21",
+     "no": 21,
+     "title": "U · 유",
+     "sessions": 1
+    },
+    {
+     "id": "K1-22",
+     "no": 22,
+     "title": "V · 브이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-23",
+     "no": 23,
+     "title": "W · 더블유",
+     "sessions": 1
+    },
+    {
+     "id": "K1-24",
+     "no": 24,
+     "title": "X · 엑스",
+     "sessions": 1
+    },
+    {
+     "id": "K1-25",
+     "no": 25,
+     "title": "Y · 와이",
+     "sessions": 1
+    },
+    {
+     "id": "K1-26",
+     "no": 26,
+     "title": "Z · 지",
+     "sessions": 1
     }
    ]
   }
- ],
- "base": "tb/"
+ ]
 }
