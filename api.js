@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.9.12";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.9.13";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -131,7 +131,7 @@ export async function finishSession(sessionId) { try { await fn("end-session", {
 // features: 이 앱이 할 수 있는 것(사진 카드). 서버는 사진 사이트 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
 // 0.9: character = 대화 상대(선생님 포함), lesson = 1:1 수업 정보(있으면 수업 모드)
 export const realtimeKey = (presetId, speed, character = null, lesson = null, sessionId = null) => fn("realtime-session", {
-  presetId, speed, features: ["picture", "word", ...(lesson && !/^K\d/.test(String(lesson.id ?? "")) ? ["lesson_app_led"] : [])], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : {}), ...(sessionId ? { sessionId } : {}) });
+  presetId, speed, features: ["picture", "word", ...(lesson && !/^K\d/.test(String(lesson.id ?? "")) ? ["lesson_app_led", "lesson_role_app"] : [])], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : {}), ...(sessionId ? { sessionId } : {}) });
 
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
 export async function say(text, voice, speed, sessionId, preview = false) {
