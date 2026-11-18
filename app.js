@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.7";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.7";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.7";
-import * as L9 from "./lesson09.js?v=0.9.7";
-import { GUIDE } from "./guide.js?v=0.9.7";
-import { Player } from "./audio.js?v=0.9.7";
-import { Chat } from "./rt.js?v=0.9.7";
-import * as story from "./story.js?v=0.9.7";
-import * as push from "./push.js?v=0.9.7";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.7";
+import * as api from "./api.js?v=0.9.8";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.8";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.8";
+import * as L9 from "./lesson09.js?v=0.9.8";
+import { GUIDE } from "./guide.js?v=0.9.8";
+import { Player } from "./audio.js?v=0.9.8";
+import { Chat } from "./rt.js?v=0.9.8";
+import * as story from "./story.js?v=0.9.8";
+import * as push from "./push.js?v=0.9.8";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.8";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -644,7 +644,7 @@ function renderSettings() {
   const fname = p.friend_name ?? c.en;
   return `<div class="list">
     ${section("friend", "대화 상대", `${c.teacher ? `${c.ko} 선생님` : `${c.ko} · 이름 ${fname}`} · 속도 ${speed.toFixed(1)}배`, "face", `
-      <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있고, 바꿔도 기억과 대화 기록은 그대로예요. 1:1 수업 선생님은 수업 화면에서 따로 골라요.</p>
+      <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있어요. 상대마다 나와 나눈 이야기만 따로 기억하고, 바꿔도 지금까지의 기억과 기록은 지워지지 않아요. 1:1 수업 선생님은 수업 화면에서 따로 골라요.</p>
       ${charPicker(c.id)}
       <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview">▶ 목소리 듣기</button></div>
       ${c.teacher ? "" : `<div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
@@ -808,7 +808,7 @@ app.addEventListener("click", async (e) => {
       } else if (v !== p?.character) {
         const c = byId(v); const who = isTeacher(v) ? `${c.ko} 선생님` : c.ko;
         confirm(`${who}으로 바꿀까요?`.replace(/([가-힣])으로/, (m, ch) => ((ch.charCodeAt(0) - 0xAC00) % 28 === 0 || (ch.charCodeAt(0) - 0xAC00) % 28 === 8 ? ch + "로" : ch + "으로")),
-          isTeacher(v) ? `대화하기에서 ${c.ko} 선생님과 이야기해요. 지금까지의 기억과 대화 기록은 그대로 남아요.` : `친구 이름도 ${c.en}로 바뀌어요. 지금까지의 기억과 대화 기록은 그대로 남아요.`, "바꾸기", async () => {
+          isTeacher(v) ? `대화하기에서 ${c.ko} 선생님과 이야기해요. 친구와 선생님은 각자 나와 나눈 이야기만 기억해요. 지금까지의 기억과 기록은 지워지지 않아요.` : `친구 이름도 ${c.en}로 바뀌어요. 친구와 선생님은 각자 나와 나눈 이야기만 기억해요. 지금까지의 기억과 기록은 지워지지 않아요.`, "바꾸기", async () => {
           await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: c.colorId, character: c.id }); S.profile = await api.loadProfile(); });
           toast(S.chat ? `${c.ko}로 바꿨어요. 다음 대화부터 ${c.ko}가 이야기해요.` : `${c.ko}로 바꿨어요.`);
         });

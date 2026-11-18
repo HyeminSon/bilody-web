@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.9.7";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.7";
+import * as api from "./api.js?v=0.9.8";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.8";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -89,7 +89,7 @@ export function renderHome(H, esc, I) {
 }
 
 export function renderTeacherPick(sel, esc) {
-  return `<p class="muted small">진도와 익힌 표현은 그대로 남아요.</p>${TEACHERS.map((t) => `<button class="tpick ${t.id === sel ? "on" : ""}" data-act="lhPickTeacher" data-v="${t.id}">
+  return `<p class="muted small">진도와 익힌 표현은 그대로 남아요. 선생님마다 나와 나눈 이야기는 따로 기억해요.</p>${TEACHERS.map((t) => `<button class="tpick ${t.id === sel ? "on" : ""}" data-act="lhPickTeacher" data-v="${t.id}">
     <img src="${teacherImg(t.id)}" alt=""><span class="grow"><b>${esc(t.ko)} (${esc(t.en)})</b><br><span class="small">${esc(t.intro)}</span><br><span class="muted tiny">이런 분께: ${esc(t.forWhom)}</span></span></button>`).join("")}`;
 }
 
