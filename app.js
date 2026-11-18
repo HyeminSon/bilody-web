@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.8";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.8";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.8";
-import * as L9 from "./lesson09.js?v=0.9.8";
-import { GUIDE } from "./guide.js?v=0.9.8";
-import { Player } from "./audio.js?v=0.9.8";
-import { Chat } from "./rt.js?v=0.9.8";
-import * as story from "./story.js?v=0.9.8";
-import * as push from "./push.js?v=0.9.8";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.8";
+import * as api from "./api.js?v=0.9.9";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.9";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.9";
+import * as L9 from "./lesson09.js?v=0.9.9";
+import { GUIDE } from "./guide.js?v=0.9.9";
+import { Player } from "./audio.js?v=0.9.9";
+import { Chat } from "./rt.js?v=0.9.9";
+import * as story from "./story.js?v=0.9.9";
+import * as push from "./push.js?v=0.9.9";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.9";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -288,9 +288,9 @@ function updateStage() {
   if (u.lessonDone) { if (!$(".ls-done")) render(); return; }
   if (!$("#lsBody")) return render();
   const i = Math.max(0, u.lessonStep); const step = run.steps[i];
-  $("#lsSub").textContent = run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : `${run.session}회차 · ${L9.stepLabel(step)}`;
+  $("#lsSub").textContent = run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
   $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
-  const pg = $("#lsPage"); pg.textContent = step?.page ? `교재 ${step.page}쪽` : ""; pg.hidden = !step?.page;
+  const pg = $("#lsPage"); pg.textContent = step?.page ? L9.T.page(step.page) : ""; pg.hidden = !step?.page;
   const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord, run.kTapN ?? 0]);
   const body = $("#lsBody");
   if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }

@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.9.8";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.8";
+import * as api from "./api.js?v=0.9.9";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.9";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -19,7 +19,10 @@ export const loadBook = (file) => getJson(`tb/${file}`);
 
 const plain = (s) => String(s ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 
-/** 교재 한 회차 실행 정보(앱 LessonRun과 같음). */
+/** 11/18 실장님 결정: 교재 표기는 영어로 통일(Book 1 · Unit 1 · Lesson 1 · Part 1 · p. 6). 설명 문장은 한국어. */
+export const T = { book: (n, kids = false) => `${kids ? "Kids Book" : "Book"} ${n ?? 1}`, lesson: (n) => `Lesson ${n ?? 1}`, unit: (n) => `Unit ${n ?? 1}`, part: (n) => `Part ${n ?? 1}`, page: (p) => `p. ${p}` };
+
+/** 교재 한 회차(Part) 실행 정보(앱 LessonRun과 같음). */
 export function makeRun(book, L, session) {
   const sessions = L.sessions ?? [];
   const sess = sessions.find((x) => x.n === session) ?? sessions[0];
@@ -27,7 +30,9 @@ export function makeRun(book, L, session) {
   const steps = sess?.steps ?? [];
   const expressions = sessions.flatMap((x) => x.steps).filter((x) => x.type === "card").map((x) => plain(x.en));
   const run = { id: L.id, kids: L.kind === "kids", title: L.title ?? "", titleEn: L.title_en ?? "", koreanOk: true /* 0.9.3: 한국어 정도는 서버가 권에 따라 정함 */, steps, expressions, session,
-    bookId: book.id, bookNo: book.no, no: L.no, sessionCount: sessions.length || 1, teacher: L.teacher, letter: L.letter, lesson: L };
+    bookId: book.id, bookNo: book.no, no: L.no, sessionCount: sessions.length || 1, teacher: L.teacher, letter: L.letter, lesson: L,
+    unitNo: L.unit ?? null, unitTitle: (book.units ?? []).find((u) => u.no === L.unit)?.title ?? null };
+  run.bookLabel = T.book(book.no, run.kids);
   run.info = { id: run.id, session, title: run.title, title_en: run.titleEn, goal: L.goal ?? "", book: book.no, korean_ok: run.koreanOk, expressions };
   return run;
 }
@@ -70,21 +75,21 @@ export function renderHome(H, esc, I) {
   const t = byId(H.teacher);
   return `<div class="lh">
     <div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    <p class="muted small">${H.kidsMode ? "초등 저학년 · 그림과 노래로" : "말하기 교재 1~9권 · 중학생부터 어른까지"}</p>
+    <p class="muted small">${H.kidsMode ? "초등 저학년 · 그림과 노래로" : "말하기 교재 Book 1~9 · 중학생부터 어른까지"}</p>
     ${H.kidsMode ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
-    <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${b.kind === "kids" ? `어린이 ${b.no}권` : `${b.no}권`}</button>`).join("")}</div>
+    <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`).join("")}</div>
     <p class="muted small">${esc(kids ? book.title_ko : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
-    ${done ? `<div class="card today"><div class="today-title">이 권을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 과 고르기’에서 복습할 과를 고르거나 다음 권으로 넘어가요.</p>
-      ${nextBook && nextBook.kind === book.kind ? `<button class="pill primary" data-act="lhBook" data-v="${nextBook.id}">${nextBook.no}권으로 넘어가기</button>` : `<button class="pill secondary" data-act="lhAll">과 목록 펼치기</button>`}</div>` : `<div class="card today">
+    ${done ? `<div class="card today"><div class="today-title">${T.book(book.no, kids)}을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 Lesson 고르기’에서 복습할 Lesson을 고르거나 다음 Book으로 넘어가요.</p>
+      ${nextBook && nextBook.kind === book.kind ? `<button class="pill primary" data-act="lhBook" data-v="${nextBook.id}">${T.book(nextBook.no, kids)}로 넘어가기</button>` : `<button class="pill secondary" data-act="lhAll">Lesson 목록 펼치기</button>`}</div>` : `<div class="card today">
       <div class="row"><b class="accent small grow">오늘 할 분량</b><span class="muted small">약 10분</span></div>
       <div class="lh-row"><img class="today-img" src="${imgUrl(`img/s/${L.id}.jpg`)}" alt="">
-        <div class="grow"><div class="muted small">${kids ? `${L.no}과` : `${book.no}권 ${L.no}과 · ${ns}회차`}</div><div class="today-title">${esc(L.title)}</div>${L.title_en ? `<div class="muted small">${esc(L.title_en)}</div>` : ""}</div></div>
+        <div class="grow"><div class="muted small">${kids ? T.lesson(L.no) : `${T.book(book.no)} · ${T.lesson(L.no)} · ${T.part(ns)}`}</div><div class="today-title">${esc(L.title)}</div>${L.title_en ? `<div class="muted small">${esc(L.title_en)}</div>` : ""}</div></div>
       ${`<div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>`}
       <button class="pill primary" data-act="lhStart" data-v="${L.id}" data-s="${kids ? 1 : ns}" ${H.busy ? "disabled" : ""}>${I("play_arrow")}${H.busy ? "불러오는 중…" : "수업 시작"}</button>
     </div>`}
-    ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${kids ? `어린이 ${book.no}권` : `${book.no}권`} 교재 PDF 받기</a>` : ""}
-    <div class="row"><b class="grow">다른 과 고르기</b><button class="link" data-act="lhAll">${H.all ? "접기" : "펼치기"}</button></div>
-    ${H.all ? `<div class="lh-list">${book.lessons.map((x) => `<button class="lh-item" data-act="lhStart" data-v="${x.id}" data-s="1"><b>${x.no}과</b><span class="grow">${esc(x.title)}</span>${x.no < nn ? I("check", "ok") : ""}</button>`).join("")}</div>` : ""}
+    ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${T.book(book.no, kids)} PDF 받기</a>` : ""}
+    <div class="row"><b class="grow">다른 Lesson 고르기</b><button class="link" data-act="lhAll">${H.all ? "접기" : "펼치기"}</button></div>
+    ${H.all ? `<div class="lh-list">${book.lessons.map((x, i) => `${x.unit != null && (i === 0 || book.lessons[i - 1].unit !== x.unit) ? `<div class="lh-unit">${T.unit(x.unit)} · ${esc((book.units ?? []).find((u) => u.no === x.unit)?.title ?? "")}</div>` : ""}<button class="lh-item" data-act="lhStart" data-v="${x.id}" data-s="1"><b>${T.lesson(x.no)}</b><span class="grow">${esc(x.title)}</span>${x.no < nn ? I("check", "ok") : ""}</button>`).join("")}</div>` : ""}
   </div>`;
 }
 
@@ -97,9 +102,9 @@ export function renderTeacherPick(sel, esc) {
 export function renderStageShell(run, I, esc) {
   return `<div class="ls">
     <div class="ls-nav"><button class="nav-pill" data-act="lsExit">${I("arrow_back")}교재 목록</button><span class="grow"></span>
-      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.bookNo}.pdf"></a>
+      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.kids ? "kids_" : ""}${run.bookNo}.pdf"></a>
       <button class="nav-pill" data-act="lsHome">${I("home")}처음 화면</button></div>
-    <div class="ls-top"><div class="grow"><b class="ls-title">${run.kids ? "어린이 " : ""}${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div></div>
+    <div class="ls-top"><div class="grow"><b class="ls-title">${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
     <p id="lsNotice" class="error small"></p>
@@ -161,7 +166,7 @@ export function stepHtml(s, u, run, esc, I) {
 export function renderDone(run, d, esc, I) {
   return `<div class="ls-done">
     <div class="done-ic">${I("check")}</div><h2>오늘 할 일 끝!</h2>
-    <p class="muted">${run.bookNo}권 ${run.no}과 · ${run.session}회차를 마쳤어요</p>
+    <p class="muted">${run.bookLabel} · ${T.lesson(run.no)} · ${T.part(run.session)}을 마쳤어요</p>
     <div class="done-stats">${[[d.practiced.length, "익힌 표현"], [d.said, "말한 문장"], [`${d.minutes}분`, "수업 시간"]].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
     <div class="card"><b>오늘 익힌 표현</b>${d.practiced.map((x) => `<div class="b">${esc(x)}</div>`).join("")}
       ${d.fixed.length ? `<hr><div class="muted small">고친 문장</div>${d.fixed.map((x) => `<div>${esc(String(x).replace("->", "→"))}</div>`).join("")}` : ""}</div>
@@ -244,7 +249,7 @@ export function renderKids(k, esc, I) {
   }
   const last = k.i >= run.steps.length - 1;
   return `<div class="ls kids">
-    <div class="ls-top"><button class="round lilac" data-act="kExit" aria-label="과 목록으로">${I("arrow_back")}</button><b class="grow">어린이 ${run.bookNo}권 · ${esc(run.title)}</b>
+    <div class="ls-top"><button class="round lilac" data-act="kExit" aria-label="교재 목록으로">${I("arrow_back")}</button><b class="grow">Kids Book ${run.bookNo} · ${esc(run.title)}</b>
       <span class="k-stars">${[0, 1, 2].map((x) => `<span class="${x < k.stars ? "on" : ""}">★</span>`).join("")}</span>
       <button class="round lilac" data-act="kHome" aria-label="처음 화면으로">${I("home")}</button></div>
     <div class="ls-bar"><i style="width:${((k.i + 1) / run.steps.length) * 100}%"></i></div>

@@ -470,3 +470,5 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .nav-pill { white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 8px 14px 8px 10px; border-radius: 20px; background: #F1E9FE; border: 1.5px solid rgba(139, 92, 246, .5); color: #35102F; font-weight: 700; font-size: 14px; }
 .nav-pill .mi { font-size: 20px; }
 .nav-pill:active { transform: scale(.96); }
+.lh-unit { font-size: 13px; font-weight: 700; color: #6d28d9; margin: 12px 4px 4px; }
+.lh-item b { min-width: 72px; display: inline-block; }
