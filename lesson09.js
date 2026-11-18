@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.9.5";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.5";
+import * as api from "./api.js?v=0.9.6";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.9.6";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -96,10 +96,10 @@ export function renderTeacherPick(sel, esc) {
 // ---------- 어른 수업 화면 ----------
 export function renderStageShell(run, I, esc) {
   return `<div class="ls">
-    <div class="ls-top"><button class="round lilac" data-act="lsExit" aria-label="과 목록으로">${I("arrow_back")}</button>
-      <div class="grow"><b class="ls-title">${run.kids ? "어린이 " : ""}${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div>
+    <div class="ls-nav"><button class="nav-pill" data-act="lsExit">${I("arrow_back")}과 목록</button><span class="grow"></span>
       <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.bookNo}.pdf"></a>
-      <button class="round lilac" data-act="lsHome" aria-label="처음 화면으로">${I("home")}</button></div>
+      <button class="nav-pill" data-act="lsHome">${I("home")}처음 화면</button></div>
+    <div class="ls-top"><div class="grow"><b class="ls-title">${run.kids ? "어린이 " : ""}${run.bookNo}권 ${run.no}과 · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
     <p id="lsNotice" class="error small"></p>

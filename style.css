@@ -465,3 +465,8 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .lh-home { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: var(--plum); }
 .ls-bubble #lsSay.muted { color: var(--muted, #8a7f95); }
 .k-word.hi { border-color: var(--accent, #8B5CF6); }
+/* 0.9.6 수업 화면 위 단추(글자 포함, 눈에 잘 띄게) */
+.ls-nav { display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; }
+.nav-pill { white-space: nowrap; flex-shrink: 0; display: inline-flex; align-items: center; gap: 4px; padding: 8px 14px 8px 10px; border-radius: 20px; background: #F1E9FE; border: 1.5px solid rgba(139, 92, 246, .5); color: #35102F; font-weight: 700; font-size: 14px; }
+.nav-pill .mi { font-size: 20px; }
+.nav-pill:active { transform: scale(.96); }

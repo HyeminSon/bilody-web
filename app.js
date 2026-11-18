@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.5";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.5";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.5";
-import * as L9 from "./lesson09.js?v=0.9.5";
-import { GUIDE } from "./guide.js?v=0.9.5";
-import { Player } from "./audio.js?v=0.9.5";
-import { Chat } from "./rt.js?v=0.9.5";
-import * as story from "./story.js?v=0.9.5";
-import * as push from "./push.js?v=0.9.5";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.5";
+import * as api from "./api.js?v=0.9.6";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.6";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.6";
+import * as L9 from "./lesson09.js?v=0.9.6";
+import { GUIDE } from "./guide.js?v=0.9.6";
+import { Player } from "./audio.js?v=0.9.6";
+import { Chat } from "./rt.js?v=0.9.6";
+import * as story from "./story.js?v=0.9.6";
+import * as push from "./push.js?v=0.9.6";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.6";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
