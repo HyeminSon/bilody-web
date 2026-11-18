@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.2";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.2";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.2";
-import * as L9 from "./lesson09.js?v=0.9.2";
-import { GUIDE } from "./guide.js?v=0.9.2";
-import { Player } from "./audio.js?v=0.9.2";
-import { Chat } from "./rt.js?v=0.9.2";
-import * as story from "./story.js?v=0.9.2";
-import * as push from "./push.js?v=0.9.2";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.2";
+import * as api from "./api.js?v=0.9.5";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.5";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.5";
+import * as L9 from "./lesson09.js?v=0.9.5";
+import { GUIDE } from "./guide.js?v=0.9.5";
+import { Player } from "./audio.js?v=0.9.5";
+import { Chat } from "./rt.js?v=0.9.5";
+import * as story from "./story.js?v=0.9.5";
+import * as push from "./push.js?v=0.9.5";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.5";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -273,6 +273,16 @@ function updateChat() {
 
 
 // ---------------- 0.9 1:1 수업 화면(앱 LessonStage와 같음) ----------------
+// 11/18 실장님: 친구·선생님마다 기억을 따로 한다. 지금 대화 상대의 기억을 맨 위에.
+function memGroups() {
+  const mine = S.profile?.character ?? "tori"; const g = {};
+  for (const m of S.memories) (g[m.character ?? "tori"] ??= []).push(m);
+  const jong = (w) => { const c = w.charCodeAt(w.length - 1); return c >= 0xac00 && c <= 0xd7a3 && (c - 0xac00) % 28 !== 0; };
+  return Object.keys(g).sort((a, b) => (a === mine ? -1 : b === mine ? 1 : 0)).map((cid) => { const ko = byId(cid).ko;
+    return `<div class="b accent small" style="margin-top:10px">${esc(ko)}${jong(ko) ? "과" : "와"} 나눈 이야기 · ${g[cid].length}개</div>` +
+      g[cid].map((m) => `<div class="row"><span class="grow small">${esc(m.text)}</span><button class="link tiny" data-act="editMem" data-v="${m.id}">고치기</button><button class="link tiny" data-act="delMem" data-v="${m.id}">지우기</button></div>`).join(""); }).join("");
+}
+
 function updateStage() {
   const chat = S.chat; const u = chat.ui; const run = chat.lesson;
   if (u.lessonDone) { if (!$(".ls-done")) render(); return; }
@@ -650,7 +660,8 @@ function renderSettings() {
     ${section("memory", "기억", `${memOn ? "켜짐" : "꺼짐"} · ${S.memories.length}개`, "psychology", `
       <div class="row top"><span class="grow muted small">내가 직접 말한 사실만 대화가 끝날 때 기억해요. 끄면 기억을 새로 만들거나 대화에 쓰지 않아요(지우지는 않아요).</span>
       ${toggle("memOn", memOn)}</div>
-      ${S.memories.length ? S.memories.map((m) => `<div class="row"><span class="grow small">${esc(m.text)}</span><button class="link tiny" data-act="editMem" data-v="${m.id}">고치기</button><button class="link tiny" data-act="delMem" data-v="${m.id}">지우기</button></div>`).join("") : `<p class="small">아직 기억한 것이 없어요.</p>`}`)}
+      <p class="muted small">친구와 선생님은 각자 나와 나눈 이야기만 기억해요. 설정에 적은 내 이름만 모두가 알아요.</p>
+      ${S.memories.length ? memGroups() : `<p class="small">아직 기억한 것이 없어요.</p>`}`)}
     ${section("records", "대화 기록 보관", days === 0 ? "저장 안 함" : `${days}일`, "description", `
       <p class="muted small">기간이 지난 대화 기록은 자동으로 지워져요. ‘저장 안 함’이면 새 대화를 기록하지 않고, 기억도 새로 만들지 않아요.</p>
       <div class="radios">${[[30, "30일"], [7, "7일"], [0, "저장 안 함"]].map(([d, l]) => `<button class="radio-btn ${days === d ? "on" : ""}" data-act="days" data-v="${d}"><i></i>${l}</button>`).join("")}</div>`)}

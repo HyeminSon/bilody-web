@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.9.2";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.9.5";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -161,7 +161,7 @@ export async function firstLines() {
 }
 export const deleteSession = (sid) => rest(`sessions?id=eq.${sid}`, { method: "DELETE" });
 export const deleteAllSessions = () => rest(`sessions?user_id=eq.${userId()}`, { method: "DELETE" });
-export const memories = () => rest("memories?select=id,text,created_at&order=created_at.desc");
+export const memories = () => rest("memories?select=id,text,created_at,character&order=created_at.desc");
 export const deleteMemory = (id) => rest(`memories?id=eq.${id}`, { method: "DELETE" });
 export const updateMemory = (id, text) => rest(`memories?id=eq.${id}`, { method: "PATCH", body: { text: text.slice(0, 200) }, prefer: "return=minimal" });
 export const myProgress = async () => { try { return await rest("rpc/my_progress", { method: "POST", body: {} }); } catch { return null; } };
