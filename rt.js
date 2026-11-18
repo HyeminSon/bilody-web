@@ -1,10 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.9.10";
-import { PRESET } from "./config.js?v=0.9.10";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.9.10";
-import { sceneVoice } from "./characters.js?v=0.9.10";
+import * as api from "./api.js?v=0.9.11";
+import { PRESET } from "./config.js?v=0.9.11";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.9.11";
+import { sceneVoice } from "./characters.js?v=0.9.11";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -261,6 +261,7 @@ export class Chat {
     if (r.epoch !== this.epoch) return;
     // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
     if (!this.story && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
+    if (this.lesson && !this.story && isPreamble(sentence)) { this.log("preamble_cut", { text: sentence.slice(0, 120) }); return; }
     const voice = this.voiceId, speed = this.story ? 1 : this.speed, sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
@@ -275,6 +276,9 @@ export class Chat {
         return;
       }
       if (r.epoch !== this.epoch) return;
+      // 11/18 김연경님 시험: 수업 문장 하나가 안전검사에 잘못 걸려 ‘Hmm, let's talk about something else.’로 바뀌고 나머지 말이 버려짐.
+      // 수업(교재 내용)에서는 걸린 문장만 조용히 빼고 이어 간다. 원문은 확인용으로 남긴다(선생님 말).
+      if (s.result !== "ok" && this.lesson && !this.story) { this.log("tts_flagged_lesson", { result: s.result, text: sentence.slice(0, 300) }); return; }
       const spoken = s.fixed ?? sentence;
       if (s.result !== "ok") r.blocked = true;   // 안전검사에 걸리면 고정 문장 하나만 들려주고 나머지는 버린다(앱과 같음)
       if (r.first) {
@@ -684,6 +688,14 @@ export class Chat {
       if (n >= this.lesson.steps.length) this.finishLesson([], []); else this.startLessonStep(n);
     } else if (c.name === "finish_session") {
       reply(false); await waitQuiet(); if (stale()) return;
+      // 11/18: 작별 인사 없이 끝내려 하면 한 번 인사하게 한 뒤 끝낸다
+      if (!GOODBYE.test((c.r?.played ?? []).join(" ")) && !this.byeAsked) {
+        this.byeAsked = true; this.log("lesson_bye_asked", {});
+        this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: "Before the class ends you still need to say goodbye. Say it now in two or three short sentences: react to what the learner last said, praise one specific thing they did today, and say a warm goodbye. Do not call any tool." }] } });
+        this.send({ type: "response.create" }); this.set({ state: "thinking" });
+        for (let w = 0; !this.resp && w < 4000; w += 100) await sleep(100);
+        await waitQuiet(); if (stale()) return;
+      }
       this.finishLesson(Array.isArray(a.practiced) ? a.practiced.map(String) : [], Array.isArray(a.fixed) ? a.fixed.map(String) : []);
     }
   }
@@ -755,6 +767,17 @@ export class Chat {
 }
 
 const LESSON_TOOLS = new Set(["next_step", "highlight_line", "highlight_word", "finish_session"]);
+// 11/18 김연경님 시험: 수업 선생님이 ‘답할게요, 그다음 넘어가요’처럼 예고만 하고 바로 다음 단계로 넘어가 약속한 말이 빠짐(8번).
+// 지시문으로 막고, 그래도 나온 예고 문장은 소리·자막으로 내지 않는다(수업에서만).
+const PREAMBLE = [
+  /\b(then|and then)\s+(we['’]?ll|we will|let['’]?s|i['’]?ll|i will)\s+(move on|continue|keep going|go on|go to the (next|last)|do the next|wrap|finish|say goodbye)/i,
+  /\b(and|then)\s+(go|move)\s+(on\s+)?to the (next|last)\b/i,
+  /^(ok(ay)?,?\s+|alright,?\s+|now,?\s+)?(let me|i['’]?ll|i will)\s+(answer|respond|reply|move (us|on)|take us)\b/i,
+  /^let['’]?s (finish|do) (this|the) last one\b/i,
+  /\bmove us (to|on)\b/i,
+];
+export const isPreamble = (s) => PREAMBLE.some((re) => re.test(String(s).trim()));
+const GOODBYE = /\b(good ?bye|bye|see you|next time|take care|have a (good|great|nice|lovely))\b|다음에|안녕히|또 만나/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const plain = (x) => String(x ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 

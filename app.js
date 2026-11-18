@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.9.10";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.10";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.10";
-import * as L9 from "./lesson09.js?v=0.9.10";
-import { GUIDE } from "./guide.js?v=0.9.10";
-import { Player } from "./audio.js?v=0.9.10";
-import { Chat } from "./rt.js?v=0.9.10";
-import * as story from "./story.js?v=0.9.10";
-import * as push from "./push.js?v=0.9.10";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.10";
+import * as api from "./api.js?v=0.9.11";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.9.11";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.9.11";
+import * as L9 from "./lesson09.js?v=0.9.11";
+import { GUIDE } from "./guide.js?v=0.9.11";
+import { Player } from "./audio.js?v=0.9.11";
+import { Chat } from "./rt.js?v=0.9.11";
+import * as story from "./story.js?v=0.9.11";
+import * as push from "./push.js?v=0.9.11";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.9.11";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -502,7 +502,15 @@ async function endStory() {
   S.progress = await api.myProgress(); render();
 }
 
+// 11/18 김연경님 시험: 수업 마침 화면의 ‘대화하며 써 보기’를 두 번 누르자 대화가 두 개 열려 선생님 둘이 함께 말했고,
+// 하나는 닫히지 않고 남았다. 이미 대화 중이거나 여는 중이면 다시 열지 않는다.
+let chatOpening = false;
 async function startChat() {
+  if (chatOpening || S.chat) return;
+  chatOpening = true;
+  try { await openChat(); } finally { chatOpening = false; }
+}
+async function openChat() {
   player.unlock();
   if (S.kids) { S.kids.stop(); S.kids = null; }   // 0.9: 화면은 한 번에 하나(어린이 수업·대화가 겹치지 않게)
   S.lh = null;
@@ -873,7 +881,7 @@ app.addEventListener("click", async (e) => {
     case "lhStart": player.unlock(); await startLesson(v, Number(el.dataset.s) || 1); break;   // 아이폰: 누른 순간에 소리를 열어 둔다
     case "lsExit": await endLesson(true); break;
     case "lsHome": await endLesson(false); break;
-    case "lsTalk": await endLesson(false); await startChat(); break;
+    case "lsTalk": if (chatOpening) break; chatOpening = true; try { await endLesson(false); await openChat(); } finally { chatOpening = false; } break;
     case "lsSlow": S.chat?.sendText("Sorry, could you say that again slowly?"); break;
     case "lsSkip": S.chat?.sendText("Let's move on to the next part, please."); break;
     case "kWord": S.kids?.tapWord(v); break;
