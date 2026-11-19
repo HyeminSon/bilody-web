@@ -481,3 +481,10 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .vid-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: #fff; }
 .vid-bar .round { background: rgba(255,255,255,.15); color: #fff; }
 .vid-overlay video { flex: 1; width: 100%; min-height: 0; background: #000; }
+/* 0.8.4 처음 이야기·추천 */
+.pl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.pl-head img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; flex: none; background: var(--lilac); }
+.pl-head h2 { font-size: 18px; margin: 0; line-height: 1.35; }
+.dialog .pl-rec { font-size: 16px; font-weight: 700; color: var(--plum); }
+.pl-line { margin: 0; } .pl-line .link { padding: 0 4px; min-height: 0; }
+.pl-banner { text-align: center; margin: 4px 0 0; }

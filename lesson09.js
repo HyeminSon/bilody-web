@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.3";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.3";
+import * as api from "./api.js?v=0.8.4";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.4";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -82,6 +82,8 @@ export function renderHome(H, esc, I) {
   return `<div class="lh">
     <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
     <p class="muted small">중학생~어른은 Book, 초등 저학년은 Kids Book</p>
+    ${H.rec ? `<p class="small pl-line"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()} <button class="link small" data-act="plIntro">다시 받기</button></p>`
+      : `<p class="small pl-line"><button class="link small" data-act="plIntro">어느 Book부터 할지 추천 받기</button></p>`}
     <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`).join("")}</div>
     <p class="muted small">${esc(kids ? `${book.title_ko} · 초등 저학년 · 그림과 노래로` : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
     ${kids ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
@@ -286,3 +288,48 @@ export function renderVideos(V, esc, I) {
   </div>`;
 }
 export const findVideo = (V, id) => { for (const x of V?.index?.series ?? []) for (const v of x.videos ?? []) if (v.id === id && v.url) return v; return null; };
+
+// ---------- 0.8.4 처음 이야기(레벨 확인) 뒤 추천 ----------
+// Book마다 ‘이 Book에서 익힐 것’(단원 제목에서). 안드로이드 Placement.kt와 같은 글.
+export const PL_LEARN = {
+  1: "만나서 반가워요, 꼭 필요한 말처럼 가장 기본적인 말부터, 한국어 설명과 함께 천천히",
+  2: "나의 하루, 동네, 쇼핑처럼 일상을 짧은 문장으로 말하기",
+  3: "일상 대화, 부탁과 약속, 추천과 비교처럼 내 이야기를 조금 더 길게 하는 말",
+  4: "여행 준비와 여행 중에 묻고 부탁하고, 다녀온 이야기를 하는 말",
+  5: "일상 문제 풀기, 마음 나누기처럼 생각과 경험을 이어서 말하기",
+  6: "회의와 발표처럼 함께 일하며 의견을 나누고 이끄는 말",
+  7: "선택, 일하는 방식, 사회처럼 내 생각을 근거와 함께 말하는 법",
+  8: "삶과 가치, 기술과 미래처럼 깊은 주제를 자연스럽게 이야기하는 법",
+  9: "말투와 격식, 뉘앙스처럼 내 의견을 상황에 맞게 다듬어 말하는 법",
+};
+export const plStore = {
+  get: (store) => { const b = Number(store.get("pl_book", 0)); return b >= 1 && b <= 9 ? { book: b, teacher: store.get("pl_teacher", "grace") } : null; },
+  set: (store, book, teacher) => { store.set("pl_book", book); store.set("pl_teacher", teacher); store.set("pl_at", Date.now()); },
+};
+/** 처음 이야기 안내 창 */
+export function renderPlIntro(t, esc) {
+  return `<div class="pl-head"><img src="${teacherImg(t.id)}" alt=""><h2>${esc(t.ko)} 선생님과 5분 이야기해 볼까요?</h2></div>
+    <p>영어로 편하게 이야기하면, 1:1 수업을 어느 Book부터 하면 좋을지 알려 드릴게요.</p>
+    <p class="muted small">잘 못해도 괜찮아요. 모르면 한국어로 말해도 돼요. 고쳐 주지 않고 이야기만 나눠요.</p>
+    <button class="pill primary" data-act="plStart">이야기 시작하기</button>
+    <div class="row end"><button class="link" data-act="plLater">나중에 할게요</button></div>`;
+}
+/** 추천 결과 창(11/19 실장님 확정 문구) */
+export function renderPlResult(d, t, books, esc) {
+  const b = d.book; const book = books?.find((x) => x.kind !== "kids" && x.no === b);
+  const title = book?.title_ko ? ` ‘${book.title_ko}’` : "";
+  const nm = d.name ? `${esc(d.name)} 님, ` : "";
+  const head = b === 1 ? `${nm}영어로 대답해 줘서 고마워요!` : b === 9 ? `${nm}영어로 생각을 꽤 자유롭게 말하네요!` : `${nm}오늘 이야기 나눠서 즐거웠어요!`;
+  const rec = b === 1 ? `Book 1${esc(title)}부터 같이 시작해요.` : b === 9 ? `Book 9${esc(title)}에서 더 자연스럽게 다듬어 봐요.` : `Book ${b}${esc(title)}부터 시작하면 딱 좋겠어요.`;
+  const gk = String(d.good_ko ?? "").trim().replace(/[.!]*$/, "");
+  const good = d.quote ? `“${esc(d.quote)}”처럼 ${esc(gk || "영어로 잘 말했어요")}.` : b === 1 ? "영어로 이야기해 보려고 끝까지 함께해 줬어요." : "";
+  const foot = b === 9 ? "대화하기로 마음껏 이야기해도 좋아요." : "조금 쉽다 싶은 데서 시작해야 오래 가요. 맞지 않으면 언제든 다른 Book으로 바꿀 수 있어요.";
+  return `<div class="pl-head"><img src="${teacherImg(t.id)}" alt=""><h2>${head}</h2></div>
+    <p class="pl-rec">${rec}</p>
+    ${good ? `<p><b class="accent">좋았던 점</b> ${good}</p>` : ""}
+    <p><b class="accent">이 Book에서 익힐 것</b> ${esc(PL_LEARN[b] ?? "")}</p>
+    <p class="muted small">${foot}</p>
+    <button class="pill primary" data-act="plGo" data-v="${b}">Book ${b} Lesson 1 시작하기</button>
+    <button class="pill secondary" data-act="plBrowse" data-v="${b}">다른 Book 둘러보기</button>
+    <div class="row end"><button class="link" data-act="closeDialog">지금은 대화만 할게요</button></div>`;
+}

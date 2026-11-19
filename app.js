@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.3";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.3";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.3";
-import * as L9 from "./lesson09.js?v=0.8.3";
-import { GUIDE } from "./guide.js?v=0.8.3";
-import { Player } from "./audio.js?v=0.8.3";
-import { Chat } from "./rt.js?v=0.8.3";
-import * as story from "./story.js?v=0.8.3";
-import * as push from "./push.js?v=0.8.3";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.3";
+import * as api from "./api.js?v=0.8.4";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.4";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.4";
+import * as L9 from "./lesson09.js?v=0.8.4";
+import { GUIDE } from "./guide.js?v=0.8.4";
+import { Player } from "./audio.js?v=0.8.4";
+import { Chat } from "./rt.js?v=0.8.4";
+import * as story from "./story.js?v=0.8.4";
+import * as push from "./push.js?v=0.8.4";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.4";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -73,6 +73,9 @@ async function refresh() {
 // ---------------- 그리기 ----------------
 let lastView = null;
 function render() {
+  // 0.8.4: 아직 추천을 받지 않았으면 처음 화면에서 ‘선생님과 5분 이야기’를 한 번 권한다(나중에 하기를 누르면 다시 묻지 않음)
+  if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids && !S.plShown
+      && !L9.plStore.get(pref) && !pref.get("pl_later", false) && !wantsPostSurvey()) { S.plShown = true; S.dialog = { kind: "plIntro" }; }
   const html = {
     loading: () => `<div class="center"><img class="logo-stacked" src="img/logo_stacked.png" alt="bilody"><div class="spinner"></div></div>`,
     auth: renderAuth, consent: renderConsent, names: renderNames, main: renderMain,
@@ -164,8 +167,8 @@ function renderChat() {
   if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
   if (S.lh) return L9.renderHome(S.lh, esc, I);
   if (S.vid) return L9.renderVideos(S.vid, esc, I);
-  const p = S.profile; const c = byId(p?.character); const pr = S.progress;
-  const chat = S.chat; const fname = esc(p?.friend_name ?? c.en);
+  const p = S.profile; const c = byId(S.chat?.placement ? S.chat.character : p?.character); const pr = S.progress;
+  const chat = S.chat; const fname = esc(S.chat?.placement ? c.ko : p?.friend_name ?? c.en);
   const r = S.reminder;
   const home = !chat ? `
     <div class="streak card">
@@ -186,7 +189,8 @@ function renderChat() {
     <div class="chat-top">${home}
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
       <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
-      <p class="ai-note">${eunNeun(fname)} AI 친구예요. 대답과 목소리는 AI가 만들어요.</p>
+      ${chat?.placement ? `<p class="accent small b pl-banner">${esc(c.ko)} 선생님과 처음 이야기 · 약 5분 · 편하게 이야기해 주세요</p>` : ""}
+      <p class="ai-note">${chat?.placement ? `${eunNeun(fname)} AI 선생님이에요` : `${eunNeun(fname)} AI 친구예요`}. 대답과 목소리는 AI가 만들어요.</p>
       <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
@@ -218,7 +222,7 @@ function updateChat() {
   if (S.story) return updateStory();
   if (S.kids || S.lh) return;
   if (S.chat?.lesson) return updateStage();
-  const chat = S.chat; const u = chat?.ui; const c = byId(S.profile?.character);
+  const chat = S.chat; const u = chat?.ui; const c = byId(chat?.placement ? chat.character : S.profile?.character);
   const img = $("#friendImg"); if (!img) return;
   const src = animSrc(c.id, u?.state ?? "idle"); if (!img.src.endsWith(src)) img.src = src;
   $("#stLabel").textContent = u?.searching ? "찾아보는 중" : STATE_LABEL[u?.state ?? "idle"];
@@ -324,10 +328,44 @@ async function openLessonHome(bookId) {
   // 0.8.3(11/19 실장님): 어린이 교재(Kids Book)도 1:1 수업 안에서 고른다(첫 화면의 ‘어린이 수업’은 없앰). 수업은 그대로 AI 선생님.
   const bid = bookId ?? L9.progress.lastBook(pref) ?? "A1";
   S.vid = null; closeVideo();
-  const H = S.lh = { index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+  const H = S.lh = { rec: L9.plStore.get(pref), index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
   H.next = L9.progress.next(pref, H.bookId);
   render();
   if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
+}
+
+// ---------------- 0.8.4 처음 이야기(레벨 확인) → Book 추천 ----------------
+async function startPlacement() {
+  if (S.chat || chatOpening) return;
+  S.dialog = null; S.lh = null; S.vid = null; closeVideo();
+  if (S.story) await endStory();
+  player.unlock(); player.setVolume(pref.get("volume", 1));
+  const t = L9.progress.teacher(pref); const p = S.profile;
+  const chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, placement: true });
+  chat.onPlacementDone = (log) => finishPlacement(chat, log);
+  S.chat = chat; S.lesson = null; render();
+  await chat.start();
+}
+async function finishPlacement(c, log) {
+  if (c.plHandled) return; c.plHandled = true;
+  const t = c.character;
+  if (S.chat === c) { S.chat = null; S.lesson = null; }
+  S.dialog = { kind: "plJudging", t }; render();
+  await c.close();
+  const r = await api.placementCheck(log, c.sessionId);
+  try { S.plBooks = (await L9.loadIndex()).books; } catch { /* 제목 없이도 보인다 */ }
+  try { S.progress = await api.myProgress(); } catch { /* */ }
+  if (r?.failed || !r?.book) { S.dialog = { kind: "plFail" }; return render(); }
+  L9.plStore.set(pref, r.book, t);
+  S.dialog = { kind: "plResult", book: r.book, quote: r.quote ?? "", good_ko: r.good_ko ?? "", name: S.profile?.my_name ?? "", t };
+  render();
+}
+async function plGo(book, start) {
+  S.dialog = null;
+  await openLessonHome(`A${book}`);
+  const H = S.lh; if (!start || !H?.index) return;
+  const b = H.index.books.find((x) => x.id === `A${book}`); const L = b?.lessons?.[0];
+  if (L) await startLesson(L.id, 1);
 }
 
 // ---------------- 동영상 강의(0.8.3) ----------------
@@ -554,7 +592,7 @@ async function endChat() {
   if (c) await c.close();
   S.progress = await api.myProgress();
   // 그날 첫 대화를 마칠 때 짧은 설문(내가 한 말이 있는 대화만, 답할 때까지 하루 두 번까지)
-  if (c && !c.lesson && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
+  if (c && !c.lesson && !c.placement && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
   render();
 }
 
@@ -736,6 +774,12 @@ function renderDialog() {
     ${CHECKIN_ISSUES.map(([v, l]) => `<label class="radio"><input type="checkbox" data-ck="${v}"> ${l}</label>`).join("")}
     <textarea id="cknote" rows="2" maxlength="500" placeholder="무슨 일이 있었는지 한 줄로 (선택) 예: 여행 얘기를 했는데 계속 다른 질문만 했어요"></textarea>
     <div class="row end"><button class="link" data-act="closeDialog">다음에 할게요</button><button class="link" data-act="sendCheckin" ${d.rating ? "" : "disabled"}>보내기</button></div>`);
+  if (d.kind === "plIntro") return box(L9.renderPlIntro(byId(L9.progress.teacher(pref)), esc));
+  if (d.kind === "plJudging") return `<div class="overlay"><div class="dialog"><div class="pl-head"><img src="${teacherImg(d.t)}" alt=""><h2>${esc(byId(d.t).ko)} 선생님이 시작할 Book을 고르고 있어요</h2></div><div class="spinner"></div></div></div>`;
+  if (d.kind === "plFail") return box(`<h2>추천을 만들지 못했어요</h2><p>인터넷 연결을 확인하고 다시 해 주세요. 1:1 수업에서 직접 Book을 골라도 돼요.</p>
+    <button class="pill primary" data-act="plStart">다시 이야기하기</button><button class="pill secondary" data-act="plBrowse" data-v="1">직접 고르기</button>
+    <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
+  if (d.kind === "plResult") return box(L9.renderPlResult(d, byId(d.t), S.plBooks, esc));
   if (d.kind === "teacherPick") return box(`<h2>선생님 고르기</h2>${L9.renderTeacherPick(L9.progress.teacher(pref), esc)}<div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "postDone") return box(`<h2>마지막 설문</h2><p>이미 답해 주셨어요. 정말 고마워요! 🙏</p><div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "post") return `<div class="overlay full"><div class="guide-page survey">
@@ -872,6 +916,11 @@ app.addEventListener("click", async (e) => {
     // ---- 0.9 1:1 수업 ----
     case "lhOpen": await openLessonHome(); break;
     case "vOpen": await openVideos(); break;
+    case "plIntro": S.dialog = { kind: "plIntro" }; render(); break;
+    case "plStart": await startPlacement(); break;
+    case "plLater": pref.set("pl_later", true); S.dialog = null; render(); break;
+    case "plGo": await plGo(Number(v), true); break;
+    case "plBrowse": await plGo(Number(v), false); break;
     case "vClose": S.vid = null; closeVideo(); render(); break;
     case "vPlay": { const v = L9.findVideo(S.vid, el.dataset.v); if (v) playVideo(v); break; }
     case "lhOpenKids": await openLessonHome("K1"); break;   // (옛 버튼 이름; 0.8.3부터 1:1 수업 안의 Kids Book)
@@ -955,7 +1004,11 @@ app.addEventListener("click", async (e) => {
     }
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
-    case "exit": await endChat(); break;
+    case "exit": {
+      const c = S.chat;
+      if (c?.placement && c.plLog.filter((l) => l.who === "learner").length >= 3) { c.plFinished = true; await finishPlacement(c, c.plLog.slice()); break; }
+      await endChat(); break;
+    }
     case "lessonOpen": { if (S.lesson?.paused) { S.lesson.resume(); break; } const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
     case "lessonList": if (S.dialog?.kind === "lessons") { S.dialog.list = true; render(); } break;
     case "lessonLevel": if (S.dialog?.kind === "lessons") { S.dialog.level = v; render(); } break;
