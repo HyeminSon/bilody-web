@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.4";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.4";
+import * as api from "./api.js?v=0.8.5";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.5";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -115,6 +115,7 @@ export function renderStageShell(run, I, esc) {
     <div class="ls-top"><div class="grow"><b class="ls-title">${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
+    <div id="lsWord" class="ls-word"></div><div id="lsCard" class="ls-word"></div>
     <p id="lsNotice" class="error small"></p>
     <div class="ls-teacher"><div class="ls-bubble grow"><b id="lsTurn" class="small"></b><div id="lsSay"></div></div>
       <div class="ls-face"><img id="lsFace" alt=""><span id="lsState" class="tiny b"></span></div></div>

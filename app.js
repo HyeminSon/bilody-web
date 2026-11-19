@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.4";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.4";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.4";
-import * as L9 from "./lesson09.js?v=0.8.4";
-import { GUIDE } from "./guide.js?v=0.8.4";
-import { Player } from "./audio.js?v=0.8.4";
-import { Chat } from "./rt.js?v=0.8.4";
-import * as story from "./story.js?v=0.8.4";
-import * as push from "./push.js?v=0.8.4";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.4";
+import * as api from "./api.js?v=0.8.5";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.5";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.5";
+import * as L9 from "./lesson09.js?v=0.8.5";
+import { GUIDE } from "./guide.js?v=0.8.5";
+import { Player } from "./audio.js?v=0.8.5";
+import { Chat } from "./rt.js?v=0.8.5";
+import * as story from "./story.js?v=0.8.5";
+import * as push from "./push.js?v=0.8.5";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.5";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -20,8 +20,37 @@ const player = new Player();
 // ---------------- 이 기기에만 저장하는 설정 ----------------
 const pref = {
   get(k, d) { try { const v = localStorage.getItem(`bilody_${api.userId() ?? "anon"}_${k}`); return v == null ? d : JSON.parse(v); } catch { return d; } },
-  set(k, v) { try { localStorage.setItem(`bilody_${api.userId() ?? "anon"}_${k}`, JSON.stringify(v)); } catch { /* */ } },
+  set(k, v) { try { localStorage.setItem(`bilody_${api.userId() ?? "anon"}_${k}`, JSON.stringify(v)); } catch { /* */ }
+    if (/^(lp_|pl_)/.test(k) && k !== "lp_t" && !progSyncing) { pref.set("lp_t", Date.now()); clearTimeout(progTimer); progTimer = setTimeout(pushProgress, 1500); } },
 };
+
+// ---------------- 0.8.5 1:1 수업 진도를 계정에 저장(안드로이드 앱과 같은 모양) ----------------
+// { books: {A1: "3:2"}, last_book, teacher, pl: {book, teacher, at}, pl_later, t }. 진도는 권마다 더 앞선 쪽, 나머지는 나중에 바꾼 쪽.
+let progSyncing = false, progTimer = null;
+function progSnapshot() {
+  const pre = `bilody_${api.userId() ?? "anon"}_lp_`; const books = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const b = k?.startsWith(pre) ? k.slice(pre.length) : ""; if (/^[AK]\d+$/.test(b)) books[b] = pref.get("lp_" + b, "1:1"); } } catch { /* */ }
+  const pb = Number(pref.get("pl_book", 0));
+  return { books, last_book: pref.get("lp_last", null), teacher: pref.get("lp_teacher", null),
+    pl: pb ? { book: pb, teacher: pref.get("pl_teacher", "grace"), at: pref.get("pl_at", 0) } : null, pl_later: !!pref.get("pl_later", false), t: pref.get("lp_t", 0) };
+}
+/** 서버가 합친 결과를 이 기기에 그대로 둔다(진도는 이미 더 앞선 쪽으로 합쳐져 옴). 바꾼 시각(lp_t)도 서버 것으로. */
+function applyProgress(m) {
+  if (!m) return false;
+  const before = JSON.stringify(progSnapshot());
+  progSyncing = true;
+  try {
+    for (const [b, v] of Object.entries(m.books ?? {})) if (/^[AK]\d+$/.test(b)) pref.set("lp_" + b, String(v));
+    if (m.last_book) pref.set("lp_last", m.last_book);
+    if (m.teacher) pref.set("lp_teacher", m.teacher);
+    if (m.pl?.book) { pref.set("pl_book", m.pl.book); pref.set("pl_teacher", m.pl.teacher ?? "grace"); pref.set("pl_at", m.pl.at ?? 0); }
+    if (m.pl_later) pref.set("pl_later", true);
+    if (m.t) pref.set("lp_t", m.t);
+  } finally { progSyncing = false; }
+  return JSON.stringify(progSnapshot()) !== before;
+}
+async function pushProgress() { try { if (applyProgress(await api.saveLessonProgress(progSnapshot())) && S.stage === "main" && !S.chat) render(); } catch { /* 다음에 다시 */ } }
+async function syncProgress() { try { applyProgress(await api.saveLessonProgress(progSnapshot())); } catch { /* 이 기기 것으로 계속 */ } }
 
 const S = { stage: "loading", profile: null, progress: null, tab: "chat", chat: null, story: null, toast: null, busy: false, error: null,
   sessions: [], previews: {}, openSession: null, turns: null, memories: [], open: null, dialog: null,
@@ -58,10 +87,11 @@ async function refresh() {
     S.profile = await api.loadProfile();
     S.stage = !consent ? "consent" : !S.profile?.my_name ? "names" : "main";
     if (S.stage === "main") {
-      const [pr, ps, rem] = await Promise.all([api.myProgress(), api.presets(), push.load()]);
+      const [pr, ps, rem] = await Promise.all([api.myProgress(), api.presets(), push.load(), syncProgress()]);
       S.progress = pr; S.kidsAvailable = ps.some((x) => x.id === "kids-demo");
       S.presetLabel = (ps.find((x) => x.id === (S.profile?.preset_id ?? "rt-voice")) ?? ps[0])?.label ?? "";
       S.reminder = rem ?? { on: false, hour: pref.get("remHour", 20), minute: pref.get("remMinute", 0) };
+      if (!S.tbIndex) L9.loadIndex().then((x) => { S.tbIndex = x; if (S.stage === "main" && S.tab === "chat" && !S.chat && !S.lh) render(); }).catch(() => {});
     }
   } catch (e) {
     if (e?.code === "session_expired" || e?.code === "not_logged_in") { api.signOut(); S.stage = "auth"; }
@@ -75,7 +105,7 @@ let lastView = null;
 function render() {
   // 0.8.4: 아직 추천을 받지 않았으면 처음 화면에서 ‘선생님과 5분 이야기’를 한 번 권한다(나중에 하기를 누르면 다시 묻지 않음)
   if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids && !S.plShown
-      && !L9.plStore.get(pref) && !pref.get("pl_later", false) && !wantsPostSurvey()) { S.plShown = true; S.dialog = { kind: "plIntro" }; }
+      && !L9.plStore.get(pref) && !pref.get("pl_later", false) && !pref.get("lp_last", null) && !wantsPostSurvey()) { S.plShown = true; S.dialog = { kind: "plIntro", auto: true }; }
   const html = {
     loading: () => `<div class="center"><img class="logo-stacked" src="img/logo_stacked.png" alt="bilody"><div class="spinner"></div></div>`,
     auth: renderAuth, consent: renderConsent, names: renderNames, main: renderMain,
@@ -148,16 +178,43 @@ function renderNames() {
 }
 
 function renderMain() {
-  const title = { history: "지난 대화", settings: "설정" }[S.tab] ?? "";
+  const title = { history: "기록", settings: "설정" }[S.tab] ?? "";
   const body = { chat: renderChat, history: renderHistory, settings: renderSettings }[S.tab]();
   return `<div class="frame">
     <header class="top"><img src="img/logo_horizontal.png" alt="bilody"><span class="title">${title}</span></header>
     <main class="content">${body}</main>
     <nav class="tabs">
-      ${[["chat", "대화", "chat_bubble", "chat_bubble_outline", false], ["history", "기록", "history", "history", false], ["settings", "설정", "settings", "settings", true]].map(([k, l, on, off, outlined]) =>
+      ${[["chat", "홈", "home", "home", true], ["history", "기록", "history", "history", false], ["settings", "설정", "settings", "settings", true]].map(([k, l, on, off, outlined]) =>
         `<button data-act="tab" data-v="${k}" class="${S.tab === k ? "on" : ""}"><span class="ti">${S.tab === k ? I(on) : I(off, "", outlined)}</span>${l}</button>`).join("")}
     </nav>
   </div>`;
+}
+
+// ---------------- 0.8.5 처음 화면 ‘오늘 할 수업’ ----------------
+function todayLesson() {
+  const pl = L9.plStore.get(pref);
+  const bid = pref.get("lp_last", null) ?? (pl ? `A${pl.book}` : null);
+  if (!bid) return null;
+  const [n, s] = L9.progress.next(pref, bid);
+  const book = S.tbIndex?.books?.find((b) => b.id === bid);
+  const L = book?.lessons?.find((x) => x.no === n);
+  if (book && !L) return null;   // 이 Book을 다 마침
+  return { bid, n, s, title: L?.title ?? "", label: L9.T.book(book?.no ?? Number(bid.slice(1)), bid.startsWith("K")) };
+}
+function renderTodayLesson() {
+  const t = todayLesson(); if (!t) return "";
+  return `<button class="card home-today" data-act="todayGo"><img src="${teacherImg(L9.progress.teacher(pref))}" alt="">
+    <span class="grow"><span class="accent small b">오늘 할 수업</span><b>${esc(t.label)} · Lesson ${t.n} · Part ${t.s}</b>${t.title ? `<span class="muted small">${esc(t.title)}</span>` : ""}</span>
+    <span class="go">${I("play_arrow")}</span></button>`;
+}
+/** 이 Book의 수업 홈을 열고, start면 다음 할 수업을 바로 시작(추천 창·오늘 할 수업 카드) */
+async function goLesson(bookId, start) {
+  S.dialog = null;
+  await openLessonHome(bookId);
+  const H = S.lh; if (!start || !H?.index) return;
+  const b = H.index.books.find((x) => x.id === bookId); if (!b) return;
+  const [n, s] = L9.progress.next(pref, bookId); const L = b.lessons?.find((x) => x.no === n);
+  if (L) { player.unlock(); await startLesson(L.id, s); }
 }
 
 // ---------------- 대화 ----------------
@@ -173,11 +230,11 @@ function renderChat() {
   const home = !chat ? `
     <div class="streak card">
       <div class="ring" style="--p:${Math.min(1, (pr?.today_seconds ?? 0) / 300)}"><span>${(pr?.streak ?? 0) > 0 ? "🔥" : "🌱"}</span></div>
-      <div class="grow"><b>${gwaWa(fname)} ${(pr?.streak ?? 0) > 0 ? `${pr.streak}일째` : "첫날"}</b>
+      <div class="grow"><b>bilody${(pr?.streak ?? 0) > 0 ? `와 ${pr.streak}일째` : " 첫날"}</b>
         <div class="muted small">${pr?.done_today ? "오늘 5분 완료! ✨" : `오늘 ${Math.floor((pr?.today_seconds ?? 0) / 60)}분 · 목표 5분`}</div></div>
       <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>이번 주 🏆</span></button>
     </div>
-    <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>` : "";
+    <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>${renderTodayLesson()}` : "";
   const guide = !chat && !pref.get("guideSeen", false) ? `<div class="card guide"><b>이렇게 이야기해요</b><ul>
       <li>‘대화 시작’을 누르면 ${iGa(fname)} 먼저 인사해요.</li>
       <li>마이크가 빨갛게 켜지면 편하게 말하세요. 짧게 말해도, 한국어를 섞어도 괜찮아요.</li>
@@ -233,29 +290,8 @@ function updateChat() {
   $("#notice").textContent = u?.notice ?? "";
   $("#photo").innerHTML = u?.photo ? `<div class="photo-card" data-act="clearPhoto"><img src="${u.photo}" alt="보여 준 사진"></div>` : "";
   // 친구가 띄운 단어 사진(11/13). 사진을 누르면 닫히고, 출처를 누르면 사진 사이트의 사진 페이지가 열린다(사이트 조건).
-  const wp = u?.webPicture; const wpKey = wp ? String(wp.seq) : "";
-  if ($("#webPic").dataset.key !== wpKey) {
-    $("#webPic").dataset.key = wpKey;
-    const old = $("#webPic").firstElementChild;
-    if (!wp && old) {   // 닫힐 때: 살짝 위로 사라진 뒤 지운다
-      old.classList.add("leave"); setTimeout(() => { if ($("#webPic")?.dataset.key === "") $("#webPic").innerHTML = ""; }, 220);
-    } else if (wp?.kind === "word") $("#webPic").innerHTML = `<div class="card wordcard enter" data-act="dismissWebPicture">
-      <div class="accent tiny b">단어 뜻</div><div class="wc-word">${esc(wp.word)}</div>${wp.meaning ? `<div class="wc-mean">${esc(wp.meaning)}</div>` : ""}
-      ${wp.example ? `<div class="wc-ex">${esc(wp.example)}${wp.exampleKo ? `<span>${esc(wp.exampleKo)}</span>` : ""}</div>` : ""}</div>`;
-    else $("#webPic").innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
-      <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
-  }
-  const card = u?.card;
-  const cardKey = card ? card.text + "|" + (card.chunk ?? "") : "";
-  if ($("#card").dataset.key !== cardKey) {
-    $("#card").dataset.key = cardKey;
-    const pics = card && !card.practice ? cardPics(card.text) : [];
-    const fn = esc(S.profile?.friend_name ?? "친구");
-    $("#card").innerHTML = card ? `<div class="card help enter" data-act="dismissCard">
-      <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${iGa(fn)} 쉽게 다시 말했어요` : `${iGa(fn)} 다시 말했어요`}</div>
-      <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div>
-      ${pics.length ? `<div class="help-pics">${pics.map((x) => `<img src="${story.picUrl(x)}" alt="${esc(x)}">`).join("")}</div>` : ""}</div>` : "";
-  }
+  showWebPic($("#webPic"), u?.webPicture);
+  showHelpCard($("#card"), u?.card, S.profile?.friend_name ?? "친구");
   const subs = pref.get("subtitles", false);
   $("#lines").innerHTML = subs && u ? u.lines.slice(-8).map((l) => `<div class="bubble ${l.role === "user" ? "me" : ""}">${esc(l.text)}</div>`).join("") : "";
   if (chat) {
@@ -288,10 +324,40 @@ function memGroups() {
       g[cid].map((m) => `<div class="row"><span class="grow small">${esc(m.text)}</span><button class="link tiny" data-act="editMem" data-v="${m.id}">고치기</button><button class="link tiny" data-act="delMem" data-v="${m.id}">지우기</button></div>`).join(""); }).join("");
 }
 
+/** 따라 말할 문장·다시 말한 문장 카드. 0.8.5: 1:1 수업 화면에도(who = 선생님 이름) */
+function showHelpCard(box, card, who) {
+  if (!box) return;
+  const cardKey = card ? card.text + "|" + (card.chunk ?? "") : "";
+  if (box.dataset.key === cardKey) return;
+  box.dataset.key = cardKey;
+  const pics = card && !card.practice ? cardPics(card.text) : [];
+  const fn = esc(who);
+  box.innerHTML = card ? `<div class="card help enter" data-act="dismissCard">
+    <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${iGa(fn)} 쉽게 다시 말했어요` : `${iGa(fn)} 다시 말했어요`}</div>
+    <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div>
+    ${pics.length ? `<div class="help-pics">${pics.map((x) => `<img src="${story.picUrl(x)}" alt="${esc(x)}">`).join("")}</div>` : ""}</div>` : "";
+}
+/** 친구·선생님이 띄운 단어 사진·단어 뜻 카드. 0.8.5: 1:1 수업 화면에도(예전엔 수업에서 선생님만 ‘카드를 띄웠다’고 알고 화면에는 안 나왔음) */
+function showWebPic(box, wp) {
+  if (!box) return;
+  const wpKey = wp ? String(wp.seq) : "";
+  if (box.dataset.key === wpKey) return;
+  box.dataset.key = wpKey;
+  const old = box.firstElementChild;
+  if (!wp && old) {   // 닫힐 때: 살짝 위로 사라진 뒤 지운다
+    old.classList.add("leave"); setTimeout(() => { if (box.dataset.key === "") box.innerHTML = ""; }, 220);
+  } else if (wp?.kind === "word") box.innerHTML = `<div class="card wordcard enter" data-act="dismissWebPicture">
+    <div class="accent tiny b">단어 뜻</div><div class="wc-word">${esc(wp.word)}</div>${wp.meaning ? `<div class="wc-mean">${esc(wp.meaning)}</div>` : ""}
+    ${wp.example ? `<div class="wc-ex">${esc(wp.example)}${wp.exampleKo ? `<span>${esc(wp.exampleKo)}</span>` : ""}</div>` : ""}</div>`;
+  else box.innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
+    <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
+}
 function updateStage() {
   const chat = S.chat; const u = chat.ui; const run = chat.lesson;
   if (u.lessonDone) { if (!$(".ls-done")) render(); return; }
   if (!$("#lsBody")) return render();
+  showWebPic($("#lsWord"), u.webPicture);
+  showHelpCard($("#lsCard"), u.card, `${byId(chat.character).ko} 선생님`);
   const i = Math.max(0, u.lessonStep); const step = run.steps[i];
   $("#lsSub").textContent = run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
   $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
@@ -308,7 +374,10 @@ function updateStage() {
   $("#lsTurn").textContent = u.lessonScene ? "장면을 듣고 있어요" : myTurn ? "내 차례예요. 말해 보세요" : "";
   $("#lsTurn").className = `small ${myTurn ? "ok" : "muted"}`;
   // 0.9.3(11/17 실장님): 선생님 말은 기본으로 숨긴다(귀로 듣기). 설정 ‘자막’을 켜면 보인다
-  $("#lsSay").textContent = tl == null ? `${t.ko} 선생님이 준비하고 있어요…` : pref.get("subtitles", false) ? tl : (u.lessonScene || myTurn ? "" : `${t.ko} 선생님 말을 잘 들어 보세요`);
+  // 0.8.5(11/19 실장님): 자막을 켜면 선생님 말과 내 말을 함께(최근 세 줄)
+  const subs = pref.get("subtitles", false);
+  if (tl != null && subs) $("#lsSay").innerHTML = u.lines.slice(-3).map((l) => `<div class="ls-sub ${l.role === "user" ? "me" : ""}"><b>${l.role === "user" ? "나" : esc(t.ko)}</b> ${esc(l.text)}</div>`).join("");
+  else $("#lsSay").textContent = tl == null ? `${t.ko} 선생님이 준비하고 있어요…` : (u.lessonScene || myTurn ? "" : `${t.ko} 선생님 말을 잘 들어 보세요`);
   $("#lsSay").classList.toggle("muted", tl != null && !pref.get("subtitles", false));
   const st = u.lessonScene ? "idle" : u.state === "speaking" ? "speak" : u.state === "listening" ? "listen" : u.state === "thinking" ? "wait" : "idle";
   const src = teacherImg(t.id, st); const face = $("#lsFace"); if (!face.src.endsWith(src)) face.src = src;
@@ -328,10 +397,10 @@ async function openLessonHome(bookId) {
   // 0.8.3(11/19 실장님): 어린이 교재(Kids Book)도 1:1 수업 안에서 고른다(첫 화면의 ‘어린이 수업’은 없앰). 수업은 그대로 AI 선생님.
   const bid = bookId ?? L9.progress.lastBook(pref) ?? "A1";
   S.vid = null; closeVideo();
-  const H = S.lh = { rec: L9.plStore.get(pref), index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+  const H = S.lh = { rec: L9.plStore.get(pref), index: S.lh?.index ?? S.tbIndex ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
   H.next = L9.progress.next(pref, H.bookId);
   render();
-  if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
+  if (!H.index) { try { H.index = S.tbIndex = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
 }
 
 // ---------------- 0.8.4 처음 이야기(레벨 확인) → Book 추천 ----------------
@@ -360,13 +429,7 @@ async function finishPlacement(c, log) {
   S.dialog = { kind: "plResult", book: r.book, quote: r.quote ?? "", good_ko: r.good_ko ?? "", name: S.profile?.my_name ?? "", t };
   render();
 }
-async function plGo(book, start) {
-  S.dialog = null;
-  await openLessonHome(`A${book}`);
-  const H = S.lh; if (!start || !H?.index) return;
-  const b = H.index.books.find((x) => x.id === `A${book}`); const L = b?.lessons?.[0];
-  if (L) await startLesson(L.id, 1);
-}
+async function plGo(book, start) { await goLesson(`A${book}`, start); }
 
 // ---------------- 동영상 강의(0.8.3) ----------------
 async function openVideos() {
@@ -669,12 +732,18 @@ function renderHistory() {
         ${t.role !== "user" ? `<button class="report-link" data-act="report" data-v="${i}">문제 알리기</button>` : ""}`).join("")}
     </div>`;
   }
+  // 0.8.5: 내가 한 말이 없는 기록(연결만 하고 나간 것)은 숨기고, 무엇을 누구와 했는지 보이게. ‘전부 지우기’는 맨 아래로.
+  const list = S.sessions.filter((s) => S.previews[s.id]);
+  const kind = (s) => /\+placement/.test(s.app_version ?? "") ? "처음 이야기" : /\+lesson/.test(s.app_version ?? "") ? "1:1 수업" : "대화";
+  const face = (id) => isTeacher(id) ? teacherImg(id) : `img/char_${byId(id).id}.webp`;
+  const who = (s) => { const id = s.character ?? S.profile?.character; return isTeacher(id) ? `${byId(id).ko} 선생님` : (S.profile?.friend_name ?? byId(id).en); };
   return `<div class="list">
-    ${S.sessions.length ? `<div class="right"><button class="link danger small" data-act="deleteAll">전부 지우기</button></div>` : `<div class="empty"><img src="img/char_${byId(S.profile?.character).id}.webp" alt=""><b>아직 저장된 대화가 없어요</b><span class="muted">친구와 이야기하면 여기에 남아요</span></div>`}
-    ${S.sessions.map((s) => `<div class="card row hist">
-      <button class="grow left hist-open" data-act="openSession" data-v="${s.id}"><span class="badge">${I("chat_bubble")}</span>
-        <span class="hist-text"><b>${esc(S.previews[s.id] ?? "(내가 한 말 없음)")}</b><span class="muted small">${niceDate(s.started_at)}</span></span></button>
+    ${list.length ? "" : `<div class="empty"><img src="img/char_${byId(S.profile?.character).id}.webp" alt=""><b>아직 저장된 대화가 없어요</b><span class="muted">대화하거나 수업하면 여기에 남아요</span></div>`}
+    ${list.map((s) => `<div class="card row hist">
+      <button class="grow left hist-open" data-act="openSession" data-v="${s.id}"><img class="hist-face" src="${face(s.character ?? S.profile?.character)}" alt="">
+        <span class="hist-text"><b>${esc(S.previews[s.id])}</b><span class="muted small"><span class="hist-tag">${kind(s)}</span> ${esc(who(s))} · ${niceDate(s.started_at)}</span></span></button>
       <button class="iconbtn" data-act="deleteSession" data-v="${s.id}" aria-label="지우기">${I("delete_outline")}</button></div>`).join("")}
+    ${list.length ? `<div class="center-row"><button class="link danger small" data-act="deleteAll">기록 전부 지우기</button></div>` : ""}
   </div>`;
 }
 
@@ -858,6 +927,15 @@ function renderDialog() {
   return "";
 }
 
+async function switchTab(v) {
+  if (v === "history" && S.chat) await endChat();
+  if (v === "history" && S.story) await endStory();
+  if (v === "history" && S.kids) { S.kids.stop(); S.kids = null; }
+  closeVideo();   // 0.8.3: 다른 탭으로 가면 재생 중인 강의를 멈춘다
+  S.tab = v; S.error = null; S.turns = null; render();
+  if (v === "history") loadHistory();
+  if (v === "settings") { try { S.memories = await api.memories(); } catch { /* */ } render(); }
+}
 function confirm(title, text, yes, onYes, danger = false) { S.dialog = { kind: "confirm", title, text, yes, onYes, danger }; render(); }
 
 // ---------------- 누름 처리 ----------------
@@ -900,13 +978,14 @@ app.addEventListener("click", async (e) => {
       break;
     }
     case "tab": {
-      if (v === "history" && S.chat) await endChat();
-      if (v === "history" && S.story) await endStory();
-      if (v === "history" && S.kids) { S.kids.stop(); S.kids = null; }
-      closeVideo();   // 0.8.3: 다른 탭으로 가면 재생 중인 강의를 멈춘다
-      S.tab = v; S.error = null; S.turns = null; render();
-      if (v === "history") loadHistory();
-      if (v === "settings") { try { S.memories = await api.memories(); } catch { /* */ } render(); }
+      // 0.8.5: 대화·수업 중에 ‘기록’을 누르면 묻고 끝낸다(예전엔 바로 끝나 수업이 끊겼음)
+      if (v === "history" && (S.chat || S.story || S.kids)) {
+        const what = S.chat?.lesson || S.kids ? "수업" : S.story ? "그림책" : "대화";
+        const [obj, subj] = what === "대화" ? ["대화를", "대화가"] : [`${what}을`, `${what}이`];
+        confirm(`${obj} 끝낼까요?`, `기록으로 가면 지금 하던 ${subj} 끝나요.`, "끝내고 이동", () => switchTab(v));
+        break;
+      }
+      await switchTab(v);
       break;
     }
     case "guideSeen": pref.set("guideSeen", true); render(); break;
@@ -920,6 +999,7 @@ app.addEventListener("click", async (e) => {
     case "plStart": await startPlacement(); break;
     case "plLater": pref.set("pl_later", true); S.dialog = null; render(); break;
     case "plGo": await plGo(Number(v), true); break;
+    case "todayGo": { const t = todayLesson(); if (t) await goLesson(t.bid, true); break; }
     case "plBrowse": await plGo(Number(v), false); break;
     case "vClose": S.vid = null; closeVideo(); render(); break;
     case "vPlay": { const v = L9.findVideo(S.vid, el.dataset.v); if (v) playVideo(v); break; }
@@ -1097,7 +1177,7 @@ app.addEventListener("click", async (e) => {
       const cat = document.querySelector("input[name=cat]:checked").value; S.dialog = null;
       await work(() => api.sendFeedback("inquiry", cat, body)); toast("보냈어요. 확인하고 연락드릴게요."); break;
     }
-    case "closeDialog": if (!stop || el === e.target) { S.dialog = null; render(); } break;
+    case "closeDialog": if (!stop || el === e.target) { if (S.dialog?.kind === "plIntro" && S.dialog.auto) pref.set("pl_later", true); S.dialog = null; render(); } break;   // 0.8.5: 저절로 뜬 처음 이야기 창은 닫으면 다시 띄우지 않음
     case "confirmYes": { const f = S.dialog.onYes; S.dialog = null; render(); await f(); break; }
   }
 });

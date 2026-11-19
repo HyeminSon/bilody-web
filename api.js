@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.4";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.5";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -88,6 +88,13 @@ export async function rest(path, { method = "GET", body, prefer } = {}) {
   return text ? JSON.parse(text) : null;
 }
 
+// ---------- 0.8.5 1:1 수업 진도(계정에 저장, 웹·앱 함께 씀) ----------
+/** 이 기기 진도를 보내면 서버가 계정 진도와 합쳐 저장하고(권마다 더 앞선 진도, 나머지는 나중에 바꾼 쪽) 합친 결과를 돌려준다. */
+export async function saveLessonProgress(data) {
+  if (!userId()) return null;
+  return await rest("rpc/save_lesson_progress", { method: "POST", body: { p: data } });
+}
+
 async function fn(name, body, raw = false, ms = 20000) {
   // 브라우저는 CORS 허락이 있는 web-proxy를 거쳐 함수를 부른다
   const res = await call(`${SUPABASE_URL}/functions/v1/web-proxy?fn=${name}`, {
@@ -167,10 +174,11 @@ export async function logEvent(sessionId, kind, data) {
 }
 
 // ---------- 기록·기억·설정 ----------
-export const sessions = () => rest("sessions?select=id,preset_id,started_at,ended_at&order=started_at.desc&limit=100");
+export const sessions = () => rest("sessions?select=id,preset_id,started_at,ended_at,app_version,character&order=started_at.desc&limit=100");
 export const turns = (sid) => rest(`turns?session_id=eq.${sid}&select=seq,role,text&order=seq.asc,role.desc`);
 export async function firstLines() {
-  const rows = await rest("turns?select=session_id,text,seq,role&role=eq.user&seq=lte.1&order=seq.asc&limit=500");
+  // 0.8.5: 수업은 선생님이 먼저 여러 번 말해 학습자 첫 말이 뒤에 있음(예전엔 seq 1까지만 봐서 ‘내가 한 말 없음’으로 보였음)
+  const rows = await rest("turns?select=session_id,text,seq,role&role=eq.user&seq=lte.8&order=seq.asc&limit=3000");
   const m = {}; for (const r of rows) if (!(r.session_id in m)) m[r.session_id] = r.text; return m;
 }
 export const deleteSession = (sid) => rest(`sessions?id=eq.${sid}`, { method: "DELETE" });

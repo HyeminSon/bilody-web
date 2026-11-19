@@ -1,10 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.4";
-import { PRESET } from "./config.js?v=0.8.4";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.4";
-import { sceneVoice } from "./characters.js?v=0.8.4";
+import * as api from "./api.js?v=0.8.5";
+import { PRESET } from "./config.js?v=0.8.5";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.5";
+import { sceneVoice } from "./characters.js?v=0.8.5";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -200,7 +200,7 @@ export class Chat {
           break;
         }
         if (t && !this.story) this.onLearnerText?.(t);
-        if (t && this.lesson && /\p{L}/u.test(t)) { this.lessonSaid++; this.stepLog.push({ who: "learner", text: t }); this.quietCount = 0; }
+        if (t && this.lesson && /\p{L}/u.test(t)) { this.lessonSaid++; this.stepLog.push({ who: "learner", text: t }); this.quietCount = 0; this.lessonHeard(t); }
         if (t && this.placement && /\p{L}/u.test(t)) this.placementHeard(t);
         if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
         break;
@@ -347,7 +347,8 @@ export class Chat {
       this.send({ type: "response.create" }); this.set({ state: "thinking" });
       return;
     }
-    if (!this.story && !this.lesson && !this.placement) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
+    // 0.8.5(11/19 실장님): 1:1 수업에서도 따라 말할 문장 카드를 띄운다
+    if (!this.story && !this.placement) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
     this.resp = null;
     if (!this.greeted) this.openMic();
     if (this.pc) this.set({ state: "listening" });
@@ -672,7 +673,7 @@ export class Chat {
     const L = this.lesson; if (!L) return;
     const step = L.steps[i]; if (!step) return this.finishLesson([], []);
     if (!this.lessonStartedAt) this.lessonStartedAt = Date.now();
-    this.lessonStep = i; this.stepLineAt = (this.lineSeq ?? 0) + 1; this.stepHolds = 0;
+    this.lessonStep = i; this.stepLineAt = (this.lineSeq ?? 0) + 1; this.stepHolds = 0; this.doneHeld = null;
     this.stepLog = []; this.wrapAsked = false; this.quietCount = 0; this.checkFails = 0; this.sceneIntro = null;
     this.set({ lessonStep: i, lessonHiLine: -1, lessonHiWord: null });
     this.log("lesson_step", { lesson: L.id, session: L.session, step: i, type: step.type });
@@ -702,7 +703,8 @@ export class Chat {
     const gen = this.lessonGen;
     for (let w = 0; this.resp && w < 4000; w += 100) await sleep(100);
     if (this.closed || !this.pc || gen !== this.lessonGen || i !== this.lessonStep) return;
-    const teach = this.appLed ? appTeach(step.teach) : (step.teach || "Continue the lesson, then call next_step.");
+    // 0.8.5(11/19 실장님 수업 기록): 첫 인사에서 고쳐 주기·따라 하기·자기소개·질문을 한꺼번에 하던 문제
+    const teach = (this.appLed ? appTeach(step.teach) : (step.teach || "Continue the lesson, then call next_step.")) + " " + (step.type === "intro" ? WARMUP_NOTE : TURN_NOTE);
     let note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
       `Lesson step ${i + 1} of ${L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
     // 0.8.2: 다시 연결되면 이 부분에서 이미 한 것을 알려 이어서 하게 한다(예전엔 처음부터 다시 했음)
@@ -751,6 +753,26 @@ export class Chat {
     this.set({ lessonScene: false, lessonHiLine: -1, state: "listening", ...(failed ? { notice: `장면 대사 ${failed}줄을 소리로 만들지 못했어요. 화면의 글로 읽어 주세요.` } : {}) });
     this.openMic();
     this.sendStepTeach(this.lessonStep);
+  }
+
+  /** 0.8.5(11/19 실장님 수업 기록): ‘다 했음’ 판정이 나온 뒤 학습자가 Okay처럼 짧게만 답하면 붙잡지 않고 넘긴다
+   *  (예전엔 “Okay.”마다 다시 붙잡혀 2분 넘게 같은 부분에 머물렀음). “Next”·“다음”이라고 말하면 바로 넘긴다. */
+  lessonHeard(t) {
+    const L = this.lesson; if (!L || !this.appLed || this.closed || !this.pc || this.ui.lessonDone || this.ui.lessonScene || this.lessonStep < 0) return;
+    const said = this.stepLog.filter((l) => l.who === "learner").length;
+    if (asksNext(t) && said > 1) return this.moveOn("learner_next");
+    const dh = this.doneHeld;
+    if (dh && dh.at === this.lessonStep && dh.gen === this.lessonGen) {
+      if (isAck(t) && !isRolePlay(L.steps[this.lessonStep])) return this.moveOn("ack_after_done");
+      this.doneHeld = null;
+    }
+  }
+  moveOn(why) {
+    const L = this.lesson; if (!L) return;
+    this.log("lesson_part_done", { step: this.lessonStep, why });
+    this.doneHeld = null; this.sceneGen++; this.sceneIntro = null; this.interruptReply(); this.player.stop();
+    const n = this.lessonStep + 1;
+    if (n < L.steps.length) this.startLessonStep(n); else this.endWithGoodbye(this.stepLog.slice(), this.lessonGen);
   }
 
   /** ‘넘어가기’ 단추(0.8.2): 앱이 직접 다음 부분으로 넘긴다. 예전엔 선생님에게 넘어가자는 말만 보내 같은 부분을 더 하게 됐다. */
@@ -893,9 +915,12 @@ export class Chat {
     if (!last || !(learnerTurns > 0 || step.type === "done") || /\?["”’]?\s*$/.test(last)) return;
     const pre = r.precheck;
     const chk = await (pre && pre.at === at && pre.text === last && pre.said === saidBefore ? pre.p : this.checkLesson(step, lines, at));
-    // 그사이 학습자가 말했거나 선생님이 다시 말하기 시작했으면 이 확인은 버린다
-    if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.lessonSaid !== saidBefore || this.resp || this.ui.lessonDone) return;
-    if (this.holdForSpeech(() => this.lessonAfterReply(r), t0)) return;
+    // 그사이 학습자가 말했거나 선생님이 다시 말하기 시작했으면 이 확인은 버린다.
+    // 0.8.5: 다만 ‘다 했음’이었으면 기억해 두고, 학습자가 짧게만 답하면(lessonHeard) 바로 넘긴다.
+    const okDone = !chk.failed && chk.complete && !chk.waiting;
+    const keep = () => { if (okDone && gen === this.lessonGen && at === this.lessonStep && !this.ui.lessonDone) this.doneHeld = { at, gen }; };
+    if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.lessonSaid !== saidBefore || this.resp || this.ui.lessonDone) { keep(); return; }
+    if (this.holdForSpeech(() => this.lessonAfterReply(r), t0)) { keep(); return; }
     const sys = (text) => { this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text }] } }); this.send({ type: "response.create" }); this.set({ state: "thinking" }); };
     const capped = learnerTurns >= 12;
     if (chk.failed) {
@@ -1021,8 +1046,7 @@ export class Chat {
   placementHeard(t) {
     this.plLog.push({ who: "learner", text: t });
     if (this.plWrap) return;
-    const said = this.plLog.filter((l) => l.who === "learner").map((l) => l.text);
-    if (placementDone(said, Date.now() - this.plStart)) this.placementWrap();
+    if (placementDone(placementAnswers(this.plLog), Date.now() - this.plStart)) this.placementWrap();
   }
   /** 마무리: 학습자 말에 막 시작한 대답은 멈추고, 선생님에게 짧은 마무리 인사만 청한다. 그동안 마이크는 끈다. */
   placementWrap() {
@@ -1059,12 +1083,27 @@ export class Chat {
 
 const LESSON_TOOLS = new Set(["next_step", "highlight_line", "highlight_word", "finish_session"]);
 // 0.8.4 처음 이야기: 끝내기 규칙(안드로이드 LessonGuard·가상 시험기 placement-sim과 같음). 학습자가 10번 말했거나 5분, 또는 4번 말하는 동안 영어가 거의 없으면(한 번에 평균 두 낱말 미만) 일찍 끝낸다.
+/** 0.8.5(11/19 실장님 처음 이야기: 대답 6~7번 만에 끝남): 선생님 말 사이에 한 말은 한 대답으로 묶고,
+ *  질문이 없던 선생님 말 뒤의 짧은 맞장구(Yeah. Okay.)는 세지 않는다. */
+export function placementAnswers(log) {
+  // 맞장구는 바로 앞 선생님 말에 물음표가 없을 때만 뺀다(질문에 yes로 답한 건 대답이다)
+  const groups = []; let prevT = null, g = null;
+  for (const l of log) {
+    if (l.who === "teacher") { if (g) { groups.push(g); g = null; } prevT = l.text; continue; }
+    if (!g) g = { text: l.text, asked: prevT === null || /\?/.test(prevT) }; else g.text += " " + l.text;
+  }
+  if (g) groups.push(g);
+  return groups.filter((x) => x.asked || !isAck(x.text)).map((x) => x.text);
+}
 export function placementDone(learnerTexts, elapsedMs) {
   const n = learnerTexts.length;
   if (n >= 10 || elapsedMs >= 300000) return true;
   if (n >= 4) { const en = learnerTexts.join(" ").match(/[A-Za-z']{2,}/g)?.length ?? 0; if (en / n < 2) return true; }
   return false;
 }
+// 0.8.5(11/19 실장님 수업 소감): 고친 문장을 따라 하게 더 자주, 선생님이 한꺼번에 길게 말하지 않게
+export const WARMUP_NOTE = "During this warm-up, never correct the learner's English, never ask them to repeat or say anything after you, and ask only one question per turn. Keep each turn to two short sentences.";
+export const TURN_NOTE = "Keep every turn short (two or three short sentences). Until everything in this part is done, end each turn by giving the learner one thing to say or answer. When you fix a sentence the learner said, also in small talk, ask them to say the fixed sentence once right away (not next time), then react and go on.";
 export const PLACEMENT_WRAP = "(App: time is up. In one or two short sentences, thank the learner warmly for the chat and say a friendly see-you-soon. Ask no question and do not talk about what comes next.)";
 // 11/18 김연경님 시험: 수업 선생님이 ‘답할게요, 그다음 넘어가요’처럼 예고만 하고 바로 다음 단계로 넘어가 약속한 말이 빠짐(8번).
 // 지시문으로 막고, 그래도 나온 예고 문장은 소리·자막으로 내지 않는다(수업에서만).
@@ -1083,6 +1122,14 @@ export const isPreamble = (s) => PREAMBLE.some((re) => re.test(String(s).trim())
 // 아래 규칙은 가상 수업(lesson-sim role.ts)·안드로이드(LessonGuard.kt)와 같다. 고치면 세 곳을 함께 고친다.
 export const rolePlan = (teach) => [...String(teach ?? "").matchAll(/^(\d+)\. (.+?) \((you|learner)\): "(.*)"/gm)]
   .map((m) => ({ n: Number(m[1]), name: m[2], who: m[3], en: m[4] }));
+/** 0.8.5: 짧은 맞장구(넘어가도 되는 대답)와 ‘다음으로’ 요청 */
+const ACK_RE = /^(ok(ay)?|yes|yeah|yep|yup|sure|right|alright|all right|good|great|nice|cool|thank you|thanks|got it|i see|i got it|uh-?huh|mm+|hmm+|oh|ah|네|넵|예|응|좋아요|알겠어요|알았어요|감사합니다|고마워요)$/;
+export const isAck = (t) => { const s = String(t).toLowerCase().replace(/[^\p{L}\p{N}' -]/gu, " ").replace(/\s+/g, " ").trim(); if (!s) return false;
+  const parts = s.split(/ (?=ok|okay|yes|yeah|thank|thanks|good|great|got|sure|right)/); return s.split(" ").length <= 5 && parts.every((p) => ACK_RE.test(p.trim())); };
+export const asksNext = (t) => { const s = String(t).toLowerCase().replace(/[^\p{L}\p{N}' ]/gu, " ").replace(/\s+/g, " ").trim();
+  if (/^(다음|다음으로|넘어가|넘어가요|넘어가 주세요|넘겨|넘겨 주세요|다음 거|다음 화면|다음으로 가요|다음 부분)( (요|주세요|해 주세요))?$/.test(s)) return true;
+  const w = s.split(" ").filter(Boolean); if (!w.length || w.length > 6) return false;
+  return (w.includes("next") || /move on/.test(s)) && w.every((x) => /^(next|please|screen|part|page|step|one|let's|lets|go|move|on|the|to|ok|okay|yes|now|go to)$/.test(x)); };
 export const isRolePlay = (st) => st?.type === "dialogue" && !st.play && rolePlan(st.teach).length > 0;
 export const rpWords = (t) => String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]/g, " ").split(/[\s-]+/).filter(Boolean);
 const FILLER = new Set(["ha", "haha", "oh", "ah", "hmm", "um", "uh", "wow", "well", "hey", "aw", "ooh", "so"]);
