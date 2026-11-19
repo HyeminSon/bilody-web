@@ -207,13 +207,14 @@ export class Chat {
       }
       case "response.created": {
         const rid = ev.response?.id;
-        // 0.8.2: 장면을 트는 동안 만들어진 대답(넘어가기 직전에 한 말에 대한 답)은 장면 위에 겹치므로 버린다
-        if (this.soft || Date.now() < this.ignoreUntil || this.lessonHold || this.ui.lessonScene) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
-        // 0.8.4 처음 이야기: 마무리 인사를 청한 뒤에는 그 대답 하나만 받는다
+        // 0.8.4 처음 이야기: 마무리 인사를 청한 뒤에는 그 대답 하나만 받는다(끼어들기 직후라도 이 대답은 버리지 않는다)
+        let plWrapNow = false;
         if (this.placement && this.plWrap) {
-          if (this.plWrap === "asked") { this.plWrap = "speaking"; this.plWrapRid = rid; }
+          if (this.plWrap === "asked") { this.plWrap = "speaking"; this.plWrapRid = rid; plWrapNow = true; }
           else if (rid !== this.plWrapRid) { this.ignoredResp = rid; this.send({ type: "response.cancel" }); return; }
         }
+        // 0.8.2: 장면을 트는 동안 만들어진 대답(넘어가기 직전에 한 말에 대한 답)은 장면 위에 겹치므로 버린다
+        if (!plWrapNow && (this.soft || Date.now() < this.ignoreUntil || this.lessonHold || this.ui.lessonScene)) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
         clearTimeout(this.idleTimer); clearTimeout(this.quietTimer);
         if (this.resp) this.finishReply(this.resp, false);
         if (this.announceAt && Date.now() > this.announceAt) this.announceAt = 0;   // 검색 결과가 들어간 뒤의 대답이 결과를 전한다
