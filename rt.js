@@ -1,10 +1,10 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.1";
-import { PRESET } from "./config.js?v=0.8.1";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.1";
-import { sceneVoice } from "./characters.js?v=0.8.1";
+import * as api from "./api.js?v=0.8.2";
+import { PRESET } from "./config.js?v=0.8.2";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.2";
+import { sceneVoice } from "./characters.js?v=0.8.2";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -33,6 +33,7 @@ export class Chat {
     this.tSpeechStopped = 0; this.lastSpeechStart = 0; this.startedDuringPlayback = false;
     this.maxMsg = 65536; this.limitReached = false; this.cameraHold = false;
     this.slots = 0; this.waiters = []; this.sceneGen = 0; this.lessonGen = 0;
+    this.stepLog = []; this.quietCount = 0; this.sceneIntro = null; this.quietMs = 12000;   // 0.8.2 수업: 이 부분에서 오간 말, 침묵 횟수, 장면 앞 이어 주는 말
     this.lessonItems = new Map(); this.holdSeq = 0; this.lessonMicOn = false;   // 말 id → 그 말을 시작한 수업 번호(수업 밖이면 -1)
   }
 
@@ -147,7 +148,7 @@ export class Chat {
       case "input_audio_buffer.speech_started": {
         this.lastSpeechStart = Date.now();
         if (ev.item_id && !this.lessonItems.has(ev.item_id)) this.lessonItems.set(ev.item_id, this.lessonHold ? this.holdSeq : -1);   // 11/14 헤니 검토: 어느 수업(또는 수업 밖)에서 시작한 말인지
-        clearTimeout(this.idleTimer); this.onSpeechStart?.();
+        clearTimeout(this.idleTimer); clearTimeout(this.quietTimer); this.onSpeechStart?.();
         this.startedDuringPlayback = this.player.isPlaying || !!this.story?.isNarrating();
         if (this.story) { this.story.onSpeechStart(); this.interruptReply(); }
         else if (this.player.isPlaying && this.resp) this.startSoft();
@@ -180,6 +181,7 @@ export class Chat {
           this.send({ type: "response.cancel" });
           this.log(noise ? "story_noise" : "rt_echo", {}); this.lastEchoAt = Date.now();
           if (this.story) this.story.onNoise();
+          else if (!this.resp && !this.player.isPlaying) { this.set({ state: "listening" }); this.armIdle(); }
           return;
         }
         this.startedDuringPlayback = false;
@@ -195,18 +197,20 @@ export class Chat {
           break;
         }
         if (t && !this.story) this.onLearnerText?.(t);
-        if (t && this.lesson && /\p{L}/u.test(t)) this.lessonSaid++;
+        if (t && this.lesson && /\p{L}/u.test(t)) { this.lessonSaid++; this.stepLog.push({ who: "learner", text: t }); this.quietCount = 0; }
         if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
         break;
       }
       case "response.created": {
         const rid = ev.response?.id;
-        if (this.soft || Date.now() < this.ignoreUntil || this.lessonHold) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
-        clearTimeout(this.idleTimer);
+        // 0.8.2: 장면을 트는 동안 만들어진 대답(넘어가기 직전에 한 말에 대한 답)은 장면 위에 겹치므로 버린다
+        if (this.soft || Date.now() < this.ignoreUntil || this.lessonHold || this.ui.lessonScene) { this.ignoredResp = rid; this.softHeld = this.soft; this.send({ type: "response.cancel" }); return; }
+        clearTimeout(this.idleTimer); clearTimeout(this.quietTimer);
         if (this.resp) this.finishReply(this.resp, false);
         if (this.announceAt && Date.now() > this.announceAt) this.announceAt = 0;   // 검색 결과가 들어간 뒤의 대답이 결과를 전한다
         this.epoch++;
-        this.resp = { id: rid, epoch: this.epoch, text: "", pending: "", done: false, played: [], chain: Promise.resolve(), itemId: null, first: true, hadText: false };
+        this.resp = { id: rid, epoch: this.epoch, text: "", pending: "", done: false, played: [], chain: Promise.resolve(), itemId: null, first: true, hadText: false, slow: !!this.slowOnce };
+        this.slowOnce = false;
         break;
       }
       case "response.output_item.added": {
@@ -236,6 +240,7 @@ export class Chat {
         const r = this.resp; if (!r || r.done) return;
         takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
         r.pending = ""; r.done = true;
+        this.lessonPrecheck(r);
         // 11/13 헨니 검토: 카드는 안전검사를 통과해 실제로 들려준 말로만 만든다(onReplyPlayed)
         r.chain.then(() => this.onReplyPlayed(r));
         break;
@@ -246,10 +251,13 @@ export class Chat {
         const r = this.resp;
         if (r && !r.done) {
           takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
-          r.pending = ""; r.done = true; r.chain.then(() => this.onReplyPlayed(r));
+          r.pending = ""; r.done = true; this.lessonPrecheck(r); r.chain.then(() => this.onReplyPlayed(r));
         }
         const call = this.pendingCall; this.pendingCall = null;
-        if (call && r) r.hadCall = true;
+        // 0.8.2: 말과 그림 밝히기(highlight_*)가 한 대답에 오면 새 대답을 청하지 않는다(청하면 하던 말이 끊겼음). 그 대답은 보통 대답처럼 다룬다.
+        const hi = !!call && !!this.lesson && (call.name === "highlight_line" || call.name === "highlight_word");
+        if (call) call.withText = !!r?.hadText;
+        if (call && r) r.hadCall = !(hi && r.hadText);
         if (call) { if (this.lesson && LESSON_TOOLS.has(call.name)) this.runLessonTool(call); else this.runTool(call); break; }
         if (r && !r.hadText) { if (this.story) { this.resp = null; this.story.onReplyDone(); } else if (Date.now() - (this.lastEchoAt ?? 0) > 5000) this.nudge(Date.now()); }   // 메아리 뒤에는 다시 청하지 않음(16:06)
         break;
@@ -266,8 +274,20 @@ export class Chat {
     if (r.epoch !== this.epoch) return;
     // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
     if (!this.story && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
-    if (this.lesson && !this.story && isPreamble(sentence)) { this.log("preamble_cut", { text: sentence.slice(0, 120) }); return; }
-    const voice = this.voiceId, speed = this.story ? 1 : this.speed, sid = this.sessionId;
+    // 0.8.2: 앱이 넘기는 방식에서는 예고 문장을 지우지 않고 기록만 한다(도구가 없어 건너뛸 일이 없고, 질문·지시가 든 문장까지 지워졌음)
+    // 수업 자체를 말하는 문장(“Let me think…”, “keep us moving”)은 앱 방식에서도 지운다.
+    const meta = this.lesson && !this.story && isMetaTalk(sentence, this.lesson.steps?.[this.lessonStep]?.teach);   // 교재에 있는 문장(“I’ll think about it.”)은 지우지 않는다
+    if (this.lesson && !this.story && (isPreamble(sentence) || meta)) {
+      const cut = !this.appLed || meta;
+      this.log("preamble_cut", { text: sentence.slice(0, 120), kept: !cut }); if (cut) return;
+    }
+    // 역할 읽기: 선생님이 자기 줄을 한 대답에 두 번 읽으면 두 번째는 내지 않는다
+    if (this.lesson && this.appLed && !this.story && this.rp?.step === this.lessonStep && isRolePlay(this.lesson.steps?.[this.lessonStep])) {
+      r.seen ??= new Set();
+      if (roleRepeat(rolePlan(this.lesson.steps[this.lessonStep].teach), r.seen, sentence)) { this.log("role_repeat_cut", {}); return; }
+    }
+    if (this.lesson && !this.story) sentence = sentence.replace(/_{2,}/g, "something");   // 빈칸은 소리로 읽을 수 없다
+    const voice = this.voiceId, speed = this.story ? 1 : (r.slow ? Math.max(0.7, this.speed * 0.8) : this.speed), sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
     r.chain = r.chain.then(async () => {
@@ -323,7 +343,10 @@ export class Chat {
     if (this.pc) this.set({ state: "listening" });
     if (this.story) { this.story.onReplyDone(); return; }
     this.afterFriendFinished();
-    if (this.lesson && this.appLed && !r.hadCall) this.lessonAfterReply(r);
+    if (this.lesson && this.appLed) {
+      if (this.sceneIntro && this.sceneIntro.at === this.lessonStep) { this.sceneIntro.done = true; return; }   // 장면 앞 한마디가 끝남 → introScene이 장면을 튼다
+      if (!r.hadCall) this.lessonAfterReply(r);
+    }
   }
 
   /** 들려준 만큼만 기록하고, 서버 문맥도 들려준 말로 고친다. */
@@ -331,6 +354,7 @@ export class Chat {
     const played = r.played.join(" ").trim();
     if (!complete || played !== r.text.trim()) this.fixServerContext(r, played);
     if (played) this.persist("assistant", played);
+    if (played && this.lesson && !this.story) this.stepLog.push({ who: "teacher", text: played + (complete ? "" : " …") });
     if (played && !this.story && !this.lesson) { this.trackPractice(played); this.noteCorrection(played); this.noteQuestion(played); }
     this.closeAssistantLine(!complete);
   }
@@ -483,10 +507,23 @@ export class Chat {
     clearTimeout(this.idleTimer);
     this.afterReplyNotes();
     this.onFriendDone?.();
+    this.armIdle();
+  }
+  /** 쉬는 시간 타이머(60초 뒤 멈춤). 수업에서는 12초 동안 아무 말이 없으면 선생님이 다시 묻게 한다(같은 자리에서 2번까지, 0.8.2). */
+  armIdle() {
+    clearTimeout(this.idleTimer); clearTimeout(this.quietTimer);
     this.idleTimer = setTimeout(() => {
       if (this.closed || !this.pc || this.player.isPlaying || this.ui.speech || this.resp) return;
       this.stopInternal("IDLE_PAUSE", "한동안 대답이 없어서 잠시 멈췄어요. 이어서 하려면 다시 시작을 눌러 주세요.");
     }, 60000);
+    if (!this.lesson || !this.appLed || this.story || (this.quietCount ?? 0) >= 2) return;
+    const gen = this.lessonGen, at = this.lessonStep;
+    this.quietTimer = setTimeout(() => {
+      if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.player.isPlaying || this.ui.speech || this.resp || this.ui.lessonScene || this.ui.lessonDone || this.sceneIntro) return;
+      this.quietCount = (this.quietCount ?? 0) + 1; this.log("lesson_quiet", { step: at, n: this.quietCount });
+      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: QUIET_NOTE }] } });
+      this.send({ type: "response.create" }); this.set({ state: "thinking" });
+    }, this.quietMs);
   }
 
   // ---------------- 도움 카드·자막 ----------------
@@ -624,9 +661,28 @@ export class Chat {
     const step = L.steps[i]; if (!step) return this.finishLesson([], []);
     if (!this.lessonStartedAt) this.lessonStartedAt = Date.now();
     this.lessonStep = i; this.stepLineAt = (this.lineSeq ?? 0) + 1; this.stepHolds = 0;
+    this.stepLog = []; this.wrapAsked = false; this.quietCount = 0; this.checkFails = 0; this.sceneIntro = null;
     this.set({ lessonStep: i, lessonHiLine: -1, lessonHiWord: null });
     this.log("lesson_step", { lesson: L.id, session: L.session, step: i, type: step.type });
-    if (step.type === "dialogue" && step.play) this.playScene(step); else { this.openMic(); this.sendStepTeach(i); }
+    if (step.type === "dialogue" && step.play) { if (this.appLed && i > 0) this.introScene(i, step); else this.playScene(step); }
+    else { this.openMic(); this.sendStepTeach(i); }
+  }
+
+  /** 0.8.2 장면을 틀기 전에 선생님이 한마디로 이어 준다(예전엔 칭찬 한마디 뒤 갑자기 다른 목소리가 나왔음). 그동안 마이크는 끈다. */
+  async introScene(i, step) {
+    const gen = this.lessonGen;
+    const stale = () => this.closed || !this.pc || gen !== this.lessonGen || i !== this.lessonStep;
+    if (this.track) this.track.enabled = false;
+    this.set({ micOn: false });
+    for (let w = 0; this.resp && w < 4000; w += 100) await sleep(100);
+    if (stale()) return;
+    const intro = this.sceneIntro = { at: i, done: false };
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: SCENE_INTRO(plain(step.title)) }] } });
+    this.send({ type: "response.create" }); this.set({ state: "thinking" });
+    for (let w = 0; !intro.done && w < 10000; w += 100) { await sleep(100); if (stale() || this.sceneIntro !== intro) return; }
+    this.sceneIntro = null;
+    if (!intro.done) { this.interruptReply(); this.log("lesson_scene_intro_late", {}); }
+    this.playScene(step);
   }
 
   async sendStepTeach(i, resumed = false) {
@@ -637,12 +693,15 @@ export class Chat {
     const teach = this.appLed ? appTeach(step.teach) : (step.teach || "Continue the lesson, then call next_step.");
     let note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
       `Lesson step ${i + 1} of ${L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
+    // 0.8.2: 다시 연결되면 이 부분에서 이미 한 것을 알려 이어서 하게 한다(예전엔 처음부터 다시 했음)
+    if (resumed && this.stepLog.length) note += `\nAlready done in this part before the connection dropped (most recent last):\n${this.stepLog.slice(-6).map((l) => `${l.who === "teacher" ? "You" : "Learner"}: ${l.text.slice(0, 300)}`).join("\n")}\nDo not start this part again: say one short sentence and continue from there.`;
     if (this.appLed && isRolePlay(step)) {
       // 0.9.13 역할 읽기: 앱이 한 줄씩. 처음(또는 다시 연결)에는 지금 자리부터 안내한다.
       const plan = rolePlan(step.teach);
-      if (!resumed || !this.rp || this.rp.step !== i) { const nx = plan.findIndex((l) => l.who === "you"); this.rp = { step: i, next: nx === -1 ? plan.length : nx, tries: 0, comment: false, final: false }; }
+      if (!resumed || !this.rp || this.rp.step !== i) { const nx = plan.findIndex((l) => l.who === "you"); this.rp = { step: i, next: nx === -1 ? plan.length : nx, at: 0, warned: false, comment: false, final: false }; }
       const startAt = !resumed && plan[0]?.who === "you" ? 0 : this.rp.next;
       const n = roleNote(plan, startAt, !resumed);
+      if (n.final && !this.rp.final) { this.rp.final = true; this.rp.finalAt = this.stepLog.filter((l) => l.who === "learner").length; }
       this.rpHighlight(plan, startAt === 0 && plan[0]?.who === "you" ? 0 : plan.findIndex((l) => l.who === "learner"));
       note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
         `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${n.note}`;
@@ -682,6 +741,70 @@ export class Chat {
     this.sendStepTeach(this.lessonStep);
   }
 
+  /** ‘넘어가기’ 단추(0.8.2): 앱이 직접 다음 부분으로 넘긴다. 예전엔 선생님에게 넘어가자는 말만 보내 같은 부분을 더 하게 됐다. */
+  skipStep() {
+    const L = this.lesson; if (!L || this.closed || !this.pc || this.ui.lessonDone || this.lessonStep < 0) return;
+    if (!this.appLed) { this.sendText("Let's move on to the next part, please."); return; }
+    this.log("lesson_skip", { step: this.lessonStep });
+    this.sceneGen++; this.sceneIntro = null; this.interruptReply(); this.player.stop();
+    if (this.ui.lessonScene) this.set({ lessonScene: false, lessonHiLine: -1 });
+    const n = this.lessonStep + 1;
+    if (n < L.steps.length) this.startLessonStep(n); else this.endWithGoodbye(this.stepLog.slice(), this.lessonGen);
+  }
+
+  /** ‘천천히 다시’ 단추(0.8.2): 방금 한 말을 한 번 더, 이번 한 번만 느리게. 학습자 말로 기록하지 않는다. */
+  slowAgain() {
+    if (!this.lesson || this.closed || !this.pc || this.ui.lessonScene || this.ui.lessonDone) return;
+    this.interruptReply(); this.slowOnce = true;
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: "(App: the learner tapped the slowly-again button. Say your last sentence again, word for word, and add nothing else.)" }] } });
+    this.send({ type: "response.create" }); this.set({ state: "thinking" });
+    this.log("lesson_slow", { step: this.lessonStep });
+  }
+
+  /** 마지막 부분이 끝남: 작별 인사가 없었으면 한 번 청한 뒤 마친다. */
+  async endWithGoodbye(lines, gen) {
+    if (!GOODBYE.test(lines.filter((l) => l.who === "teacher").map((l) => l.text).join(" ")) && !this.byeAsked) {
+      this.byeAsked = true; this.log("lesson_bye_asked", {});
+      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: "The class is ending now. Say goodbye in two or three short sentences: react to what the learner last said, praise one specific thing they did today, and say a warm goodbye." }] } });
+      this.send({ type: "response.create" }); this.set({ state: "thinking" });
+      for (let w = 0; !this.resp && w < 4000; w += 100) await sleep(100);
+      for (let w = 0; (this.player.isPlaying || this.resp) && w < 15000; w += 150) await sleep(150);
+      if (this.closed || !this.pc || gen !== this.lessonGen) return;
+    }
+    this.finishLesson([], []);
+  }
+
+  /** lesson-check 한 번(실패하면 한 번 더). */
+  async checkLesson(step, lines, at) {
+    let chk = await api.lessonCheck(appTeach(step.teach), lines, this.sessionId, at, "app");
+    if (chk.failed) chk = await api.lessonCheck(appTeach(step.teach), lines, this.sessionId, at, "app");
+    return chk;
+  }
+
+  /** 0.8.2 선생님 대답의 글이 다 나오면(소리가 나가는 동안) 확인을 미리 시작한다. 들려준 말이 그 글과 같으면 lessonAfterReply가 이 결과를 쓴다(부분 사이 정적을 줄임). */
+  lessonPrecheck(r) {
+    if (!this.lesson || !this.appLed || this.story || r.precheck || this.ui.lessonDone || this.sceneIntro) return;
+    const at = this.lessonStep, step = this.lesson.steps?.[at];
+    if (!step || isRolePlay(step)) return;
+    const text = r.text.trim();
+    const learnerTurns = this.stepLog.filter((l) => l.who === "learner").length;
+    if (!text || !(learnerTurns > 0 || step.type === "done") || /\?["”’]?\s*$/.test(text) || /_{2,}/.test(text)) return;
+    const p = this.checkLesson(step, [...this.stepLog, { who: "teacher", text }], at); p.catch(() => {});
+    r.precheck = { at, text, said: this.lessonSaid, p };
+  }
+
+  /** 학습자가 말하는 중이면 넘기지 않는다(넘기면 새 부분의 첫 말이 끊기거나 장면 위에 대답이 겹쳤다). 그 말에 선생님이 답한 뒤 다시 확인된다. 말이 아니었으면(잡음) 6초 뒤 again을 부른다. */
+  holdForSpeech(again, since = Infinity) {
+    if (!this.ui.speech && !((this.lastSpeechStart ?? 0) > since)) return false;
+    const gen = this.lessonGen, at = this.lessonStep, said = this.lessonSaid;
+    this.log("lesson_move_held", { step: at });
+    setTimeout(() => {
+      if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.lessonSaid !== said || this.resp || this.ui.speech || this.player.isPlaying || this.ui.lessonDone) return;
+      this.armIdle(); again();
+    }, 6000);
+    return true;
+  }
+
   async runLessonTool(c) {
     // 0.9 헤니 검토: 같은 호출은 한 번만, 멈춘 뒤 늦게 끝난 작업은 진도·단계를 건드리지 않는다
     this.handledCalls ??= new Set();
@@ -691,13 +814,18 @@ export class Chat {
     const stale = () => this.closed || !this.pc || gen !== this.lessonGen;
     if (stale()) return;
     let a = {}; try { a = JSON.parse(c.args || "{}") ?? {}; } catch { /* */ }
+    // 0.8.2: 앱이 넘기는 방식에서는 선생님에게 이 도구가 없다. 그래도 불렀으면 아무것도 하지 않는다(옛 경로로 넘기거나 끝내지 않게).
+    if (this.appLed && (c.name === "next_step" || c.name === "finish_session")) {
+      this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: '{"ok":false}' } });
+      this.log("lesson_stray_tool", { name: c.name }); return;
+    }
     const reply = (create) => {
       this.send({ type: "conversation.item.create", item: { type: "function_call_output", call_id: c.callId, output: '{"ok":true}' } });
       if (create) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
     };
     const waitQuiet = async () => { for (let w = 0; (this.player.isPlaying || this.resp) && w < 15000; w += 150) await sleep(150); };
-    if (c.name === "highlight_line") { this.set({ lessonHiLine: (parseInt(a.line, 10) || 0) - 1 }); reply(true); }
-    else if (c.name === "highlight_word") { this.set({ lessonHiWord: String(a.word ?? "").trim() || null }); reply(true); }
+    if (c.name === "highlight_line") { this.set({ lessonHiLine: (parseInt(a.line, 10) || 0) - 1 }); reply(!c.withText); }
+    else if (c.name === "highlight_word") { this.set({ lessonHiWord: String(a.word ?? "").trim() || null }); reply(!c.withText); }
     else if (c.name === "next_step") {
       reply(false); await waitQuiet(); if (stale()) return;
       // 11/18 가상 수업 시험: 넘기기 전에 ‘이 부분을 다 했는지’ 확인한다(lesson-check). 빠진 게 있으면 화면을 잡아 두고
@@ -739,78 +867,83 @@ export class Chat {
   }
 
   /** 0.9.12 앱이 넘기기: 선생님 대답이 다 나온 뒤, 기다리는 질문이 아니면 lesson-check로 이 부분을 다 했는지 본다.
-   *  다 했으면 다음 부분(마지막이면 작별 인사 확인 뒤 마침), 빠진 게 있으면 그것만 하게 한다(부분마다 3번까지). */
+   *  다 했으면 다음 부분(마지막이면 작별 인사 확인 뒤 마침), 빠진 게 있으면 그것만 하게 한다(부분마다 3번까지).
+   *  0.8.2(11/19 Fable 검토): 수업 기록은 stepLog로(화면 자막에서 뽑으면 늦게 온 전사에 선생님 말이 잘렸음), 학습자가 말하는 중이면 넘기지 않음,
+   *  확인 실패·빈 지시·붙잡기 3번 뒤에도 수업이 멈추지 않게, 학습자 말 12번이면 먼저 마무리를 청함. */
   async lessonAfterReply(r) {
     const L = this.lesson, at = this.lessonStep, step = L?.steps?.[at];
     if (!step || this.ui.lessonDone || this.ui.lessonScene) return;
-    const gen = this.lessonGen, saidBefore = this.lessonSaid;
-    const lines = this.ui.lines.filter((l) => (l.seq ?? 0) >= (this.stepLineAt ?? 0) && (l.role === "user" || l.role === "assistant"))
-      .map((l) => ({ who: l.role === "user" ? "learner" : "teacher", text: l.text }));
+    const gen = this.lessonGen, saidBefore = this.lessonSaid, t0 = Date.now();
+    const lines = this.stepLog.slice();
     const learnerTurns = lines.filter((l) => l.who === "learner").length;
     const last = (r.played ?? []).join(" ").trim();
-    if (isRolePlay(step) && this.rp?.step === at) { this.rolePlayAfterReply(step, last, learnerTurns, lines); return; }
+    if (isRolePlay(step) && this.rp?.step === at) { this.rolePlayAfterReply(step, last, lines); return; }
     if (!last || !(learnerTurns > 0 || step.type === "done") || /\?["”’]?\s*$/.test(last)) return;
-    const chk = await api.lessonCheck(appTeach(step.teach), lines, this.sessionId, at, "app");
+    const pre = r.precheck;
+    const chk = await (pre && pre.at === at && pre.text === last && pre.said === saidBefore ? pre.p : this.checkLesson(step, lines, at));
     // 그사이 학습자가 말했거나 선생님이 다시 말하기 시작했으면 이 확인은 버린다
     if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.lessonSaid !== saidBefore || this.resp || this.ui.lessonDone) return;
-    if (chk.waiting && learnerTurns < 12) return;
-    if (chk.complete || learnerTurns >= 12) {
-      this.log("lesson_part_done", { step: at, forced: !chk.complete });
-      if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; }
-      if (!GOODBYE.test(lines.filter((l) => l.who === "teacher").map((l) => l.text).join(" ")) && !this.byeAsked) {
-        this.byeAsked = true; this.log("lesson_bye_asked", {});
-        this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: "The class is ending now. Say goodbye in two or three short sentences: react to what the learner last said, praise one specific thing they did today, and say a warm goodbye." }] } });
-        this.send({ type: "response.create" }); this.set({ state: "thinking" });
-        for (let w = 0; !this.resp && w < 4000; w += 100) await sleep(100);
-        for (let w = 0; (this.player.isPlaying || this.resp) && w < 15000; w += 150) await sleep(150);
-        if (this.closed || !this.pc || gen !== this.lessonGen) return;
+    if (this.holdForSpeech(() => this.lessonAfterReply(r), t0)) return;
+    const sys = (text) => { this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text }] } }); this.send({ type: "response.create" }); this.set({ state: "thinking" }); };
+    const capped = learnerTurns >= 12;
+    if (chk.failed) {
+      this.checkFails = (this.checkFails ?? 0) + 1; this.log("lesson_check_failed", { step: at, n: this.checkFails });
+      if (learnerTurns < 6 && this.checkFails <= 3) { sys(CONTINUE_NOTE); return; }
+    } else {
+      if (chk.waiting && !capped) return;
+      if (!chk.complete && capped && !this.wrapAsked) { this.wrapAsked = true; this.log("lesson_wrap_asked", { step: at }); sys(WRAP_NOTE); return; }
+      if (!chk.complete && !capped && (this.stepHolds ?? 0) < 3) {
+        this.stepHolds = (this.stepHolds ?? 0) + 1;
+        const fix = chk.fix || "Go on with what is left in this part.";
+        this.log("lesson_step_held", { step: at, fix: String(fix).slice(0, 200) });
+        sys(`This part is not finished yet: ${fix} Do it now, in your own natural words, without announcing it.`); return;
       }
-      this.finishLesson([], []);
-      return;
     }
-    if (chk.fix && (this.stepHolds ?? 0) < 3) {
-      this.stepHolds = (this.stepHolds ?? 0) + 1; this.log("lesson_step_held", { step: at, fix: String(chk.fix).slice(0, 200) });
-      this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
-        text: `This part is not finished yet: ${chk.fix} Do it now, in your own natural words, without announcing it.` }] } });
-      this.send({ type: "response.create" }); this.set({ state: "thinking" });
-    }
+    this.log("lesson_part_done", { step: at, forced: !chk.complete });
+    if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; }
+    await this.endWithGoodbye(lines, gen);
   }
 
-  /** 0.9.13 역할 읽기 진행(선생님 대답이 다 나온 뒤). 선생님 줄을 들었으면 다음 자리로, 학습자 줄 차례면 기다리게, 다 읽었으면 짧은 칭찬 뒤 다음 부분. */
-  rolePlayAfterReply(step, said, learnerTurns, lines = []) {
+  /** 0.9.13 역할 읽기 진행(선생님 대답이 다 나온 뒤). 선생님 줄을 들었으면 다음 자리로, 학습자 줄 차례면 기다리게, 다 읽었으면 짧은 칭찬 뒤 다음 부분.
+   *  0.8.2(11/19 Fable 검토 1-3·1-4·1-5): ‘다시’ 횟수를 이 자리에서 학습자가 말한 횟수로 센다(예전엔 선생님 대답 수라 “다시 해 보세요” 직후 선생님이 자기 줄을 읽었음),
+   *  마지막 줄에서 선생님이 다시 청했으면 기다린다, 줄 판정은 순서대로 이어진 낱말로(role 규칙은 파일 아래쪽). */
+  rolePlayAfterReply(step, said, lines = []) {
     const L = this.lesson, at = this.lessonStep, rp = this.rp, plan = rolePlan(step.teach);
     const sys = (text, now) => { this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text }] } }); if (now) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); } };
-    const done = () => { this.log("lesson_part_done", { step: at, roleplay: true }); if (at + 1 < L.steps.length) this.startLessonStep(at + 1); else this.finishLesson([], []); };
-    // 마지막 칭찬까지 끝남 → 다음 부분
-    if (rp.comment) { done(); return; }
+    const done = () => { if (this.holdForSpeech(done)) return; this.log("lesson_part_done", { step: at, roleplay: true }); if (at + 1 < L.steps.length) this.startLessonStep(at + 1); else this.finishLesson([], []); };
+    const mine = lines.filter((l) => l.who === "learner"), n = mine.length;
+    if (rp.comment) { done(); return; }   // 마지막 칭찬까지 끝남
     if (rp.final) {
-      if (learnerTurns <= (rp.finalAt ?? 0)) return;
-      // 0.9.14: 학습자 마지막 줄을 실제로 말했는지 본다(0.9.13은 아무 말이나 하면 넘어가 마지막 줄이 빠졌음). 한 번 더 기회, 그래도 안 되면 칭찬하고 마침.
-      const lastL = plan[plan.length - 1];
-      const since = lines.filter((l) => l.who === "learner").slice(rp.finalAt ?? 0);
-      if (since.some((l) => saidLine(l.text, lastL.en))) { done(); return; }
-      if ((rp.finalTries ?? 0) >= 1 || learnerTurns >= 16) { rp.comment = true; sys("All the lines are done. Give one short warm comment on how they did, with no question.", true); return; }
-      rp.finalTries = (rp.finalTries ?? 0) + 1;
+      if (n <= (rp.finalAt ?? 0)) return;
+      const lastL = plan[plan.length - 1], since = mine.slice(rp.finalAt ?? 0);
+      const ok = since.some((l) => learnerSaid(l.text, lastL.en));
+      if (!asksAgain(said, lastL.en)) {
+        // 선생님이 마무리 말을 했다. 학습자가 마지막 줄을 아예 안 했으면 한 번 청하게 한다.
+        if (ok || since.length >= 2 || rp.finalNudged) { done(); return; }
+        rp.finalNudged = true; this.rpHighlight(plan, plan.length - 1); sys(ROLE_LAST_NOTE(lastL), true); return;
+      }
+      // 선생님이 다시 청했다: 학습자 말을 기다린다. 두 번 해 봤으면 칭찬하고 마친다.
+      if (since.length >= 2 || n >= 16) { rp.comment = true; sys(ROLE_DONE_NOTE, true); }
       return;
     }
     const before = rp.next;
-    if (rp.next < plan.length && saidLine(said, plan[rp.next].en)) {
-      const nx = plan.findIndex((l, i) => i > rp.next && l.who === "you"); rp.next = nx === -1 ? plan.length : nx; rp.tries = 0;
-    } else if (said) rp.tries++;
-    if ((rp.tries >= 2 || learnerTurns >= 16) && rp.next < plan.length) {
-      // 같은 자리에서 막히면 선생님이 그 줄을 읽고 이어 간다(0.9.14: 3번 → 2번)
-      rp.tries = 0; this.rpHighlight(plan, rp.next); sys(`Now read line ${plan[rp.next].n} (${plan[rp.next].name}): "${plan[rp.next].en}" exactly as written, and nothing after it.`, true); return;
-    }
+    rp.next = roleAdvance(plan, rp.next, said);
     if (rp.next !== before || !said) {
-      const n = roleNote(plan, rp.next, false);
-      if (n.comment) rp.comment = true;
-      if (n.final) { rp.final = true; rp.finalAt = learnerTurns; }
+      if (rp.next !== before) { rp.at = n; rp.warned = false; }
+      const note = roleNote(plan, rp.next, false);
+      if (note.comment) rp.comment = true;
+      if (note.final) { rp.final = true; rp.finalAt = n; }
       // 화면: 다음에 말할 줄을 밝힌다(학습자 줄이면 그 줄, 아니면 선생님이 읽을 줄)
       const lastYou = plan.slice(0, rp.next).map((l) => l.who).lastIndexOf("you");
       const nextLearner = plan.findIndex((l, i) => i > lastYou && l.who === "learner");
       this.rpHighlight(plan, nextLearner !== -1 && (rp.next >= plan.length || nextLearner < rp.next) ? nextLearner : rp.next);
-      sys(n.note, n.respondNow);
+      sys(note.note, note.respondNow);
+      return;
     }
+    // 제자리: 선생님이 학습자에게 다시 청했거나 다른 말을 했다
+    const tried = n - (rp.at ?? 0);
+    if ((tried >= 3 || n >= 16) && rp.next < plan.length) { rp.at = n; rp.warned = false; this.rpHighlight(plan, rp.next); sys(ROLE_FORCE_NOTE(plan[rp.next]), true); return; }
+    if (tried >= 1 && !rp.warned) { rp.warned = true; sys(ROLE_RETRY_NOTE(plan[rp.next]), false); }
   }
   rpHighlight(plan, idx) { if (idx >= 0 && idx < plan.length) this.set({ lessonHiLine: plan[idx].n - 1 }); }
 
@@ -894,29 +1027,137 @@ const PREAMBLE = [
 ];
 export const isPreamble = (s) => PREAMBLE.some((re) => re.test(String(s).trim()));
 // 0.9.13 역할 읽기를 앱이 한 줄씩 진행(가상 수업 시험에서 선생님이 학습자 줄을 읽거나 끝까지 안 함). 수업 계획의 대사 목록을 읽어
-// 대답마다 ‘이 줄을 그대로 읽어요 / 학습자 줄을 기다렸다가 짧게 반응하고 다음 줄’을 알려 주고, 들은 말에서 선생님 줄을 찾아 진도를 센다(lesson-sim과 같음).
+// 대답마다 ‘이 줄을 그대로 읽어요 / 학습자 줄을 기다렸다가 짧게 반응하고 다음 줄’을 알려 주고, 들은 말에서 선생님 줄을 찾아 진도를 센다.
+// 아래 규칙은 가상 수업(lesson-sim role.ts)·안드로이드(LessonGuard.kt)와 같다. 고치면 세 곳을 함께 고친다.
 export const rolePlan = (teach) => [...String(teach ?? "").matchAll(/^(\d+)\. (.+?) \((you|learner)\): "(.*)"/gm)]
   .map((m) => ({ n: Number(m[1]), name: m[2], who: m[3], en: m[4] }));
 export const isRolePlay = (st) => st?.type === "dialogue" && !st.play && rolePlan(st.teach).length > 0;
-const rpWords = (t) => String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]/g, " ").split(/[\s-]+/).filter(Boolean);
-/** 선생님 말에 이 줄이 들어 있나(낱말 80% 이상, 3낱말 이하면 모두) */
-export const saidLine = (said, line) => { const w = rpWords(line), have = new Set(rpWords(said)); const hit = w.filter((x) => have.has(x)).length; return w.length > 0 && hit >= (w.length <= 3 ? w.length : Math.ceil(w.length * 0.8)); };
-/** 역할 읽기 다음 할 일. next = 아직 안 읽은 선생님 줄의 자리(없으면 plan.length) */
+export const rpWords = (t) => String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]/g, " ").split(/[\s-]+/).filter(Boolean);
+const FILLER = new Set(["ha", "haha", "oh", "ah", "hmm", "um", "uh", "wow", "well", "hey", "aw", "ooh", "so"]);
+/** sw 안에서 줄(lw)이 순서대로 이어져 들어 있는 자리 [시작, 끝). 낱말이 need개 이상 순서대로 맞아야 한다. 없으면 null */
+export function findLine(sw, lw, need) {
+  if (!lw.length || need <= 0) return null;
+  for (let i = 0; i < sw.length; i++) {
+    if (sw[i] !== lw[0] && sw[i] !== lw[1]) continue;
+    let k = 0, hit = 0, end = i;
+    for (let j = i; j < sw.length && j < i + lw.length + 3 && k < lw.length; j++) {
+      const at = lw.indexOf(sw[j], k);
+      if (at !== -1 && at - k <= 2) { hit++; k = at + 1; end = j + 1; }
+    }
+    if (hit >= need) return [i, end];
+  }
+  return null;
+}
+const needFor = (n, min) => (n <= 3 ? n : Math.ceil(n * min));
+/** 선생님 말(said)에 이 줄이 들어 있나. 낱말만 세지 않고 순서대로 이어진 것만(80%, 세 낱말 이하면 모두). 두 낱말 이하 줄(No. / Why?)은 그 말만으로 된 문장이어야 한다. */
+export function saidLine(said, line) {
+  const lw = rpWords(line); if (!lw.length) return false;
+  if (lw.length <= 2) return shortSaid(said, line);
+  return findLine(rpWords(said), lw, needFor(lw.length, 0.8)) !== null;
+}
+const sentWords = (t) => String(t).split(/[.!?…]+/).map((x) => rpWords(x).join(" ")).filter(Boolean);
+/** 짧은 줄(No. / Forty? Why?): 그 말만으로 된 문장(들)이 이어서 나와야 한다 */
+function shortSaid(said, line) {
+  const a = sentWords(said), b = sentWords(line);
+  for (let i = 0; i + b.length <= a.length; i++) if (b.every((x, k) => a[i + k] === x)) return true;
+  return false;
+}
+/** 학습자가 자기 줄을 말했나(받아쓰기라 느슨하게): 감탄사는 빼고 60% 이상 순서대로 */
+export function learnerSaid(text, line) {
+  const drop = (w) => w.filter((x) => !FILLER.has(x));
+  const lw0 = rpWords(line), lw = drop(lw0).length ? drop(lw0) : lw0, sw = drop(rpWords(text));
+  return findLine(sw, lw, needFor(lw.length, 0.6)) !== null;
+}
+/** 선생님 대답을 보고 자리를 옮긴다. next = 아직 안 읽은 선생님 줄의 자리(다 읽었으면 plan.length).
+ *  직전 학습자 줄을 선생님이 대신 들려준 부분은 빼고 본다(1-1: 학습자 8번 줄 “Thanks! See you later!” 안에 선생님 9번 줄이 들어 있음).
+ *  이어지는 선생님 줄(5·6번)을 한 대답에 읽었으면 한꺼번에 넘긴다. */
+export function roleAdvance(plan, next, said) {
+  if (next >= plan.length || !String(said ?? "").trim()) return next;
+  let text = String(said);
+  const lastYou = plan.slice(0, next).map((l) => l.who).lastIndexOf("you");
+  const tw = rpWords(plan[next].en);
+  for (const l of plan.slice(lastYou + 1, next)) {
+    if (l.who !== "learner") continue;
+    const lw = rpWords(l.en); if (lw.length < 2) continue;
+    // 선생님 줄이 그 학습자 줄 안에 들어 있을 때만 지운다(거꾸로 선생님 줄이 학습자 말을 받아 되풀이하는 장면이 많다: 1-7, 5-14)
+    if (!findLine(lw, tw, needFor(tw.length, 0.8))) continue;
+    // 따옴표로 들려준 학습자 줄을 낱말 자리로 찾아 지운다
+    const parts = text.split(/(\s+)/); const idx = []; const sw = [];
+    parts.forEach((p, pi) => { for (const w of rpWords(p)) { sw.push(w); idx.push(pi); } });
+    const span = findLine(sw, lw, needFor(lw.length, 0.8));
+    if (span) { for (let pi = idx[span[0]]; pi <= idx[span[1] - 1]; pi++) parts[pi] = pi === idx[span[0]] ? " . " : ""; text = parts.join(""); }
+  }
+  let at = next;
+  while (at < plan.length && plan[at].who === "you") {
+    const lw = rpWords(plan[at].en);
+    if (lw.length <= 2) { if (!saidLine(text, plan[at].en)) break; }
+    else {
+      const parts = text.split(/(\s+)/); const idx = []; const sw = [];
+      parts.forEach((p, pi) => { for (const w of rpWords(p)) { sw.push(w); idx.push(pi); } });
+      const span = findLine(sw, lw, needFor(lw.length, 0.8));
+      if (!span) break;
+      text = parts.slice(idx[span[1] - 1] + 1).join("");
+    }
+    at++;
+  }
+  if (at === next) return next;
+  const nx = plan.findIndex((l, i) => i >= at && l.who === "you");
+  return nx === -1 ? plan.length : nx;
+}
+/** 선생님이 학습자에게 (다시) 말해 보라고 청하는 대답인가 */
+export const asksAgain = (said, line) => /\?["”’]?\s*$/.test(String(said).trim()) || saidLine(said, line)
+  || /\b(your turn|try (it |that |this |the line )?(again|once more|one more time)|once more|one more time|say (it|that|the line|your line)|give it (a|another) try|now you)\b|다시|말해 보세요|해 보세요|차례/i.test(String(said));
+const lineQ = (l) => `line ${l.n} (${l.name}): "${l.en}"`;
+/** 역할 읽기 다음 할 일(선생님에게 줄 메모). next = 아직 안 읽은 선생님 줄의 자리(없으면 plan.length) */
 export function roleNote(plan, next, first) {
-  const partner = plan.find((l) => l.who === "you")?.name ?? "the other person";
-  const head = first ? `Role reading of the scene on screen: the learner is Jiwoo and you are ${partner}. Say in one short sentence that they will be Jiwoo and you will read ${partner}. Do not call highlight_line; the app highlights the lines. ` : "";
+  const partners = [...new Set(plan.filter((l) => l.who === "you").map((l) => l.name))];
+  const partner = partners.length ? partners.join(" and ") : "the other person";
+  const me = plan.find((l) => l.who === "learner")?.name ?? "Jiwoo";
+  const head = first ? `Role reading of the scene on screen: the learner is ${me} and you are ${partner}. Say in one short sentence that they will be ${me} and you will read ${partner}. Do not call highlight_line; the app highlights the lines. ` : "";
   const tIdx = plan.findIndex((l, i) => i >= next && l.who === "you");
-  const from = first ? 0 : Math.max(0, next - 1 >= 0 ? (plan.slice(0, next).map((l) => l.who).lastIndexOf("you") + 1) : 0);
+  const from = first ? 0 : plan.slice(0, next).map((l) => l.who).lastIndexOf("you") + 1;
   const learnerBefore = plan.slice(from, tIdx === -1 ? plan.length : tIdx).filter((l) => l.who === "learner");
-  const q = (l) => `line ${l.n} (${l.name}): "${l.en}"`;
+  const slips = "Small slips, a missing Oh or Ha, or leaving out a short part of a long line are fine.";
   if (tIdx === -1) {
-    if (learnerBefore.length) return { note: head + `Now wait for the learner to say their last ${learnerBefore.length > 1 ? "lines" : "line"}, ${learnerBefore.map(q).join(", then ")}. If they say only part of it, say the line once and let them try once more. When they have said it, give one short warm comment on how they did, with no question.`, respondNow: first, final: true };
+    if (learnerBefore.length) return { note: head + `Now wait for the learner to say their last ${learnerBefore.length > 1 ? "lines" : "line"}, ${learnerBefore.map(lineQ).join(", then ")}. ${slips} Only if they say just a word or two of it, or something else, say the line once for them and ask them to try it (one retry only), and stop there. When they have said it, give one short warm comment on how they did, with no question.`, respondNow: first, final: true };
     return { note: head + "All the lines are done. Give one short warm comment on how they did, with no question.", respondNow: true, comment: true };
   }
   const t = plan[tIdx];
-  if (!learnerBefore.length) return { note: head + `${first ? "Then" : "Now"} read ${q(t)} exactly as written, word for word, and nothing after it.`, respondNow: true };
-  return { note: head + (first ? `Then ask them to start with their line ${learnerBefore[0].n} on screen, without saying it for them. ` : `Now wait for the learner to say ${learnerBefore.map(q).join(", then ")}. `) + `When they have said it, read your next line, ${q(t)}, right away, exactly as written, with nothing before or after it. If they said only part of a long line, that is fine: go on. Only if what they said is clearly not their line, say their line once for them and ask them to try once more; after that one retry, read your next line whatever they say.`, respondNow: first };
+  if (!learnerBefore.length) return { note: head + `${first ? "Then" : "Now"} read ${lineQ(t)} once, exactly as written, word for word, and nothing after it.`, respondNow: true };
+  return { note: head + (first ? `Then ask them to start with their line ${learnerBefore[0].n} on screen, without saying it for them, and stop there. ` : `Now wait for the learner to say ${learnerBefore.map(lineQ).join(", then ")}. `)
+    + `When they have said it, read your next line, ${lineQ(t)}, right away, once, exactly as written, with nothing before or after it. ${slips} Only if they said just a word or two of it, or something else, do this instead: react to what they said in a few words, say their line once for them, ask them to try it, and stop there without reading your own line. After that one retry, read your next line whatever they say.`, respondNow: first };
 }
+export const ROLE_RETRY_NOTE = (l) => `(App: the learner will try their line once more. After that try, read your line ${l.n} right away, whatever they say. Do not ask them to repeat it again.)`;
+export const ROLE_FORCE_NOTE = (l) => `Now read line ${l.n} (${l.name}): "${l.en}" once, exactly as written, with nothing before or after it. Do not ask the learner to repeat anything.`;
+export const ROLE_LAST_NOTE = (l) => `The learner has not said their last line yet (line ${l.n}: "${l.en}"). Say that line once for them and ask them to say it. Add nothing else.`;
+export const ROLE_DONE_NOTE = "All the lines are done. Do not ask the learner to repeat anything. Give one short warm comment on how they did, with no question.";
+/** 역할 읽기에서 같은 문장을 한 대답 안에 또 말하려 하면 거른다(선생님이 자기 줄을 두 번씩 읽는 일이 있었음). 그 문장이 대사 한 줄 안에 실제로 두 번 나오면 그대로 둔다. */
+export function roleRepeat(plan, seen, sentence) {
+  const key = rpWords(sentence).join(" "); if (!key) return false;
+  if (!seen.has(key)) { seen.add(key); return false; }
+  return !plan.some((l) => l.who === "you" && sentWords(l.en).filter((x) => x === key).length >= 2);
+}
+// 0.8.2: 앱이 넘기는 방식에서는 예고 문장을 거의 지우지 않는다. 수업 자체를 말하는 문장(“Let me think…”, “keep us moving”, “the grammar step”)만 지운다. 질문·따옴표가 든 문장은 건드리지 않는다.
+const META = [/^(ok(ay)?,?\s+|alright,?\s+|now,?\s+)?let me think\b/i, /\bkeep (us|things|it) moving\b/i, /\bmove us (to|on|forward|along)\b/i, /\b(the|this|next|grammar|last) step\b/i, /\bwhat comes next\b/i, /\blet me (respond|reply)\b/i,
+  // 11/19 확인 수업 15회: 문법 부분을 열 때 진행 방식을 말함(“I’ll think through each point one by one…”, “Let’s talk through this…”, “I’ll keep this quick and practical…”)
+  /\b(let me|i[’']ll|i will) think (about|through)\b/i, /\b(let me|i[’']ll|i will|let[’']s|we[’']ll) (just )?(walk|talk|work|go|run) (you |us )?through\b/i,
+  /\b(i[’']ll|i will|let[’']s|we[’']ll) (keep|take) (this|it|things) (quick|simple|short|step by step|one by one)\b/i];
+// 선생님용 메모가 말로 새는 문장(8985: “If they say "I am", respond: …”). 학습자를 3인칭으로 부르거나 도구 이름을 말하면 따옴표가 있어도 지운다.
+const LEAK = [/\bthe learner\b/i, /\brespond:/i, /\b(next_step|finish_session|highlight_line|highlight_word)\b/i];
+const LEAK_IF = /^\s*if they (say|answer|respond|give|get)\b/i;
+/** 이 부분의 선생님 메모(화면 내용이 들어 있음) 안에 그 문장이 그대로 있나: 교재 대사·표현(“I’ll think about it.”, “Let me think…”)은 지우지 않는다 */
+const inNotes = (teach, s) => { const w = rpWords(s); if (!w.length) return false; const tw = rpWords(teach);
+  outer: for (let i = 0; i + w.length <= tw.length; i++) { for (let k = 0; k < w.length; k++) if (tw[i + k] !== w[k]) continue outer; return true; }
+  return false; };
+export const isMetaTalk = (s, teach = "") => { const t = String(s).trim();
+  if (LEAK.some((re) => re.test(t))) return true;
+  const hit = (LEAK_IF.test(t) && !t.includes("?")) || (!/[?"“”]/.test(t) && META.some((re) => re.test(t)));
+  return hit && !inNotes(teach, t); };
+
+const SCENE_INTRO = (title) => `The app is about to play a short scene from the textbook${title ? ` (${title})` : ""} in the characters' own voices. Say one short, natural sentence that leads into it and invites the learner to just listen. One sentence only, with no question.`;
+const QUIET_NOTE = "(App: nobody has spoken for a while. If you asked the learner something, ask it again in simpler words or offer two choices. If you were not waiting for them, go on with the next thing in this part.)";
+const CONTINUE_NOTE = "(App: go on with this part. Do the next thing in it with the learner; if everything in it is done, give one short reaction with no question.)";
+const WRAP_NOTE = "(App: this part has taken long enough. Wrap it up now: one short, warm reaction to what the learner just said, with no new question.)";
 
 // 0.9.12 앱이 넘기는 방식: 수업 계획 속 next_step 이야기(“Then call next_step.”, “What comes next …”)를 지운다
 export const appTeach = (t) => String(t ?? "").split("\n").filter((l) => !/^What comes next/i.test(l.trim()))
@@ -926,9 +1167,10 @@ export const appTeach = (t) => String(t ?? "").split("\n").filter((l) => !/^What
     .replace(/\bCall next_step only after the learner has answered and seems ready\.?/i, "End with one short, friendly question asking if they are ready to start, and wait for their answer. This part is done only after the learner has answered and seems ready.")
     .replace(/\bCall next_step only (after|when|once)\b/gi, "This part is done only $1")
     .replace(/\b(When|After|Once)\b([^.\n]*?),\s*call next_step\b\.?/g, "$1$2, this part is done.")
-    .replace(/(?:^|\s)[^.\n]*\bnext_step\b[^.\n]*\.?/g, "")
+    .replace(/(?:^|\s)[^.\n]*\b(?:next_step|finish_session)\b[^.\n]*\.?/g, "")   // 0.8.2: 마무리 부분의 finish_session 문장도 지운다
     .replace(/\s{2,}/g, " ").trimEnd()).join("\n").trim() || "Continue the lesson.";
-const GOODBYE = /\b(good ?bye|bye|see you|next time|take care|have a (good|great|nice|lovely))\b|다음에|안녕히|또 만나/i;
+// 0.8.2: next time·다음에는 뺐다(“Next time, try the full sentence.”를 작별 인사로 보고 바로 끝냈음)
+const GOODBYE = /\b(good ?bye|bye|see you|take care|have a (good|great|nice|lovely))\b|안녕히|또 만나/i;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const plain = (x) => String(x ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 

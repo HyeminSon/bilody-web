@@ -1,18 +1,22 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.1";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.1";
+import * as api from "./api.js?v=0.8.2";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.2";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
 export const pdfUrl = (p) => (p?.startsWith("pdf/") ? "lessons/" + p : p);
 
+// 0.8.2: 받은 교재는 10분만 기억한다(탭을 오래 열어 두면 새로 올린 교재가 반영되지 않았음). 다시 받지 못하면 갖고 있던 것을 쓴다.
 const cache = {};
 async function getJson(path) {
-  if (cache[path]) return cache[path];
-  const r = await fetch(path, { cache: "no-cache" });
-  if (!r.ok) throw new Error(`http_${r.status}`);
-  return (cache[path] = await r.json());
+  const c = cache[path];
+  if (c && Date.now() - c.at < 600000) return c.data;
+  try {
+    const r = await fetch(path, { cache: "no-cache" });
+    if (!r.ok) throw new Error(`http_${r.status}`);
+    const data = await r.json(); cache[path] = { data, at: Date.now() }; return data;
+  } catch (e) { if (c) return c.data; throw e; }
 }
 export const loadIndex = () => getJson("tb/index.json");
 export const loadBook = (file) => getJson(`tb/${file}`);

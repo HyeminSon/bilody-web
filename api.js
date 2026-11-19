@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.1";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.2";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -26,8 +26,10 @@ async function errorCode(res) {
   catch { return `http_${res.status}`; }
 }
 
-async function call(url, init) {
-  try { return await fetch(url, init); } catch { throw new ApiError("network", 0); }
+// 0.8.2: 서버 요청에 시간 제한(느린 망에서 목소리 요청 하나가 끝없이 걸리면 선생님 말과 수업 진행이 함께 멈췄음). 넘으면 네트워크 실패로 다룬다.
+async function call(url, init, ms = 20000) {
+  const signal = init?.signal ?? (typeof AbortSignal !== "undefined" && AbortSignal.timeout ? AbortSignal.timeout(ms) : undefined);
+  try { return await fetch(url, signal ? { ...init, signal } : init); } catch { throw new ApiError("network", 0); }
 }
 
 function withExpiry(t) { return { ...t, expires_at_ms: Date.now() + (t.expires_in ?? 3600) * 1000 - 60000 }; }
@@ -86,11 +88,11 @@ export async function rest(path, { method = "GET", body, prefer } = {}) {
   return text ? JSON.parse(text) : null;
 }
 
-async function fn(name, body, raw = false) {
+async function fn(name, body, raw = false, ms = 20000) {
   // 브라우저는 CORS 허락이 있는 web-proxy를 거쳐 함수를 부른다
   const res = await call(`${SUPABASE_URL}/functions/v1/web-proxy?fn=${name}`, {
     method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}),
-  });
+  }, ms);
   if (!res.ok) throw new ApiError(await errorCode(res), res.status);
   return raw ? res : res.json();
 }
@@ -124,8 +126,9 @@ export async function saveTurn(sessionId, seq, role, text) {
 }
 /** 11/18 1:1 수업: 선생님이 넘기려 할 때 이 부분을 다 했는지 확인. 실패하면 다 한 것으로 본다(수업을 막지 않음). */
 export async function lessonCheck(plan, lines, sessionId, step, mode = "tool") {
-  try { return await fn("lesson-check", { plan, lines, session_id: sessionId, step, mode }); }
-  catch { return mode === "app" ? { complete: false, waiting: true, fix: "" } : { complete: true, fix: "" }; }
+  // 0.8.2: 실패(failed)를 구분해 돌려준다. 앱은 한 번 더 물어보고, 그래도 안 되면 수업을 이어 가게 한다(예전엔 조용히 ‘기다림’이 되어 멈췄음).
+  try { return await fn("lesson-check", { plan, lines, session_id: sessionId, step, mode }, false, 10000); }
+  catch { return mode === "app" ? { complete: false, waiting: true, fix: "", failed: true } : { complete: true, fix: "" }; }
 }
 export async function finishSession(sessionId) { try { await fn("end-session", { sessionId }); } catch { /* 기억 정리 실패는 대화를 막지 않음 */ } }
 // features: 이 앱이 할 수 있는 것(사진 카드). 서버는 사진 사이트 키가 있고 앱이 지원할 때만 사진 도구를 준다(11/13).
@@ -136,7 +139,7 @@ export const realtimeKey = (presetId, speed, character = null, lesson = null, se
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
 export async function say(text, voice, speed, sessionId, preview = false) {
   const body = { text, voice, speed }; if (sessionId) body.sessionId = sessionId; if (preview) body.preview = true;
-  const res = await fn("tts-say", body, true);
+  const res = await fn("tts-say", body, true, 15000);
   const rate = Number(res.headers.get("X-Sample-Rate") || 24000);
   const result = res.headers.get("X-Result") || "ok";
   const fixedRaw = res.headers.get("X-Fixed-Text");

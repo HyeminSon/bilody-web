@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.1";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.1";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.1";
-import * as L9 from "./lesson09.js?v=0.8.1";
-import { GUIDE } from "./guide.js?v=0.8.1";
-import { Player } from "./audio.js?v=0.8.1";
-import { Chat } from "./rt.js?v=0.8.1";
-import * as story from "./story.js?v=0.8.1";
-import * as push from "./push.js?v=0.8.1";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.1";
+import * as api from "./api.js?v=0.8.2";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.2";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.2";
+import * as L9 from "./lesson09.js?v=0.8.2";
+import { GUIDE } from "./guide.js?v=0.8.2";
+import { Player } from "./audio.js?v=0.8.2";
+import { Chat } from "./rt.js?v=0.8.2";
+import * as story from "./story.js?v=0.8.2";
+import * as push from "./push.js?v=0.8.2";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.2";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -882,8 +882,8 @@ app.addEventListener("click", async (e) => {
     case "lsExit": await endLesson(true); break;
     case "lsHome": await endLesson(false); break;
     case "lsTalk": if (chatOpening) break; chatOpening = true; try { await endLesson(false); await openChat(); } finally { chatOpening = false; } break;
-    case "lsSlow": S.chat?.sendText("Sorry, could you say that again slowly?"); break;
-    case "lsSkip": S.chat?.sendText("Let's move on to the next part, please."); break;
+    case "lsSlow": S.chat?.slowAgain(); break;   // 0.8.2: 한 번만 느리게 다시(학습자 말로 보내지 않음)
+    case "lsSkip": S.chat?.skipStep(); break;    // 0.8.2: 앱이 직접 다음 부분으로
     case "kWord": S.kids?.tapWord(v); break;
     case "kPick": S.kids?.pick(v, el.dataset.ok === "1"); break;
     case "kHunt": S.kids?.hunt(v, el.dataset.ch); break;
