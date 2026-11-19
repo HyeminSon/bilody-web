@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.2";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.2";
+import * as api from "./api.js?v=0.8.3";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.3";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -20,6 +20,8 @@ async function getJson(path) {
 }
 export const loadIndex = () => getJson("tb/index.json");
 export const loadBook = (file) => getJson(`tb/${file}`);
+// 0.8.3(11/19 실장님): 동영상 강의(문법 강의 등). 목록 파일만 올리면 앱·웹에 나타난다(앱을 새로 내지 않음).
+export const loadVideos = () => getJson("videos/index.json");
 
 const plain = (s) => String(s ?? "").replace(/\{\{|\}\}|\*/g, "").trim();
 
@@ -66,10 +68,10 @@ export const stepLabel = (s) => (s?.type === "dialogue" ? (s.play ? "장면 듣�
 
 // ---------- 수업 홈 ----------
 export function renderHome(H, esc, I) {
-  if (H.error) return `<div class="lh"><div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><p class="error">${esc(H.error)}</p></div>`;
-  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><div class="spinner"></div></div>`;
-  // 0.9.3(11/17 실장님): 어린이 수업은 1:1 수업과 나누고, 다시 설계할 때까지 숨긴다
-  const books = H.index.books.filter((b) => (b.kind === "kids") === !!H.kidsMode); const book = books.find((b) => b.id === H.bookId) ?? books[0];
+  if (H.error) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><p class="error">${esc(H.error)}</p></div>`;
+  if (!H.index) return `<div class="lh"><div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div><div class="spinner"></div></div>`;
+  // 0.8.3(11/19 실장님): 어린이 교재도 1:1 수업 안에서 고른다. 권 이름은 모두 보이게(줄바꿈), 어른 Book 다음에 Kids Book.
+  const books = [...H.index.books.filter((b) => b.kind !== "kids"), ...H.index.books.filter((b) => b.kind === "kids")]; const book = books.find((b) => b.id === H.bookId) ?? books[0];
   const kids = book.kind === "kids";
   const [nn, ns] = H.next;
   // 마지막 과까지 마치면 1과로 되돌아가 보이지 않게(헤니 검토)
@@ -78,11 +80,11 @@ export function renderHome(H, esc, I) {
   const nextBook = books[books.indexOf(book) + 1];
   const t = byId(H.teacher);
   return `<div class="lh">
-    <div class="lh-top"><h2>${H.kidsMode ? "어린이 수업" : "1:1 수업"}</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    <p class="muted small">${H.kidsMode ? "초등 저학년 · 그림과 노래로" : "말하기 교재 Book 1~9 · 중학생부터 어른까지"}</p>
-    ${H.kidsMode ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
+    <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
+    <p class="muted small">중학생~어른은 Book, 초등 저학년은 Kids Book</p>
     <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`).join("")}</div>
-    <p class="muted small">${esc(kids ? book.title_ko : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
+    <p class="muted small">${esc(kids ? `${book.title_ko} · 초등 저학년 · 그림과 노래로` : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
+    ${kids ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
     ${done ? `<div class="card today"><div class="today-title">${T.book(book.no, kids)}을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 Lesson 고르기’에서 복습할 Lesson을 고르거나 다음 Book으로 넘어가요.</p>
       ${nextBook && nextBook.kind === book.kind ? `<button class="pill primary" data-act="lhBook" data-v="${nextBook.id}">${T.book(nextBook.no, kids)}로 넘어가기</button>` : `<button class="pill secondary" data-act="lhAll">Lesson 목록 펼치기</button>`}</div>` : `<div class="card today">
       <div class="row"><b class="accent small grow">오늘 할 분량</b><span class="muted small">약 10분</span></div>
@@ -264,3 +266,23 @@ export function renderKids(k, esc, I) {
       ${last ? `<button class="pill primary compact" data-act="kDone">끝내기</button>` : `<button class="pill primary compact" data-act="kNext">다음</button>`}</div>
   </div>`;
 }
+
+// ---------- 동영상 강의(0.8.3) ----------
+// videos/index.json: { "series": [ { "id", "title", "desc", "videos": [ { "id", "title", "sub", "minutes", "url", "poster" } ] } ] }
+export function renderVideos(V, esc, I) {
+  const top = `<div class="lh-top"><h2>동영상 강의</h2><button class="link lh-home" data-act="vClose">${I("home")}처음 화면</button></div>`;
+  if (V.error) return `<div class="lh">${top}<p class="error">${esc(V.error)}</p></div>`;
+  if (!V.index) return `<div class="lh">${top}<div class="spinner"></div></div>`;
+  const series = (V.index.series ?? []).filter((x) => x && x.title);
+  const any = series.some((x) => (x.videos ?? []).some((v) => v.url));
+  return `<div class="lh">${top}
+    <p class="muted small">교재 공부를 돕는 짧은 강의 · 무료</p>
+    ${series.map((x) => `<div class="card vseries"><b class="accent">${esc(x.title)}</b>${x.desc ? `<p class="muted small">${esc(x.desc)}</p>` : ""}
+      ${(x.videos ?? []).filter((v) => v.url).length ? `<div class="lh-list">${x.videos.filter((v) => v.url).map((v) => `<button class="vitem" data-act="vPlay" data-v="${esc(v.id)}">
+        ${v.poster ? `<img src="${esc(v.poster)}" alt="">` : `<span class="vthumb">${I("play_circle")}</span>`}
+        <span class="grow"><b>${esc(v.title)}</b>${v.sub ? `<br><span class="muted small">${esc(v.sub)}</span>` : ""}</span>${v.minutes ? `<span class="muted small">${esc(String(v.minutes))}분</span>` : ""}</button>`).join("")}</div>`
+        : `<p class="muted small">첫 강의를 준비하고 있어요. 곧 올라와요.</p>`}</div>`).join("")}
+    ${!series.length && !any ? `<div class="card"><p class="muted">강의를 준비하고 있어요. 곧 올라와요.</p></div>` : ""}
+  </div>`;
+}
+export const findVideo = (V, id) => { for (const x of V?.index?.series ?? []) for (const v of x.videos ?? []) if (v.id === id && v.url) return v; return null; };

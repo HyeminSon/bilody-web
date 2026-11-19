@@ -393,7 +393,7 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .ok { color: #0E7C66; } .bad { color: #B45309; }
 .lh { padding: 4px 16px 24px; display: flex; flex-direction: column; gap: 10px; }
 .lh-top { display: flex; align-items: center; } .lh-top h2 { flex: 1; font-weight: 800; color: var(--plum); margin: 0; }
-.lh-chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; } .lh-chips::-webkit-scrollbar { display: none; }
+.lh-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }   /* 0.8.3: 권 이름이 모두 보이게 줄바꿈 */
 .lh-chip { flex: none; padding: 9px 14px; border-radius: 999px; background: #fff; border: 1px solid var(--lilac); font-size: 14px; font-weight: 500; }
 .lh-chip.on { background: var(--purple); border-color: var(--purple); color: #fff; font-weight: 700; }
 .card.today { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -472,3 +472,12 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .nav-pill:active { transform: scale(.96); }
 .lh-unit { font-size: 13px; font-weight: 700; color: #6d28d9; margin: 12px 4px 4px; }
 .lh-item b { min-width: 72px; display: inline-block; }
+/* 0.8.3 동영상 강의 */
+.vseries { display: flex; flex-direction: column; gap: 8px; }
+.vitem { display: flex; gap: 12px; align-items: center; background: var(--lav, #f5f0ff); border-radius: 14px; padding: 10px 12px; text-align: left; min-height: 56px; }
+.vitem img, .vthumb { width: 96px; height: 54px; border-radius: 10px; object-fit: cover; flex: none; background: var(--lilac); display: flex; align-items: center; justify-content: center; color: var(--purple); }
+.vthumb .mi { font-size: 30px; }
+.vid-overlay { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; flex-direction: column; }
+.vid-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: #fff; }
+.vid-bar .round { background: rgba(255,255,255,.15); color: #fff; }
+.vid-overlay video { flex: 1; width: 100%; min-height: 0; background: #000; }

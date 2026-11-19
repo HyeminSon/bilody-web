@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.2";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.2";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.2";
-import * as L9 from "./lesson09.js?v=0.8.2";
-import { GUIDE } from "./guide.js?v=0.8.2";
-import { Player } from "./audio.js?v=0.8.2";
-import { Chat } from "./rt.js?v=0.8.2";
-import * as story from "./story.js?v=0.8.2";
-import * as push from "./push.js?v=0.8.2";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.2";
+import * as api from "./api.js?v=0.8.3";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.3";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.3";
+import * as L9 from "./lesson09.js?v=0.8.3";
+import { GUIDE } from "./guide.js?v=0.8.3";
+import { Player } from "./audio.js?v=0.8.3";
+import { Chat } from "./rt.js?v=0.8.3";
+import * as story from "./story.js?v=0.8.3";
+import * as push from "./push.js?v=0.8.3";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.3";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -163,6 +163,7 @@ function renderChat() {
   if (S.kids) return L9.renderKids(S.kids, esc, I);
   if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
   if (S.lh) return L9.renderHome(S.lh, esc, I);
+  if (S.vid) return L9.renderVideos(S.vid, esc, I);
   const p = S.profile; const c = byId(p?.character); const pr = S.progress;
   const chat = S.chat; const fname = esc(p?.friend_name ?? c.en);
   const r = S.reminder;
@@ -195,7 +196,7 @@ function renderChat() {
     <div id="lines" class="lines"></div>
     ${guide}
     <p id="notice" class="error"></p>
-    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button><button class="pill secondary grow" data-act="lhOpenKids">${I("child_care")}어린이 수업</button></div>`}
+    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button><button class="pill secondary grow" data-act="vOpen">${I("smart_display")}동영상 강의</button></div>`}
     <div class="controls" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
       ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
@@ -319,18 +320,38 @@ function updateStage() {
   }
 }
 
-async function openLessonHome(bookId, kidsMode = /^K/.test(bookId ?? "")) {
-  // 0.9.3 어린이 수업은 1:1 수업과 따로(첫 화면에서 따로 들어옴). 0.9.4 어린이 수업도 AI 선생님이 듣는다.
-  let bid = bookId ?? L9.progress.lastBook(pref); if (/^K/.test(bid) !== kidsMode) bid = kidsMode ? "K1" : "A1";
-  const H = S.lh = { kidsMode, index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
+async function openLessonHome(bookId) {
+  // 0.8.3(11/19 실장님): 어린이 교재(Kids Book)도 1:1 수업 안에서 고른다(첫 화면의 ‘어린이 수업’은 없앰). 수업은 그대로 AI 선생님.
+  const bid = bookId ?? L9.progress.lastBook(pref) ?? "A1";
+  S.vid = null; closeVideo();
+  const H = S.lh = { index: S.lh?.index ?? null, bookId: bid, teacher: L9.progress.teacher(pref), all: false, busy: false, error: null, next: [1, 1] };
   H.next = L9.progress.next(pref, H.bookId);
   render();
   if (!H.index) { try { H.index = await L9.loadIndex(); } catch { H.error = "교재 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; } if (S.lh === H) render(); }
 }
 
+// ---------------- 동영상 강의(0.8.3) ----------------
+async function openVideos() {
+  S.lh = null;
+  const V = S.vid = { index: null, error: null }; render();
+  try { V.index = await L9.loadVideos(); } catch { V.error = "강의 목록을 불러오지 못했어요. 인터넷을 확인해 주세요."; }
+  if (S.vid === V) render();
+}
+/** 재생 화면은 화면 다시 그리기(render)와 따로 둔다: 영상이 다른 일로 처음부터 다시 시작하지 않게. */
+function playVideo(v) {
+  closeVideo();
+  if (S.chat || S.story) return;
+  const box = document.createElement("div"); box.id = "vidOverlay"; box.className = "vid-overlay";
+  box.innerHTML = `<div class="vid-bar"><b class="grow">${esc(v.title)}</b><button class="round" data-vclose aria-label="닫기">${I("close")}</button></div>
+    <video controls playsinline autoplay preload="metadata" ${v.poster ? `poster="${esc(v.poster)}"` : ""} src="${esc(v.url)}"></video>`;
+  box.querySelector("[data-vclose]").onclick = closeVideo;
+  document.body.appendChild(box);
+}
+function closeVideo() { const b = document.getElementById("vidOverlay"); if (b) { b.querySelector("video")?.pause(); b.remove(); } }
+
 async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
-  const book = H.index.books.find((b) => b.id === H.bookId && (b.kind === "kids") === !!H.kidsMode) ?? H.index.books.find((b) => (b.kind === "kids") === !!H.kidsMode);
+  const book = H.index.books.find((b) => b.id === H.bookId) ?? H.index.books[0];
   H.busy = true; render();
   let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
   H.busy = false;
@@ -513,6 +534,7 @@ async function startChat() {
 async function openChat() {
   player.unlock();
   if (S.kids) { S.kids.stop(); S.kids = null; }   // 0.9: 화면은 한 번에 하나(어린이 수업·대화가 겹치지 않게)
+  S.vid = null; closeVideo();
   S.lh = null;
   const p = S.profile; const c = byId(p?.character);
   player.setVolume(pref.get("volume", 1));
@@ -837,6 +859,7 @@ app.addEventListener("click", async (e) => {
       if (v === "history" && S.chat) await endChat();
       if (v === "history" && S.story) await endStory();
       if (v === "history" && S.kids) { S.kids.stop(); S.kids = null; }
+      closeVideo();   // 0.8.3: 다른 탭으로 가면 재생 중인 강의를 멈춘다
       S.tab = v; S.error = null; S.turns = null; render();
       if (v === "history") loadHistory();
       if (v === "settings") { try { S.memories = await api.memories(); } catch { /* */ } render(); }
@@ -847,8 +870,11 @@ app.addEventListener("click", async (e) => {
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
     // ---- 0.9 1:1 수업 ----
-    case "lhOpen": await openLessonHome(undefined, false); break;
-    case "lhOpenKids": await openLessonHome(undefined, true); break;
+    case "lhOpen": await openLessonHome(); break;
+    case "vOpen": await openVideos(); break;
+    case "vClose": S.vid = null; closeVideo(); render(); break;
+    case "vPlay": { const v = L9.findVideo(S.vid, el.dataset.v); if (v) playVideo(v); break; }
+    case "lhOpenKids": await openLessonHome("K1"); break;   // (옛 버튼 이름; 0.8.3부터 1:1 수업 안의 Kids Book)
     // 0.9.4 어린이 수업: 누른 그림·글자를 선생님에게 알린다
     case "lkTap": {
       const c = S.chat; const run = c?.lesson; if (!run) break;
