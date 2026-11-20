@@ -375,9 +375,9 @@ function updateStage() {
   $("#lsTurn").textContent = u.lessonScene ? "장면을 듣고 있어요" : myTurn ? "내 차례예요. 말해 보세요" : "";
   $("#lsTurn").className = `small ${myTurn ? "ok" : "muted"}`;
   // 0.9.3(11/17 실장님): 선생님 말은 기본으로 숨긴다(귀로 듣기). 설정 ‘자막’을 켜면 보인다
-  // 0.8.5(11/19 실장님): 자막을 켜면 선생님 말과 내 말을 함께(최근 세 줄)
+  // 0.8.5(11/19 실장님): 자막을 켜면 선생님 말과 내 말을 함께. 0.8.6(11/20): 최근 두 줄만
   const subs = pref.get("subtitles", false);
-  if (tl != null && subs) $("#lsSay").innerHTML = u.lines.slice(-3).map((l) => `<div class="ls-sub ${l.role === "user" ? "me" : ""}"><b>${l.role === "user" ? "나" : esc(t.ko)}</b> ${esc(l.text)}</div>`).join("");
+  if (tl != null && subs) $("#lsSay").innerHTML = u.lines.slice(-2).map((l) => `<div class="ls-sub ${l.role === "user" ? "me" : ""}"><b>${l.role === "user" ? "나" : esc(t.ko)}</b> ${esc(l.text)}</div>`).join("");
   else $("#lsSay").textContent = tl == null ? `${t.ko} 선생님이 준비하고 있어요…` : (u.lessonScene || myTurn ? "" : `${t.ko} 선생님 말을 잘 들어 보세요`);
   $("#lsSay").classList.toggle("muted", tl != null && !pref.get("subtitles", false));
   const st = u.lessonScene ? "idle" : u.state === "speaking" ? "speak" : u.state === "listening" ? "listen" : u.state === "thinking" ? "wait" : "idle";
