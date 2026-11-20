@@ -1,11 +1,20 @@
 {
-  "updated": "2026-11-19",
+  "updated": "2026-11-20",
   "series": [
     {
       "id": "grammar",
       "title": "문법 강의",
       "desc": "벤 선생님과 지우의 짧은 문법 과외. 한 편에 규칙 하나씩, 한국어로 설명해요.",
-      "videos": []
+      "videos": [
+        {
+          "id": "g1-1",
+          "title": "1강 ① 문법이란?",
+          "sub": "벤 선생님과 지우",
+          "minutes": 4,
+          "url": "https://hyeminson.github.io/bilody-web/videos/grammar-1-1.mp4",
+          "poster": "https://hyeminson.github.io/bilody-web/videos/grammar-1-1.jpg"
+        }
+      ]
     }
   ]
 }
