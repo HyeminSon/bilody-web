@@ -147,6 +147,7 @@ textarea:focus { border: 2px solid var(--purple); }
 .guide { padding: 16px; margin: 8px 20px; } .guide b { font-size: 16px; }
 .guide ul { padding-left: 4px; list-style: none; margin: 6px 0 0; font-size: 14px; line-height: 1.43; }
 .guide li::before { content: "· "; }
+.dialog.guide { margin: 0; padding: 24px 24px 14px; } .dialog.guide b { font-size: 18px; } .dialog.guide ul { margin-top: 10px; font-size: 15px; line-height: 1.5; } .dialog.guide li { margin-bottom: 6px; }
 .controls { display: flex; gap: 10px; padding: 8px 20px; } .controls .pill + .pill { margin-top: 0; }
 .controls .pill.compact { flex: 1; } .controls .pill.compact.narrow { flex: .8; }
 .inputbar { display: flex; align-items: center; gap: 4px; background: #fff; border-radius: 999px; padding: 6px; box-shadow: var(--shadow); margin: 2px 20px 0; }

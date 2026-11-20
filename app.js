@@ -112,6 +112,9 @@ function render() {
   // 0.8.4: 아직 추천을 받지 않았으면 처음 화면에서 ‘선생님과 5분 이야기’를 한 번 권한다(나중에 하기를 누르면 다시 묻지 않음)
   if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids && !S.plShown
       && !L9.plStore.get(pref) && !pref.get("pl_later", false) && !pref.get("lp_last", null) && !wantsPostSurvey()) { S.plShown = true; S.dialog = { kind: "plIntro", auto: true }; }
+  // 0.8.6(11/20 실장님): ‘이렇게 이야기해요’는 처음 쓰는 사람에게만 팝업으로(화면 안 상자가 캐릭터 자리를 차지했음). 다른 창이 있으면 그 뒤에.
+  if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids
+      && !pref.get("guideSeen", false) && !wantsPostSurvey()) S.dialog = { kind: "talkGuide" };
   const html = {
     loading: () => `<div class="center"><img class="logo-stacked" src="img/logo_stacked.png" alt="bilody"><div class="spinner"></div></div>`,
     auth: renderAuth, consent: renderConsent, names: renderNames, main: renderMain,
@@ -241,13 +244,6 @@ function renderChat() {
       <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>이번 주 🏆</span></button>
     </div>
     <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>${renderTodayLesson()}` : "";
-  const guide = !chat && !pref.get("guideSeen", false) ? `<div class="card guide"><b>이렇게 이야기해요</b><ul>
-      <li>‘대화 시작’을 누르면 ${iGa(fname)} 먼저 인사해요.</li>
-      <li>마이크가 빨갛게 켜지면 편하게 말하세요. 짧게 말해도, 한국어를 섞어도 괜찮아요.</li>
-      <li>${iGa(fname)} 말하는 도중에 말해도 돼요. 하던 말을 멈추고 들어줘요. 생각할 시간이 필요하면 “Wait”라고 말해 보세요.</li>
-      <li>어색한 표현은 ${iGa(fname)} 자연스럽게 바꿔 알려줘요. 한 번 따라 말해 보세요.</li>
-      ${push.isIOS() ? "<li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li>" : ""}</ul>
-      <div class="right"><button class="link" data-act="guideSeen">알겠어요</button></div></div>` : "";
   return `<div class="chat">
     <div class="chat-top">${home}
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
@@ -261,7 +257,6 @@ function renderChat() {
     <div id="lesson"></div>
     <div id="card"></div>
     <div id="lines" class="lines"></div>
-    ${guide}
     <p id="notice" class="error"></p>
     <div class="controls ${chat ? "" : "home-ai"}" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
@@ -876,6 +871,18 @@ function renderSettings() {
 }
 
 // ---------------- 창(대화상자) ----------------
+/** 0.8.6(11/20 실장님): 처음 쓰는 사람에게 한 번 띄우는 ‘이렇게 이야기해요’ 팝업 내용(예전엔 처음 화면 안의 상자). */
+function talkGuideHtml() {
+  const p = S.profile; const c = byId(p?.character); const fname = esc(p?.friend_name ?? c.en);
+  return `<b>이렇게 이야기해요</b><ul>
+      <li>‘대화 시작’을 누르면 ${iGa(fname)} 먼저 인사해요.</li>
+      <li>마이크가 빨갛게 켜지면 편하게 말하세요. 짧게 말해도, 한국어를 섞어도 괜찮아요.</li>
+      <li>${iGa(fname)} 말하는 도중에 말해도 돼요. 하던 말을 멈추고 들어줘요. 생각할 시간이 필요하면 “Wait”라고 말해 보세요.</li>
+      <li>어색한 표현은 ${iGa(fname)} 자연스럽게 바꿔 알려줘요. 한 번 따라 말해 보세요.</li>
+      ${push.isIOS() ? "<li>아이폰은 무음 모드를 끄고 소리를 키워 주세요.</li>" : ""}</ul>
+      <div class="right"><button class="link b" data-act="guideSeen">알겠어요</button></div>`;
+}
+
 function renderDialog() {
   const d = S.dialog; if (!d) return "";
   const box = (inner) => `<div class="overlay" data-act="closeDialog"><div class="dialog" data-stop>${inner}</div></div>`;
@@ -901,6 +908,7 @@ function renderDialog() {
     ${CHECKIN_ISSUES.map(([v, l]) => `<label class="radio"><input type="checkbox" data-ck="${v}"> ${l}</label>`).join("")}
     <textarea id="cknote" rows="2" maxlength="500" placeholder="무슨 일이 있었는지 한 줄로 (선택) 예: 여행 얘기를 했는데 계속 다른 질문만 했어요"></textarea>
     <div class="row end"><button class="link" data-act="closeDialog">다음에 할게요</button><button class="link" data-act="sendCheckin" ${d.rating ? "" : "disabled"}>보내기</button></div>`);
+  if (d.kind === "talkGuide") return `<div class="overlay" data-act="guideSeen"><div class="dialog guide" data-stop>${talkGuideHtml()}</div></div>`;
   if (d.kind === "plIntro") return box(L9.renderPlIntro(byId(L9.progress.teacher(pref)), esc));
   if (d.kind === "plJudging") return `<div class="overlay"><div class="dialog"><div class="pl-head"><img src="${teacherImg(d.t)}" alt=""><h2>${esc(byId(d.t).ko)} 선생님이 시작할 Book을 고르고 있어요</h2></div><div class="spinner"></div></div></div>`;
   if (d.kind === "plFail") return box(`<h2>추천을 만들지 못했어요</h2><p>인터넷 연결을 확인하고 다시 해 주세요. 1:1 수업에서 직접 Book을 골라도 돼요.</p>
@@ -1059,7 +1067,7 @@ app.addEventListener("click", async (e) => {
       await switchTab(v);
       break;
     }
-    case "guideSeen": pref.set("guideSeen", true); render(); break;
+    case "guideSeen": pref.set("guideSeen", true); if (S.dialog?.kind === "talkGuide") S.dialog = null; render(); break;
     case "showGuideCard": pref.set("guideSeen", false); toast("대화 화면에 안내를 다시 띄웠어요."); break;
     case "board": S.dialog = { kind: "board", rows: await api.weeklyBoard() }; render(); break;
     case "start": await startChat(); break;
