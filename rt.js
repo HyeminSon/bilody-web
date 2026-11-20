@@ -52,7 +52,7 @@ export class Chat {
     const gen = ++this.connGen;
     const stale = () => this.closed || gen !== this.connGen;
     this.set({ state: "connecting", notice: null, canRestart: false });
-    if (!this.story) this.player.jingle();
+    if (!this.story && first) this.player.jingle();   // 0.8.6(11/20 실장님): 잠깐 멈췄다가 다시 시작할 때는 징글 없이
     const t0 = Date.now();
     let stream = null, pc = null;
     const abandon = () => { stream?.getTracks().forEach((t) => t.stop()); try { pc?.close(); } catch { /* */ } };
@@ -297,7 +297,7 @@ export class Chat {
       r.seen ??= new Set();
       if (roleRepeat(rolePlan(this.lesson.steps[this.lessonStep].teach), r.seen, sentence)) { this.log("role_repeat_cut", {}); return; }
     }
-    if (this.lesson && !this.story) sentence = sentence.replace(/_{2,}/g, "something");   // 빈칸은 소리로 읽을 수 없다
+    if (this.lesson && !this.story) sentence = spokenFix(sentence);   // 0.8.6: 빈칸·빗금은 소리로 읽을 수 없다(‘something’, ‘슬래시’로 읽혔음)
     const voice = this.voiceId, speed = this.story ? 1 : (r.slow ? Math.max(0.7, this.speed * 0.8) : this.speed), sid = this.sessionId;
     const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
@@ -719,7 +719,7 @@ export class Chat {
       if (n.final && !this.rp.final) { this.rp.final = true; this.rp.finalAt = this.stepLog.filter((l) => l.who === "learner").length; }
       this.rpHighlight(plan, startAt === 0 && plan[0]?.who === "you" ? 0 : plan.findIndex((l) => l.who === "learner"));
       note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
-        `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${n.note}`;
+        `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${step.swapped && !resumed ? "Now the same scene once more with the roles switched, so the learner practices the other side too. " : ""}${n.note}`;
     }
     this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
     this.send({ type: "response.create" });
@@ -985,7 +985,11 @@ export class Chat {
   rolePlayAfterReply(step, said, lines = []) {
     const L = this.lesson, at = this.lessonStep, rp = this.rp, plan = rolePlan(step.teach);
     const sys = (text, now) => { this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text }] } }); if (now) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); } };
-    const done = () => { if (this.holdForSpeech(done)) return; this.log("lesson_part_done", { step: at, roleplay: true }); if (at + 1 < L.steps.length) this.startLessonStep(at + 1); else this.finishLesson([], []); };
+    const done = () => { if (this.holdForSpeech(done)) return; this.log("lesson_part_done", { step: at, roleplay: true });
+      // 0.8.6(11/20 실장님): 역할을 바꿔 한 번 더(말하기는 반복이 중요). 상대 역이 한 사람인 장면만, 한 번만.
+      const sw = !L.my && swapRole(step);
+      if (sw) { L.steps = L.steps.slice(); L.steps.splice(at + 1, 0, sw); this.log("role_swap", { step: at }); }
+      if (at + 1 < L.steps.length) this.startLessonStep(at + 1); else this.finishLesson([], []); };
     const mine = lines.filter((l) => l.who === "learner"), n = mine.length;
     if (rp.comment) { done(); return; }   // 마지막 칭찬까지 끝남
     if (rp.final) {
@@ -1155,6 +1159,14 @@ const PREAMBLE = [
   /\bmove us (to|on|forward|along)\b/i,
 ];
 export const isPreamble = (s) => PREAMBLE.some((re) => re.test(String(s).trim()));
+/** 0.8.6(11/20 실장님 “유머가 너무 어색해”): 교재에 미리 넣은 웃음 줄을 ‘그대로 말하기’에서 ‘써도 되는 생각’으로 바꾼다.
+ *  (방금 한 말과 어긋나는데도 그대로 붙였음: “학습 앱에서 일해요” 뒤 “I work at a restaurant. I still burn eggs. Haha.”) */
+export const humorIdea = (l) => {
+  const m = /^A small funny moment for this part \(your private idea, not a sentence for the learner to repeat\): (.*?) Say it once, as your own little story/.exec(String(l).trim());
+  if (!m) return l;
+  const idea = m[1].replace(/\s*\b(ha(ha)+|hehe)\b[.!]?/gi, "").trim();
+  return `A possible joke idea for this part, only if it fits (your private idea): ${idea} Use it in your own words only when it matches what you and the learner just said and the facts of this lesson; never let it contradict anything said before, and skip it if the learner is stuck, you are correcting them, or there was already a joke in the last few turns. Never say Haha.`;
+};
 // 0.9.13 역할 읽기를 앱이 한 줄씩 진행(가상 수업 시험에서 선생님이 학습자 줄을 읽거나 끝까지 안 함). 수업 계획의 대사 목록을 읽어
 // 대답마다 ‘이 줄을 그대로 읽어요 / 학습자 줄을 기다렸다가 짧게 반응하고 다음 줄’을 알려 주고, 들은 말에서 선생님 줄을 찾아 진도를 센다.
 // 아래 규칙은 가상 수업(lesson-sim role.ts)·안드로이드(LessonGuard.kt)와 같다. 고치면 세 곳을 함께 고친다.
@@ -1169,6 +1181,17 @@ export const asksNext = (t) => { const s = String(t).toLowerCase().replace(/[^\p
   const w = s.split(" ").filter(Boolean); if (!w.length || w.length > 6) return false;
   return (w.includes("next") || /move on/.test(s)) && w.every((x) => /^(next|please|screen|part|page|step|one|let's|lets|go|move|on|the|to|ok|okay|yes|now|go to)$/.test(x)); };
 export const isRolePlay = (st) => st?.type === "dialogue" && !st.play && rolePlan(st.teach).length > 0;
+/** 0.8.6 역할 바꿔 한 번 더: 상대 역이 한 사람이고 아직 안 바꾼 역할 읽기면, 줄의 (you)/(learner)를 바꾼 사본. 아니면 null. */
+export function swapRole(st) {
+  if (!isRolePlay(st) || st.swapped) return null;
+  const plan = rolePlan(st.teach);
+  if (new Set(plan.filter((l) => l.who === "you").map((l) => l.name)).size !== 1 || !plan.some((l) => l.who === "learner")) return null;
+  const teach = plan.map((l) => `${l.n}. ${l.name} (${l.who === "you" ? "learner" : "you"}): "${l.en}"`).join("\n");
+  return { ...st, id: `${st.id ?? "roleplay"}-swap`, swapped: true, teach };
+}
+/** 0.8.6 선생님 문장을 소리로 바꾸기 전에: 빈칸(___)은 잠깐 쉼으로, 빗금은 ‘또는/or’로(‘a/an’이 ‘슬래시’로 읽혔음). */
+export const spokenFix = (s) => { const ko = /[가-힣]/.test(s); return String(s).replace(/_{2,}/g, "…")
+  .replace(/\b([A-Za-z]{1,12})\s*\/\s*([A-Za-z]{1,12})\b/g, (_m, a, b) => `${a} ${ko ? "또는" : "or"} ${b}`); };
 export const rpWords = (t) => String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]/g, " ").split(/[\s-]+/).filter(Boolean);
 const FILLER = new Set(["ha", "haha", "oh", "ah", "hmm", "um", "uh", "wow", "well", "hey", "aw", "ooh", "so"]);
 /** sw 안에서 줄(lw)이 순서대로 이어져 들어 있는 자리 [시작, 끝). 낱말이 need개 이상 순서대로 맞아야 한다. 없으면 null */
@@ -1298,6 +1321,7 @@ const WRAP_NOTE = "(App: this part has taken long enough. Wrap it up now: one sh
 
 // 0.9.12 앱이 넘기는 방식: 수업 계획 속 next_step 이야기(“Then call next_step.”, “What comes next …”)를 지운다
 export const appTeach = (t) => String(t ?? "").split("\n").filter((l) => !/^What comes next/i.test(l.trim()))
+  .map((l) => humorIdea(l))
   .map((l) => l
     // 0.9.13 조건은 남기고 next_step만 뺀다(0.9.12는 문장째 지워 ‘학습자가 대답하고 준비될 때까지’, ‘3문제 다’ 같은 조건이 사라졌음)
     .replace(/([.?!:])?\s*,?\s*\b(?:(?:and\s+)?then|and) call next_step\b\.?/gi, (_m, end) => end ?? ".")

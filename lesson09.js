@@ -143,7 +143,7 @@ export function stepHtml(s, u, run, esc, I) {
     case "dialogue": {
       const play = !!s.play;
       return `${play ? `<img class="ls-scene" src="${imgUrl(`img/s/${run.id}.jpg`)}" alt="">` : ""}${s.title ? `<div class="accent small b">${esc(s.title)}</div>` : ""}
-        ${(s.lines ?? []).map((ln, i) => { const mine = !play && ln.who?.code === "J"; const hi = i === u.lessonHiLine;
+        ${(s.lines ?? []).map((ln, i) => { const mine = !play && (s.swapped ? ln.who?.code !== "J" : ln.who?.code === "J"); const hi = i === u.lessonHiLine;
           return `<div class="ls-line ${hi ? "hi" : ""} ${mine ? "mine" : ""}"><img src="${imgUrl(`img/f/${ln.who?.id ?? "grace"}.jpg`)}" alt=""><div class="grow">
             <div class="tiny b ${mine ? "ok" : "accent"}">${esc(ln.who?.en ?? "")}${mine ? " · 내 차례" : ""}</div><div class="ls-l-en">${m(ln.en)}</div><div class="muted small">${esc(ln.ko)}</div></div></div>`; }).join("")}`;
     }
