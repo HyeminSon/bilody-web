@@ -1,8 +1,8 @@
 // 교재로 배우기(11/14, 운영자 계정만 먼저). 대화 중에 토리가 미리 만든 짧은 교재를 진행한다.
 // 교재 동안에는 친구 AI가 대답하지 않고(rt.js lessonHold), 토리의 말은 앱이 정해진 문장으로 들려준다.
 // 학습자 말은 기록(turns)에 남기지 않고, 끝나면 서버 대화 문맥에서도 지운다 → 기억·오늘 문맥에 들어가지 않음.
-import * as api from "./api.js?v=0.8.5";
-import { CHARACTERS } from "./characters.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { CHARACTERS } from "./characters.js?v=0.8.6";
 
 const TORI_VOICE = CHARACTERS.find((c) => c.id === "tori").voice;
 /** 11/14 실장님: 장면 대사는 캐릭터마다 자기 목소리로. */

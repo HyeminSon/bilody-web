@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.5";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.5";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.5";
-import * as L9 from "./lesson09.js?v=0.8.5";
-import { GUIDE } from "./guide.js?v=0.8.5";
-import { Player } from "./audio.js?v=0.8.5";
-import { Chat } from "./rt.js?v=0.8.5";
-import * as story from "./story.js?v=0.8.5";
-import * as push from "./push.js?v=0.8.5";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.6";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.6";
+import * as L9 from "./lesson09.js?v=0.8.6";
+import { GUIDE } from "./guide.js?v=0.8.6";
+import { Player } from "./audio.js?v=0.8.6";
+import { Chat } from "./rt.js?v=0.8.6";
+import * as story from "./story.js?v=0.8.6";
+import * as push from "./push.js?v=0.8.6";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.6";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -222,7 +222,7 @@ function renderChat() {
   if (S.story) return renderStory();
   if (S.kids) return L9.renderKids(S.kids, esc, I);
   if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
-  if (S.lh) return L9.renderHome(S.lh, esc, I);
+  if (S.lh) return S.lh.my ? L9.renderMyPick(S.lh.my, S.lh, esc, I) : L9.renderHome(S.lh, esc, I);
   if (S.vid) return L9.renderVideos(S.vid, esc, I);
   const p = S.profile; const c = byId(S.chat?.placement ? S.chat.character : p?.character); const pr = S.progress;
   const chat = S.chat; const fname = esc(S.chat?.placement ? c.ko : p?.friend_name ?? c.en);
@@ -359,12 +359,13 @@ function updateStage() {
   showWebPic($("#lsWord"), u.webPicture);
   showHelpCard($("#lsCard"), u.card, `${byId(chat.character).ko} 선생님`);
   const i = Math.max(0, u.lessonStep); const step = run.steps[i];
-  $("#lsSub").textContent = run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
+  $("#lsSub").textContent = run.my ? ["내 교재", run.pending ? "선생님이 교재를 읽는 중" : L9.stepLabel(step) || null].filter(Boolean).join(" · ") : run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
   $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
   const pg = $("#lsPage"); pg.textContent = step?.page ? L9.T.page(step.page) : ""; pg.hidden = !step?.page;
   // 11/18: PDF 뷰어 쪽 = 인쇄 쪽(교재 1118판)이라 그 쪽으로 바로 연다
   if (step?.page) pg.href = pg.href.split("#")[0] + "#page=" + step.page;
-  const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord, run.kTapN ?? 0]);
+  const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord, run.kTapN ?? 0, u.myReady ?? 0]);
+  if (run.my) { const tt = $("#lsTitle"); if (tt && tt.textContent !== `내 교재 · ${run.title}`) tt.innerHTML = L9.lsTitle(run, esc); }
   const body = $("#lsBody");
   if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }
   $("#lsNotice").textContent = u.notice ?? "";
@@ -474,6 +475,44 @@ async function startLesson(lessonId, session) {
   chat.onLessonDone = (r) => { if (S.chat === chat) L9.progress.done(pref, r); };
   S.chat = chat; S.lesson = null;
   render();
+  await chat.start();
+}
+
+// ---------------- 0.8.6 내 교재로 수업하기(11/20 실장님) ----------------
+/** 사진을 긴 변 1600px JPEG로 줄인다(올리는 크기·시간을 줄이고 글자는 읽히게). */
+async function shrinkPhoto(file, max = 1600, q = 0.82) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((ok, no) => { const i = new Image(); i.onload = () => ok(i); i.onerror = no; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement("canvas"); c.width = Math.round(img.naturalWidth * k); c.height = Math.round(img.naturalHeight * k);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL("image/jpeg", q);
+  } finally { URL.revokeObjectURL(url); }
+}
+async function addMyPhotos(files) {
+  const M = S.lh?.my; if (!M) return;
+  const list = [...files].filter((f) => /^image\//.test(f.type)).slice(0, L9.MY_MAX - M.photos.length);
+  if (!list.length) return;
+  M.busy = true; M.error = null; render();
+  for (const f of list) { try { M.photos.push(await shrinkPhoto(f)); } catch { M.error = "읽을 수 없는 사진이 있어요. 다른 사진을 골라 주세요."; } }
+  M.busy = false; render();
+}
+async function startMyLesson() {
+  const H = S.lh, M = H?.my; if (!M?.photos.length || M.busy || S.chat) return;
+  // 수준: 추천받은 Book → 지금 고른 어른 Book → 3
+  const sel = H.index?.books.find((b) => b.id === H.bookId && b.kind !== "kids");
+  const level = H.rec?.book ?? sel?.no ?? 3;
+  const run = L9.makeMyRun(M.photos.slice(), level, H.teacher);
+  player.unlock(); player.setVolume(pref.get("volume", 1));
+  S.lh = null;
+  const t = H.teacher; const p = S.profile;
+  const chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
+  S.chat = chat; S.lesson = null;
+  render();
+  // 선생님과 대화를 시작하는 것과 동시에 서버가 교재를 읽는다(기다림 없음)
+  api.myTextbook(run.photos, level).then((r) => { if (S.chat !== chat) return; if (r?.ok) chat.myPlanReady(r); else chat.myPlanFailed(r?.reason_ko); })
+    .catch((e) => { if (S.chat === chat) chat.myPlanFailed(e?.code === "daily_limit" ? "오늘은 내 교재 수업을 더 할 수 없어요. 내일 다시 해 주세요." : "교재를 읽지 못했어요. 인터넷을 확인하고 다시 해 주세요."); });
   await chat.start();
 }
 
@@ -939,6 +978,7 @@ async function switchTab(v) {
 function confirm(title, text, yes, onYes, danger = false) { S.dialog = { kind: "confirm", title, text, yes, onYes, danger }; render(); }
 
 // ---------------- 누름 처리 ----------------
+app.addEventListener("change", (e) => { if (e.target?.id === "myFile") { addMyPhotos(e.target.files ?? []); e.target.value = ""; } });
 app.addEventListener("click", async (e) => {
   const stop = e.target.closest("[data-stop]");
   const el = e.target.closest("[data-act]"); if (!el) return;
@@ -1036,6 +1076,14 @@ app.addEventListener("click", async (e) => {
     case "lhStart": player.unlock(); await startLesson(v, Number(el.dataset.s) || 1); break;   // 아이폰: 누른 순간에 소리를 열어 둔다
     case "lsExit": await endLesson(true); break;
     case "lsHome": await endLesson(false); break;
+    case "myOpen": {
+      if (S.chat) await endLesson(true); else if (!S.lh) await openLessonHome();
+      if (S.lh) { S.lh.my = { photos: [], busy: false, error: null }; render(); }
+      break;
+    }
+    case "myBack": if (S.lh) { S.lh.my = null; render(); } break;
+    case "myDel": if (S.lh?.my) { S.lh.my.photos.splice(Number(v), 1); render(); } break;
+    case "myStart": await startMyLesson(); break;
     case "lsTalk": if (chatOpening) break; chatOpening = true; try { await endLesson(false); await openChat(); } finally { chatOpening = false; } break;
     case "lsSlow": S.chat?.slowAgain(); break;   // 0.8.2: 한 번만 느리게 다시(학습자 말로 보내지 않음)
     case "lsSkip": S.chat?.skipStep(); break;    // 0.8.2: 앱이 직접 다음 부분으로

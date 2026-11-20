@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.5";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.6";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -81,10 +81,14 @@ export function renderHome(H, esc, I) {
   const t = byId(H.teacher);
   return `<div class="lh">
     <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    <p class="muted small">중학생~어른은 Book, 초등 저학년은 Kids Book</p>
     ${H.rec ? `<p class="small pl-line"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()} <button class="link small" data-act="plIntro">다시 받기</button></p>`
       : `<p class="small pl-line"><button class="link small" data-act="plIntro">어느 Book부터 할지 추천 받기</button></p>`}
-    <div class="lh-chips">${books.map((b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`).join("")}</div>
+    ${(() => { const chip = (b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`;
+      const kb = books.filter((b) => b.kind === "kids");
+      // 0.8.6(11/20 실장님): 어른 Book은 한 줄에 세 개, Kids Book은 따로 한 줄, 그 아래 ‘내 교재로 수업하기’
+      return `<div class="lh-grid">${books.filter((b) => b.kind !== "kids").map(chip).join("")}</div>
+        ${kb.length ? `<div class="lh-kids"><span class="muted tiny b">어린이</span>${kb.map(chip).join("")}</div>` : ""}
+        <button class="card my-tb-btn" data-act="myOpen">${I("photo_camera")}<span class="grow"><b>내 교재로 수업하기</b><span class="muted small">교재 사진(최대 5장)으로 선생님과 수업해요</span></span>${I("chevron_right")}</button>`; })()}
     <p class="muted small">${esc(kids ? `${book.title_ko} · 초등 저학년 · 그림과 노래로` : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
     ${kids ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
     ${done ? `<div class="card today"><div class="today-title">${T.book(book.no, kids)}을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 Lesson 고르기’에서 복습할 Lesson을 고르거나 다음 Book으로 넘어가요.</p>
@@ -93,9 +97,10 @@ export function renderHome(H, esc, I) {
       <div class="lh-row"><img class="today-img" src="${imgUrl(`img/s/${L.id}.jpg`)}" alt="">
         <div class="grow"><div class="muted small">${kids ? T.lesson(L.no) : `${T.book(book.no)} · ${T.lesson(L.no)} · ${T.part(ns)}`}</div><div class="today-title">${esc(L.title)}</div>${L.title_en ? `<div class="muted small">${esc(L.title_en)}</div>` : ""}</div></div>
       ${`<div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>`}
-      <button class="pill primary" data-act="lhStart" data-v="${L.id}" data-s="${kids ? 1 : ns}" ${H.busy ? "disabled" : ""}>${I("play_arrow")}${H.busy ? "불러오는 중…" : "수업 시작"}</button>
+      <div class="lh-actions"><button class="pill primary" data-act="lhStart" data-v="${L.id}" data-s="${kids ? 1 : ns}" ${H.busy ? "disabled" : ""}>${I("play_arrow")}${H.busy ? "불러오는 중…" : "수업 시작"}</button>
+        ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download aria-label="${T.book(book.no, kids)} PDF 받기">${I("download")}PDF</a>` : ""}</div>
     </div>`}
-    ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${T.book(book.no, kids)} PDF 받기</a>` : ""}
+    ${done && book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${T.book(book.no, kids)} PDF 받기</a>` : ""}
     <div class="row"><b class="grow">다른 Lesson 고르기</b><button class="link" data-act="lhAll">${H.all ? "접기" : "펼치기"}</button></div>
     ${H.all ? `<div class="lh-list">${book.lessons.map((x, i) => `${x.unit != null && (i === 0 || book.lessons[i - 1].unit !== x.unit) ? `<div class="lh-unit">${T.unit(x.unit)} · ${esc((book.units ?? []).find((u) => u.no === x.unit)?.title ?? "")}</div>` : ""}<button class="lh-item" data-act="lhStart" data-v="${x.id}" data-s="1"><b>${T.lesson(x.no)}</b><span class="grow">${esc(x.title)}</span>${x.no < nn ? I("check", "ok") : ""}</button>`).join("")}</div>` : ""}
   </div>`;
@@ -110,9 +115,9 @@ export function renderTeacherPick(sel, esc) {
 export function renderStageShell(run, I, esc) {
   return `<div class="ls">
     <div class="ls-nav"><button class="nav-pill" data-act="lsExit">${I("arrow_back")}교재 목록</button><span class="grow"></span>
-      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="lessons/pdf/bilody_${run.kids ? "kids_" : ""}${run.bookNo}.pdf"></a>
+      <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="${run.my ? "#" : `lessons/pdf/bilody_${run.kids ? "kids_" : ""}${run.bookNo}.pdf`}"></a>
       <button class="nav-pill" data-act="lsHome">${I("home")}처음 화면</button></div>
-    <div class="ls-top"><div class="grow"><b class="ls-title">${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}</b><div class="muted tiny" id="lsSub"></div></div></div>
+    <div class="ls-top"><div class="grow"><b class="ls-title" id="lsTitle">${lsTitle(run, esc)}</b><div class="muted tiny" id="lsSub"></div></div></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
     <div id="lsWord" class="ls-word"></div><div id="lsCard" class="ls-word"></div>
@@ -123,11 +128,17 @@ export function renderStageShell(run, I, esc) {
   </div>`;
 }
 
+export const lsTitle = (run, esc) => run.my ? `내 교재 · ${esc(run.title)}` : `${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}`;
+
 export function stepHtml(s, u, run, esc, I) {
   const m = (x) => marked(x, esc);
   const card = (inner) => `<div class="card ls-card">${inner}</div>`;
   switch (s?.type) {
-    case "intro": return `<img class="ls-scene" src="${imgUrl(s.scene)}" alt="">${card(`<div class="ls-en">${esc(s.title_en)}</div><div class="muted">${esc(s.title)}</div><div class="accent small b">오늘의 목표 · ${esc(s.goal)}</div>`)}`;
+    case "intro": if (s.my) return `<div class="my-photos ${run.pending ? "reading" : ""} ${(run.photos ?? []).length === 1 ? "one" : ""}">${(run.photos ?? []).map((u) => `<div class="my-ph"><img src="${esc(u)}" alt=""><i class="scan"></i></div>`).join("")}</div>
+      ${card(run.failed ? `<div class="error b">${esc(run.failed)}</div>` : run.pending ? `<div class="accent b my-wait">${I("auto_stories")} 선생님이 교재를 읽고 있어요<span class="dots"><i></i><i></i><i></i></span></div><div class="muted small">그동안 선생님과 가볍게 이야기해요</div>`
+        : `<div class="ls-en">${esc(run.titleEn)}</div><div class="muted">${esc(run.title)}</div>${run.goal ? `<div class="accent small b">오늘의 목표 · ${esc(run.goal)}</div>` : ""}
+          <div class="my-found">${(run.found ?? []).map((x, i) => `<span class="tag pop" style="animation-delay:${i * 120}ms">${esc(x)}</span>`).join("")}</div>`)}`;
+      return `<img class="ls-scene" src="${imgUrl(s.scene)}" alt="">${card(`<div class="ls-en">${esc(s.title_en)}</div><div class="muted">${esc(s.title)}</div><div class="accent small b">오늘의 목표 · ${esc(s.goal)}</div>`)}`;
     case "card": return card(`<div class="accent small b">오늘의 표현 ${esc(s.n)}</div><div class="ls-big">${m(s.en)}</div><div class="ls-ko">${esc(s.ko)}</div><hr><div class="muted small">${m(s.when)}</div><div class="muted small">${m(s.extra)}</div>`);
     case "dialogue": {
       const play = !!s.play;
@@ -175,11 +186,11 @@ export function stepHtml(s, u, run, esc, I) {
 export function renderDone(run, d, esc, I) {
   return `<div class="ls-done">
     <div class="done-ic">${I("check")}</div><h2>오늘 할 일 끝!</h2>
-    <p class="muted">${run.bookLabel} · ${T.lesson(run.no)} · ${T.part(run.session)}을 마쳤어요</p>
+    <p class="muted">${run.my ? `내 교재 · ${esc(run.title)} 수업을 마쳤어요` : `${run.bookLabel} · ${T.lesson(run.no)} · ${T.part(run.session)}을 마쳤어요`}</p>
     <div class="done-stats">${[[d.practiced.length, "익힌 표현"], [d.said, "말한 문장"], [`${d.minutes}분`, "수업 시간"]].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
     <div class="card"><b>오늘 익힌 표현</b>${d.practiced.map((x) => `<div class="b">${esc(x)}</div>`).join("")}
       ${d.fixed.length ? `<hr><div class="muted small">고친 문장</div>${d.fixed.map((x) => `<div>${esc(String(x).replace("->", "→"))}</div>`).join("")}` : ""}</div>
-    <button class="pill primary" data-act="lsTalk">대화하며 써 보기</button>
+    ${run.my && run.failed ? `<p class="error">${esc(run.failed)}</p><button class="pill primary" data-act="myOpen">${I("photo_camera")}사진 다시 올리기</button>` : `<button class="pill primary" data-act="lsTalk">대화하며 써 보기</button>`}
     <button class="link" data-act="lsExit">끝내기</button>
   </div>`;
 }
@@ -333,4 +344,44 @@ export function renderPlResult(d, t, books, esc) {
     <button class="pill primary" data-act="plGo" data-v="${b}">Book ${b} Lesson 1 시작하기</button>
     <button class="pill secondary" data-act="plBrowse" data-v="${b}">다른 Book 둘러보기</button>
     <div class="row end"><button class="link" data-act="closeDialog">지금은 대화만 할게요</button></div>`;
+}
+
+// ---------- 0.8.6 내 교재로 수업하기(11/20 실장님) ----------
+export const MY_MAX = 5;
+/** 사진을 올리자마자 시작하는 첫 부분. 서버가 교재를 읽는 동안(10~20초) 선생님과 가벼운 대화를 한다(기다림 없음).
+ *  화제는 선생님이 아는 학습자 이야기(기억·수업 이력)에 따라 그때그때 다르게. 교재가 준비되면 앱이 알려 준다. */
+export const MY_WARMUP = "This is the very start of a class with the learner's own textbook. The learner has just shared photos of a few pages, and the app is reading them now; it takes a few seconds and the app will tell you when the pages are ready. Never guess what is in the photos and do not teach anything yet.\n" +
+  "1) Greet the learner by name. In one short sentence say you are taking a look at their textbook right now (for example: Oh, your own textbook! Let me take a look.).\n" +
+  "2) While you look, have a short, genuine chat, one question per turn. Choose the topic from what you know: if your notes say something the learner told you before, ask how that went; if this is your first class together, introduce yourself as your class notes say and ask why they are learning English or about their day; if you already met today, skip the greeting and pick something new. Do not ask the same question you asked in an earlier class. React to what they actually say with real interest, and share a small thing about yourself now and then. Korean answers are fine; respond naturally.\n" +
+  "This part is done only after the learner has answered at least two of your questions.";
+export const MY_READY = (r) => `(App: the textbook pages are ready. Today: ${String(r.title_en ?? "").replace(/"/g, "'")} — ${(r.steps ?? []).filter((x) => x.type === "card").length} expressions from the learner's book. Finish the chat naturally; the app will start the textbook part right after.)`;
+export const MY_FAILED = "(App: the pages could not be used for a lesson today. In two short sentences, kindly say you could not read the pages clearly and that they can try again with brighter, straight photos of the pages. Then say a warm goodbye. Ask no question.)";
+export const MY_STILL = "(App: still reading the pages. Keep the chat going with one more easy question.)";
+
+export function makeMyRun(photos, level, teacher) {
+  const run = { id: "MY-1", my: true, kids: false, title: "내 교재", titleEn: "", goal: "", koreanOk: true, session: 1, sessionCount: 1, no: 1, bookId: null, bookNo: level, teacher,
+    steps: [{ type: "intro", my: true, teach: MY_WARMUP }], expressions: [], photos, found: [], pending: true, failed: null, unitNo: null, unitTitle: null, lesson: null };
+  run.bookLabel = "내 교재";
+  run.info = { id: run.id, session: 1, title: "내 교재", title_en: "the learner's own textbook pages", goal: "Learn and use the key expressions from the learner's own textbook pages", book: level, korean_ok: true, expressions: [] };
+  return run;
+}
+/** 서버(my-textbook)가 만든 계획을 실행 정보에 붙인다. */
+export function applyMyPlan(run, r) {
+  run.title = r.title || "내 교재"; run.titleEn = r.title_en || ""; run.goal = r.goal || ""; run.found = r.found ?? [];
+  run.steps.push(...(r.steps ?? [])); run.expressions = (r.steps ?? []).filter((x) => x.type === "card").map((x) => plain(x.en)); run.pending = false;
+}
+
+export function renderMyPick(M, H, esc, I) {
+  const t = byId(H.teacher);
+  return `<div class="lh">
+    <div class="lh-top"><button class="nav-pill" data-act="myBack">${I("arrow_back")}1:1 수업</button><span class="grow"></span></div>
+    <h2 class="my-h">내 교재로 수업하기</h2>
+    <p class="muted small">공부하고 있는 영어 교재나 학습지의 쪽을 찍어 올리면, 선생님이 그 내용으로 1:1 수업을 해요. 사진은 최대 ${MY_MAX}장이에요.</p>
+    <div class="my-grid">${M.photos.map((u, i) => `<div class="my-thumb"><img src="${esc(u)}" alt=""><button class="round small" data-act="myDel" data-v="${i}" aria-label="사진 빼기">${I("close")}</button></div>`).join("")}
+      ${M.photos.length < MY_MAX ? `<label class="my-add">${I("add_a_photo")}<span class="small b">사진 ${M.photos.length ? "더 " : ""}고르기</span><span class="muted tiny">${M.photos.length}/${MY_MAX}</span><input id="myFile" type="file" accept="image/*" multiple hidden></label>` : ""}</div>
+    <ul class="my-tips muted small"><li>한 쪽이 화면에 꽉 차게, 밝은 곳에서 똑바로 찍어 주세요.</li><li>사진은 수업을 준비하는 데만 쓰고 저장하지 않아요.</li><li>이름·전화번호처럼 적어 둔 개인정보는 가리고 찍어 주세요.</li></ul>
+    <div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>
+    ${M.error ? `<p class="error small">${esc(M.error)}</p>` : ""}
+    <button class="pill primary" data-act="myStart" ${M.photos.length && !M.busy ? "" : "disabled"}>${I("play_arrow")}${M.busy ? "사진 준비하는 중…" : "이 사진으로 수업 시작"}</button>
+  </div>`;
 }

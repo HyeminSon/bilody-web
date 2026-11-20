@@ -1,10 +1,11 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.5";
-import { PRESET } from "./config.js?v=0.8.5";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.5";
-import { sceneVoice } from "./characters.js?v=0.8.5";
+import * as api from "./api.js?v=0.8.6";
+import { PRESET } from "./config.js?v=0.8.6";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.6";
+import { sceneVoice } from "./characters.js?v=0.8.6";
+import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL } from "./lesson09.js?v=0.8.6";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -767,8 +768,42 @@ export class Chat {
       this.doneHeld = null;
     }
   }
+  /** 0.8.6 내 교재: 아직 교재를 읽는 중이면 첫 부분(가벼운 대화)에 머문다. 준비되면 myPlanReady가 넘긴다. */
+  myWait(why) {
+    const L = this.lesson;
+    if (!L?.my || !L.pending || this.lessonStep < L.steps.length - 1) return false;
+    if (!this.myWaiting) { this.myWaiting = true; this.log("my_wait", { why }); if (!this.resp) this.sysNote(MY_STILL); }
+    return true;
+  }
+  sysNote(text) {
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text }] } });
+    this.send({ type: "response.create" }); this.set({ state: "thinking" });
+  }
+  /** 서버가 교재를 다 읽음: 단계를 붙이고, 첫 부분이 이미 끝났으면 바로 첫 표현으로. 아니면 선생님에게만 알린다. */
+  async myPlanReady(r) {
+    const L = this.lesson; if (!L?.my || !L.pending || this.closed) return;
+    applyMyPlan(L, r); this.log("my_ready", { steps: L.steps.length });
+    this.set({ myReady: Date.now() });
+    if (!this.pc || this.ui.lessonDone) return;
+    if (this.myWaiting) {
+      this.myWaiting = false;
+      for (let w = 0; (this.resp || this.player.isPlaying) && w < 15000; w += 150) await sleep(150);
+      if (this.closed || !this.pc || this.ui.lessonDone || this.lessonStep !== 0) return;
+      this.interruptReply(); this.startLessonStep(1);
+    } else this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: MY_READY(r) }] } });
+  }
+  /** 교재를 읽지 못함(교재가 아니거나 흐림): 선생님이 짧게 사과·안내하고 인사한 뒤 마친다. */
+  async myPlanFailed(reason) {
+    const L = this.lesson; if (!L?.my || this.closed) return;
+    L.pending = false; L.failed = reason || "사진에서 교재 내용을 찾지 못했어요."; this.log("my_failed", {});
+    this.set({ myReady: Date.now() });
+    if (!this.pc || this.ui.lessonDone) return;
+    for (let w = 0; this.resp && w < 15000; w += 150) await sleep(150);
+    this.interruptReply(); this.myFailNoted = true; this.sysNote(MY_FAILED);
+  }
   moveOn(why) {
     const L = this.lesson; if (!L) return;
+    if (this.myWait(why)) return;
     this.log("lesson_part_done", { step: this.lessonStep, why });
     this.doneHeld = null; this.sceneGen++; this.sceneIntro = null; this.interruptReply(); this.player.stop();
     const n = this.lessonStep + 1;
@@ -779,6 +814,7 @@ export class Chat {
   skipStep() {
     const L = this.lesson; if (!L || this.closed || !this.pc || this.ui.lessonDone || this.lessonStep < 0) return;
     if (!this.appLed) { this.sendText("Let's move on to the next part, please."); return; }
+    if (this.myWait("skip")) return;
     this.log("lesson_skip", { step: this.lessonStep });
     this.sceneGen++; this.sceneIntro = null; this.interruptReply(); this.player.stop();
     if (this.ui.lessonScene) this.set({ lessonScene: false, lessonHiLine: -1 });
@@ -907,6 +943,7 @@ export class Chat {
   async lessonAfterReply(r) {
     const L = this.lesson, at = this.lessonStep, step = L?.steps?.[at];
     if (!step || this.ui.lessonDone || this.ui.lessonScene) return;
+    if (L.failed) { if (this.myFailNoted) this.finishLesson([], []); return; }   // 0.8.6 내 교재를 읽지 못함: 선생님 인사 뒤 마침
     const gen = this.lessonGen, saidBefore = this.lessonSaid, t0 = Date.now();
     const lines = this.stepLog.slice();
     const learnerTurns = lines.filter((l) => l.who === "learner").length;
@@ -936,6 +973,7 @@ export class Chat {
         sys(`This part is not finished yet: ${fix} Do it now, in your own natural words, without announcing it.`); return;
       }
     }
+    if (this.myWait("check_done")) return;
     this.log("lesson_part_done", { step: at, forced: !chk.complete });
     if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; }
     await this.endWithGoodbye(lines, gen);
