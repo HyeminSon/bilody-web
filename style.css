@@ -565,3 +565,6 @@ button.pl-line:active { transform: scale(.98); }
 .my-photos.n1 { grid-template-columns: minmax(0, 220px); justify-content: center; }
 .my-photos.n2 { grid-template-columns: repeat(2, 1fr); }
 .my-photos.n3 { grid-template-columns: repeat(3, 1fr); }
+.preview-btn { width: 100%; min-height: 48px; font-size: 15px; margin: 4px 0 8px; }
+.cp-head { display: flex; align-items: center; gap: 14px; } .cp-head img { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; background: var(--lilac); flex: none; }
+.cp-head h2 { margin: 0; } .cp-intro { margin: 12px 0 2px; color: var(--plum); }

@@ -824,7 +824,7 @@ function renderSettings() {
     ${section("friend", "대화 상대", `${c.teacher ? `${c.ko} 선생님` : `${c.ko} · 이름 ${fname}`} · 속도 ${speed.toFixed(1)}배`, "face", `
       <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있어요. 상대마다 나와 나눈 이야기만 따로 기억하고, 바꿔도 지금까지의 기억과 기록은 지워지지 않아요. 1:1 수업 선생님은 수업 화면에서 따로 골라요.</p>
       ${charPicker(c.id)}
-      <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview">▶ 목소리 듣기</button></div>
+      <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview" data-v="${c.id}" ${S.previewing ? "disabled" : ""}>${S.previewing === c.id ? "자기소개 하는 중…" : "▶ 자기소개 듣기"}</button></div>
       ${c.teacher ? "" : `<div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
       <p class="muted tiny">한글이나 영어로 1~8자. 이름을 바꿔도 성격과 목소리는 그대로예요.</p>
       ${fname !== c.en ? `<button class="link" data-act="resetFriend">원래 이름(${esc(c.en)})으로</button>` : ""}`}
@@ -866,6 +866,12 @@ function renderSettings() {
 function renderDialog() {
   const d = S.dialog; if (!d) return "";
   const box = (inner) => `<div class="overlay" data-act="closeDialog"><div class="dialog" data-stop>${inner}</div></div>`;
+  if (d.kind === "charPick") { const c = byId(d.id); const t = isTeacher(c.id);
+    return box(`<div class="cp-head"><img src="${t ? teacherImg(c.id) : `img/char_${c.id}.webp`}" alt=""><div><h2>${esc(c.ko)}${t ? " 선생님" : ""}</h2><span class="muted small">${esc(c.en)}</span></div></div>
+      <p class="b cp-intro">${esc(c.intro)}</p><p class="muted small">${esc(c.profile ?? "")}</p>
+      ${t ? `<p class="small"><b class="accent">이런 분께</b> ${esc(c.forWhom)}</p>` : ""}
+      <button class="pill secondary preview-btn" data-act="preview" data-v="${c.id}" ${S.previewing ? "disabled" : ""}>${I(S.previewing === c.id ? "graphic_eq" : "play_arrow")}${S.previewing === c.id ? "자기소개 하는 중…" : "자기소개 들어보기"}</button>
+      <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link b" data-act="charPickYes">${t ? "이 선생님과 이야기하기" : "이 친구와 이야기하기"}</button></div>`); }
   if (d.kind === "confirm") return box(`<h2>${esc(d.title)}</h2><p>${esc(d.text ?? "")}</p>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link ${d.danger ? "danger" : ""}" data-act="confirmYes">${esc(d.yes)}</button></div>`);
   if (d.kind === "guide") return `<div class="overlay full"><div class="guide-page">
@@ -1000,13 +1006,15 @@ app.addEventListener("click", async (e) => {
         if (d.friend.trim() === byId(d.character).en) d.friend = byId(v).en;
         d.character = v; render();
       } else if (v !== p?.character) {
-        const c = byId(v); const who = isTeacher(v) ? `${c.ko} 선생님` : c.ko;
-        confirm(`${who}으로 바꿀까요?`.replace(/([가-힣])으로/, (m, ch) => ((ch.charCodeAt(0) - 0xAC00) % 28 === 0 || (ch.charCodeAt(0) - 0xAC00) % 28 === 8 ? ch + "로" : ch + "으로")),
-          isTeacher(v) ? `대화하기에서 ${c.ko} 선생님과 이야기해요. 친구와 선생님은 각자 나와 나눈 이야기만 기억해요. 지금까지의 기억과 기록은 지워지지 않아요.` : `친구 이름도 ${c.en}로 바뀌어요. 친구와 선생님은 각자 나와 나눈 이야기만 기억해요. 지금까지의 기억과 기록은 지워지지 않아요.`, "바꾸기", async () => {
-          await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: c.colorId, character: c.id }); S.profile = await api.loadProfile(); });
-          toast(S.chat ? `${c.ko}로 바꿨어요. 다음 대화부터 ${c.ko}가 이야기해요.` : `${c.ko}로 바꿨어요.`);
-        });
+        // 0.8.6(11/20 실장님): 바꾸기 전에 캐릭터를 소개하고, 그 목소리로 자기소개를 들어 볼 수 있게
+        S.dialog = { kind: "charPick", id: v }; render();
       }
+      break;
+    }
+    case "charPickYes": {
+      const c = byId(S.dialog?.id); S.dialog = null; if (S.previewing) player.stop();
+      await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: c.colorId, character: c.id }); S.profile = await api.loadProfile(); });
+      toast(S.chat ? `${c.ko}로 바꿨어요. 다음 대화부터 ${c.ko}가 이야기해요.` : `${c.ko}로 바꿨어요.`);
       break;
     }
     case "saveNames": {
@@ -1023,6 +1031,16 @@ app.addEventListener("click", async (e) => {
         const what = S.chat?.lesson || S.kids ? "수업" : S.story ? "그림책" : "대화";
         const [obj, subj] = what === "대화" ? ["대화를", "대화가"] : [`${what}을`, `${what}이`];
         confirm(`${obj} 끝낼까요?`, `기록으로 가면 지금 하던 ${subj} 끝나요.`, "끝내고 이동", () => switchTab(v));
+        break;
+      }
+      // 0.8.6(11/20 실장님): ‘홈’은 언제나 첫 화면으로(수업 홈·내 교재·강의 목록을 닫음). 수업 중이면 묻고 끝낸다.
+      if (v === "chat") {
+        const goHome = async () => { S.lh = null; S.vid = null; closeVideo(); await switchTab("chat"); };
+        if (S.chat?.lesson || S.kids) {
+          confirm("수업을 끝낼까요?", "처음 화면으로 가면 지금 하던 수업이 끝나요.", "끝내고 이동", async () => { if (S.kids) { S.kids.stop(); S.kids = null; } if (S.chat) await endLesson(false); await goHome(); });
+          break;
+        }
+        await goHome();
         break;
       }
       await switchTab(v);
@@ -1168,9 +1186,14 @@ app.addEventListener("click", async (e) => {
     }
     case "section": S.open = S.open === v ? null : v; render(); break;
     case "preview": {
-      player.unlock(); const c = byId(p?.character);
-      try { const s = await api.say("Hi! I'm so happy to see you. What did you have for lunch today?", c.voice, pref.get("speed", 1), null, true); player.setVolume(pref.get("volume", 1)); await player.play(s.pcm, s.rate); }
+      // 0.8.6: 고르기 전 확인 창에서도 그 캐릭터 목소리를 들어 볼 수 있게(v = 캐릭터 id)
+      if (S.chat && !S.chat.ui?.paused && ["speaking", "listening"].includes(S.chat.ui?.state)) { toast("대화를 정지한 뒤에 미리 들어 주세요."); break; }
+      player.unlock(); const c = byId(v || p?.character);
+      if (S.previewing) break;
+      S.previewing = c.id; render();
+      try { const s = await api.say(c.selfIntro ?? "Hi! I'm so happy to see you.", c.voice, pref.get("speed", 1), null, true); player.setVolume(pref.get("volume", 1)); await player.play(s.pcm, s.rate); }
       catch (err) { toast(api.errText(err)); }
+      S.previewing = null; render();
       break;
     }
     case "renameFriend": {
@@ -1225,7 +1248,7 @@ app.addEventListener("click", async (e) => {
       const cat = document.querySelector("input[name=cat]:checked").value; S.dialog = null;
       await work(() => api.sendFeedback("inquiry", cat, body)); toast("보냈어요. 확인하고 연락드릴게요."); break;
     }
-    case "closeDialog": if (!stop || el === e.target) { if (S.dialog?.kind === "plIntro" && S.dialog.auto) pref.set("pl_later", true); S.dialog = null; render(); } break;   // 0.8.5: 저절로 뜬 처음 이야기 창은 닫으면 다시 띄우지 않음
+    case "closeDialog": if (!stop || el === e.target) { if (S.dialog?.kind === "charPick" && S.previewing) player.stop(); if (S.dialog?.kind === "plIntro" && S.dialog.auto) pref.set("pl_later", true); S.dialog = null; render(); } break;   // 0.8.5: 저절로 뜬 처음 이야기 창은 닫으면 다시 띄우지 않음
     case "confirmYes": { const f = S.dialog.onYes; S.dialog = null; render(); await f(); break; }
   }
 });
