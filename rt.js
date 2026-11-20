@@ -207,7 +207,7 @@ export class Chat {
           this.log("lesson_late_transcript", {});
           break;
         }
-        if (t && !this.story) this.onLearnerText?.(t);
+        if (t && !this.story) { this.onLearnerText?.(t); this.noteHeard(t); }
         if (t && this.lesson && /\p{L}/u.test(t)) { this.lessonSaid++; this.stepLog.push({ who: "learner", text: t }); this.quietCount = 0; this.lessonHeard(t); }
         if (t && this.placement && /\p{L}/u.test(t)) this.placementHeard(t);
         if (t) { this.persist("user", t); this.addLine("user", t); if (confused(t)) this.helpWanted = true; if (!this.story && /\p{L}/u.test(t)) this.learnerTurns = (this.learnerTurns ?? 0) + 1; this.noteTextAsk(t); }
@@ -300,10 +300,19 @@ export class Chat {
       const cut = !this.appLed || meta;
       this.log("preamble_cut", { text: sentence.slice(0, 120), kept: !cut }); if (cut) return;
     }
+    // 0.8.12(11/20 실장님 시험): 이미 맞게 한 말을 ‘고쳐’ 주는 문장은 짧은 확인으로 바꾸고, 뒤따르는 따라 하기 요청은 내지 않는다
+    if (!this.story && !this.placement) {
+      if (r.sameFix && PRACTICE_ASK.test(sentence) && !/["“”]/.test(sentence)) { this.log("same_fix_cut", { ask: true }); return; }
+      if (sameFix(sentence, (this.heard ?? []).filter((h) => Date.now() - h.at < 90000).map((h) => h.t))) { r.sameFix = true; this.log("same_fix_cut", {}); sentence = "Yes, that's right."; }
+    }
     // 역할 읽기: 선생님이 자기 줄을 한 대답에 두 번 읽으면 두 번째는 내지 않는다
     if (this.lesson && this.appLed && !this.story && this.rp?.step === this.lessonStep && isRolePlay(this.lesson.steps?.[this.lessonStep])) {
       r.seen ??= new Set();
-      if (roleRepeat(rolePlan(this.lesson.steps[this.lessonStep].teach), r.seen, sentence)) { this.log("role_repeat_cut", {}); return; }
+      const st = this.lesson.steps[this.lessonStep], plan = rolePlan(st.teach);
+      if (roleRepeat(plan, r.seen, sentence)) { this.log("role_repeat_cut", {}); return; }
+      // 0.8.12: 학습자가 방금 맞게 읽은 말을 되풀이하거나 말투를 칭찬하는 군말은 내지 않는다(선생님 줄만 읽게)
+      const lastL = [...this.stepLog].reverse().find((l) => l.who === "learner")?.text ?? "";
+      if (!this.rp.comment && roleExtra(plan, st.teach, sentence, lastL)) { this.log("role_extra_cut", { text: sentence.slice(0, 80) }); return; }
     }
     if (this.lesson && !this.story) sentence = spokenFix(sentence);   // 0.8.6: 빈칸·빗금은 소리로 읽을 수 없다(‘something’, ‘슬래시’로 읽혔음)
     const voice = this.voiceId, speed = this.story ? 1 : (r.slow ? Math.max(0.7, this.speed * 0.8) : this.speed), sid = this.sessionId;
@@ -490,6 +499,8 @@ export class Chat {
   }
   idleForAnnounce() { return !this.resp && !this.player.isPlaying && !this.ui.speech; }
 
+  /** 0.8.12: 학습자가 최근 한 말(이미 맞게 한 말을 ‘고쳐’ 주는지 볼 때 쓴다) */
+  noteHeard(t) { this.heard = [...(this.heard ?? []), { t, at: Date.now() }].slice(-3); }
   // ---------- 교정 빈도(11/13 실장님: 학습자 말 4번에 한 번쯤, 자주 틀리는 표현은 꼭) — 앱과 같음 ----------
   noteCorrection(played) {
     const m = /(we usually say|a more natural way to say|let's try it in parts|listen once more|you can say,)/i.exec(played) ?? (hasPracticeQuote(played) ? ["", "quote"] : null); if (!m) return;
@@ -512,7 +523,7 @@ export class Chat {
     if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
       this.correctionNoted = true;
       this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
-        text: "Note from the app: there has been no correction for a few turns. In your next reply, if the learner made a clear mistake recently, give one practice correction (for a question or request: answer first, then the By the way tip). Choose a mistake they have made more than once first. If there is no clear mistake, just continue naturally." }] } });
+        text: "Note from the app: there has been no correction for a few turns. In your next reply, if the learner made a clear mistake recently, give one practice correction (for a question or request: answer first, then the By the way tip). Choose a mistake they have made more than once first. If there is no clear mistake, just continue naturally: never correct a sentence that is already correct, and never offer a sentence that only moves a comma or a word like Recently." }] } });
       this.log("correction_nudge", {});
     }
     if (this.announceAt) setTimeout(() => {
@@ -607,7 +618,7 @@ export class Chat {
   sendText(text) {
     const t = text.trim(); if (!t || !this.pc) return;
     if (this.lessonHook?.(t, null)) return;   // 교재 중 글 입력도 교재가 받는다
-    this.onLearnerText?.(t);
+    this.onLearnerText?.(t); this.noteHeard(t);
     clearTimeout(this.idleTimer);
     this.interruptReply();
     this.send({ type: "conversation.item.create", item: { type: "message", role: "user", content: [{ type: "input_text", text: t }] } });
@@ -1450,7 +1461,9 @@ export function roleAdvance(plan, next, said) {
     else {
       const parts = text.split(/(\s+)/); const idx = []; const sw = [];
       parts.forEach((p, pi) => { for (const w of rpWords(p)) { sw.push(w); idx.push(pi); } });
-      const span = findLine(sw, lw, needFor(lw.length, 0.8));
+      // 0.8.12(11/20 실장님 시험): 선생님이 줄 앞 감탄사(Oh, nice!의 Oh)만 빼고 읽어도 그 줄을 읽은 것으로 본다
+      const lwF = lw.filter((x) => !FILLER.has(x)), lm = lwF.length >= 3 ? lwF : lw;
+      const span = findLine(sw, lm, needFor(lm.length, 0.8));
       if (!span) break;
       text = parts.slice(idx[span[1] - 1] + 1).join("");
     }
@@ -1516,6 +1529,28 @@ export const isMetaTalk = (s, teach = "") => { const t = String(s).trim();
   if (LEAK.some((re) => re.test(t))) return true;
   const hit = (LEAK_IF.test(t) && !t.includes("?")) || (!/[?"“”]/.test(t) && META.some((re) => re.test(t)));
   return hit && !inNotes(teach, t); };
+/** 0.8.12(11/20 실장님 시험): 역할 읽기에서 선생님 줄이 아닌 군말 — 학습자가 방금 맞게 읽은 말을 따옴표로 되풀이(“‘I'm really into it.’ That sounded so natural!”)하거나 말투를 칭찬하는 문장 */
+const SOUND_PRAISE = /\b(sound(s|ed)?|you sound)\b[^.!?]*\b(natural|great|good|clear|smooth|nice|confident|perfect|lovely|beautiful)\b|\bso natural\b/i;
+export function roleExtra(plan, teach, sentence, lastLearner = "") {
+  const t = String(sentence).trim(); if (!t || plan.some((l) => l.who === "you" && inNotes(l.en, t))) return false;
+  if (SOUND_PRAISE.test(t) && !inNotes(teach, t)) return true;
+  const q = [...t.matchAll(/["“]([^"”]+)["”]/g)].map((m) => rpWords(m[1])).filter((w) => w.length >= 2);
+  return q.length > 0 && q.every((qw) => plan.some((l) => l.who === "learner" && wordsAt(rpWords(l.en), qw) !== -1 && learnerSaid(lastLearner, l.en)));
+}
+/** 0.8.12(11/20 실장님 시험): 학습자가 이미 맞게 한 말을 ‘고쳐’ 주는 문장인가(“Just one small fix: "There is a face on the poster."” — 학습자도 똑같이 말했음).
+ *  따옴표 속 문장이 학습자가 최근 한 말(또는 그 한 문장)과 같으면(문장부호·대소문자, 앞의 Oh·Yes·Okay, There's/There is 차이는 무시) 그렇다. */
+const FIXWORD = /\b(small fix|more natural|we usually say|native speakers (would |usually )*say|try it like this|a better way|little tip)\b/i;
+const LEADW = new Set([...FILLER, "yes", "yeah", "yep", "okay", "ok", "actually", "right", "um", "uh", "hmm", "and", "but"]);
+const CONTR = { "there's": ["there", "is"], "it's": ["it", "is"], "i'm": ["i", "am"], "that's": ["that", "is"], "what's": ["what", "is"], "he's": ["he", "is"], "she's": ["she", "is"],
+  "you're": ["you", "are"], "we're": ["we", "are"], "they're": ["they", "are"], "i've": ["i", "have"], "i'll": ["i", "will"], "i'd": ["i", "would"], "here's": ["here", "is"] };
+const normFix = (t) => { const w = unNeg(rpWords(t)).flatMap((x) => CONTR[x] ?? [x]); let i = 0; while (i < w.length - 1 && LEADW.has(w[i])) i++; return w.slice(i).join(" "); };
+export function sameFix(sentence, heard = []) {
+  if (!FIXWORD.test(String(sentence))) return false;
+  const q = [...String(sentence).matchAll(/["“]([^"”]+)["”]/g)].map((m) => normFix(m[1])).filter(Boolean); if (!q.length) return false;
+  const said = heard.flatMap((h) => [h, ...String(h).split(/(?<=[.!?])\s+/)]).map(normFix).filter(Boolean);
+  return q.every((x) => said.includes(x));
+}
+export const PRACTICE_ASK = /\b(can you say (that|it)|say (that|it) (once|again)|your turn|give it a try|want to try( it)?|say it with me|how would you say it|please say that|try (it|that) (once|again))\b/i;
 
 const SCENE_INTRO = (title) => `The app is about to play a short scene from the textbook${title ? ` (${title})` : ""} in the characters' own voices. Say one short, natural sentence that leads into it and invites the learner to just listen. One sentence only, with no question.`;
 const QUIET_NOTE = "(App: nobody has spoken for a while. If you asked the learner something, ask it again in simpler words or offer two choices. If you were not waiting for them, go on with the next thing in this part.)";
