@@ -64,6 +64,7 @@ export class Chat {
       if (stale()) return abandon();
       if (key.voice) this.voiceId = key.voice;
       this.appLed = !!this.lesson && key.appLed === true;
+      this.todayCtx = key.hasTodayContext === true;   // 0.8.6: 오늘 이 선생님과 이미 이야기함
       this.updateRemaining(key.todaySeconds, key.limitSeconds);
       try {
         stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
@@ -124,7 +125,7 @@ export class Chat {
     if (this.lesson) {   // 수업: 첫 단계부터. 끊겼다 이어지면 장면 단계는 장면을 처음부터(마이크는 끝난 뒤), 나머지는 하던 단계를 다시
       this.greeted = true;
       const cur = this.lesson.steps[this.lessonStep];
-      if (this.lessonStep < 0) this.startLessonStep(0);
+      if (this.lessonStep < 0) { const at = this.lesson.resumeAt ?? 0; this.backNote = at > 0; this.startLessonStep(at); }   // 0.8.6: 아까 그만둔 단계부터
       else if (cur?.type === "dialogue" && cur.play) this.playScene(cur);
       else { this.openMic(); this.sendStepTeach(this.lessonStep, true); }
       return;
@@ -678,6 +679,8 @@ export class Chat {
     this.stepLog = []; this.wrapAsked = false; this.quietCount = 0; this.checkFails = 0; this.sceneIntro = null;
     this.set({ lessonStep: i, lessonHiLine: -1, lessonHiWord: null });
     this.log("lesson_step", { lesson: L.id, session: L.session, step: i, type: step.type });
+    // 0.8.6(11/20 실장님): 어디까지 했는지 앱에 알려 저장(역할 바꿔 읽기로 끼운 단계는 빼고 센 원래 번호, 바꿔 읽기 중이면 원래 역할 읽기부터)
+    if (!L.my) { let k = L.steps.slice(0, i).filter((x) => !x.swapped).length; if (step.swapped) k -= 1; try { this.onLessonStep?.(Math.max(0, k)); } catch { /* */ } }
     if (step.type === "dialogue" && step.play) { if (this.appLed && i > 0) this.introScene(i, step); else this.playScene(step); }
     else { this.openMic(); this.sendStepTeach(i); }
   }
@@ -691,7 +694,8 @@ export class Chat {
     for (let w = 0; this.resp && w < 4000; w += 100) await sleep(100);
     if (stale()) return;
     const intro = this.sceneIntro = { at: i, done: false };
-    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: SCENE_INTRO(plain(step.title)) }] } });
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: (this.backNote ? BACK_NOTE : "") + SCENE_INTRO(plain(step.title)) }] } });
+    this.backNote = false;
     this.send({ type: "response.create" }); this.set({ state: "thinking" });
     for (let w = 0; !intro.done && w < 10000; w += 100) { await sleep(100); if (stale() || this.sceneIntro !== intro) return; }
     this.sceneIntro = null;
@@ -706,8 +710,10 @@ export class Chat {
     if (this.closed || !this.pc || gen !== this.lessonGen || i !== this.lessonStep) return;
     // 0.8.5(11/19 실장님 수업 기록): 첫 인사에서 고쳐 주기·따라 하기·자기소개·질문을 한꺼번에 하던 문제
     const teach = (this.appLed ? appTeach(step.teach) : (step.teach || "Continue the lesson, then call next_step.")) + " " + (step.type === "intro" ? WARMUP_NOTE : TURN_NOTE);
-    let note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
-      `Lesson step ${i + 1} of ${L.pending ? "several (more parts come after this one)" : L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
+    const back = !resumed && this.backNote ? BACK_NOTE : ""; if (!resumed) this.backNote = false;
+    const again = !resumed && step.type === "intro" && this.todayCtx ? " " + AGAIN_NOTE : "";
+    let note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : back) +
+      `Lesson step ${i + 1} of ${L.pending ? "several (more parts come after this one)" : L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}${again}`;
     // 0.8.2: 다시 연결되면 이 부분에서 이미 한 것을 알려 이어서 하게 한다(예전엔 처음부터 다시 했음)
     if (resumed && this.stepLog.length) note += `\nAlready done in this part before the connection dropped (most recent last):\n${this.stepLog.slice(-6).map((l) => `${l.who === "teacher" ? "You" : "Learner"}: ${l.text.slice(0, 300)}`).join("\n")}\nDo not start this part again: say one short sentence and continue from there.`;
     if (this.appLed && isRolePlay(step)) {
@@ -718,7 +724,7 @@ export class Chat {
       const n = roleNote(plan, startAt, !resumed);
       if (n.final && !this.rp.final) { this.rp.final = true; this.rp.finalAt = this.stepLog.filter((l) => l.who === "learner").length; }
       this.rpHighlight(plan, startAt === 0 && plan[0]?.who === "you" ? 0 : plan.findIndex((l) => l.who === "learner"));
-      note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
+      note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : back) +
         `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${step.swapped && !resumed ? "Now the same scene once more with the roles switched, so the learner practices the other side too. " : ""}${n.note}`;
     }
     this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
@@ -1144,6 +1150,10 @@ export function placementDone(learnerTexts, elapsedMs) {
   return false;
 }
 // 0.8.5(11/19 실장님 수업 소감): 고친 문장을 따라 하게 더 자주, 선생님이 한꺼번에 길게 말하지 않게
+/** 0.8.6(11/20 실장님): 그만뒀던 수업에 다시 들어오면 그 단계부터, 인사는 짧게 */
+export const BACK_NOTE = "The learner stopped this class partway earlier and has now come back to continue it from this part. Start with one short welcome-back sentence (for example: Welcome back. Let's pick up where we left off.), with no question about their day, how they are or anything you already asked, then do this part. ";
+/** 0.8.6: 오늘 이미 이야기한 선생님은 몸풀기에서 같은 질문을 다시 하지 않는다(“오늘 기분 어때요?” 뒤 “차분한 시간 있었어요?”) */
+export const AGAIN_NOTE = "You and the learner already talked earlier today. Do not ask again about their day, their mood, how they are, a calm moment, or what they ate or drank, and do not ask anything you already asked today. Welcome them back in one short sentence, then ask one new, different easy question or lead straight into today's topic.";
 export const WARMUP_NOTE = "During this warm-up, never correct the learner's English, never ask them to repeat or say anything after you, and ask only one question per turn. Keep each turn to two short sentences.";
 export const TURN_NOTE = "Keep every turn short (two or three short sentences). Until everything in this part is done, end each turn by giving the learner one thing to say or answer. When you fix a sentence the learner said, also in small talk, ask them to say the fixed sentence once right away (not next time), then react and go on.";
 export const PLACEMENT_WRAP = "(App: time is up. In one or two short sentences, thank the learner warmly for the chat and say a friendly see-you-soon. Ask no question and do not talk about what comes next.)";

@@ -462,6 +462,9 @@ async function startLesson(lessonId, session) {
   if (!L) { H.error = "수업을 불러오지 못했어요. 인터넷을 확인해 주세요."; return render(); }
   pref.set("lp_last", book.id);
   const run = L9.makeRun(book, L, session);
+  // 0.8.6(11/20 실장님): 이 Part를 하다 그만뒀으면 그 단계부터(7일 안, 첫 단계·끝난 Part는 처음부터)
+  const posKey = `ls_${book.id}_${run.id}_${run.session}`; const pos = pref.get(posKey, null);
+  if (pos && pos.k > 0 && pos.k < run.steps.length && Date.now() - (pos.t ?? 0) < 7 * 86400_000) run.resumeAt = pos.k;
   player.unlock(); player.setVolume(pref.get("volume", 1));
   S.lh = null;
   if (false) {
@@ -472,7 +475,8 @@ async function startLesson(lessonId, session) {
   }
   const t = L9.progress.teacher(pref); const p = S.profile;
   const chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
-  chat.onLessonDone = (r) => { if (S.chat === chat) L9.progress.done(pref, r); };
+  chat.onLessonDone = (r) => { pref.set(posKey, null); if (S.chat === chat) L9.progress.done(pref, r); };
+  chat.onLessonStep = (k) => pref.set(posKey, { k, t: Date.now() });
   S.chat = chat; S.lesson = null;
   render();
   await chat.start();
