@@ -343,6 +343,8 @@ export class Chat {
           if (pic) setTimeout(() => { if (r.epoch === this.epoch) this.story.onCue(pic); }, Math.round(m.index * 1000 / 13));
         }
       }
+      // 0.8.11b(11/20 실장님): 역할 읽기에서 선생님이 자기 줄을 읽기 시작하면 그 줄을 밝힌다(전엔 방금 학습자가 읽은 줄이 그대로 밝혀져 있었음)
+      if (this.lesson && this.appLed && !this.story && this.rp?.step === this.lessonStep) this.rpSpeakHi(spoken, r);
       const ok = await this.player.play(s.pcm, s.rate);
       if (ok && r.epoch === this.epoch) r.played.push(spoken);
       else if (!ok && r.epoch === this.epoch) r.lost = true;   // 0.8.10b(Codex 3차): 재생에 실패한 문장도 ‘못 들려줌’
@@ -1135,19 +1137,29 @@ export class Chat {
       const note = roleNote(plan, rp.next, false);
       if (note.comment) rp.comment = true;
       if (note.final) { rp.final = true; rp.finalAt = n; }
-      // 화면: 다음에 말할 줄을 밝힌다(학습자 줄이면 그 줄, 아니면 선생님이 읽을 줄)
-      const lastYou = plan.slice(0, rp.next).map((l) => l.who).lastIndexOf("you");
-      const nextLearner = plan.findIndex((l, i) => i > lastYou && l.who === "learner");
-      this.rpHighlight(plan, nextLearner !== -1 && (rp.next >= plan.length || nextLearner < rp.next) ? nextLearner : rp.next);
+      this.rpHighlightNext(plan, rp);
       sys((step.rolehint ?? "") + note.note, note.respondNow);   // 0.8.9 Part 3: 화면에 무엇이 가려져 있는지 줄마다 다시 알림
       return;
     }
     // 제자리: 선생님이 학습자에게 다시 청했거나 다른 말을 했다
     const tried = n - (rp.at ?? 0);
     if ((tried >= 3 || n >= 16) && rp.next < plan.length) { rp.at = n; rp.warned = false; this.rpHighlight(plan, rp.next); sys(ROLE_FORCE_NOTE(plan[rp.next]), true); return; }
+    this.rpHighlightNext(plan, rp);   // 0.8.11b: 선생님 줄을 밝혔는데 다 읽지 않았으면 기다리는 학습자 줄로 되돌린다
     if (tried >= 1 && !rp.warned) { rp.warned = true; sys(ROLE_RETRY_NOTE(plan[rp.next]), false); }
   }
   rpHighlight(plan, idx) { if (idx >= 0 && idx < plan.length) this.set({ lessonHiLine: plan[idx].n - 1 }); }
+  /** 화면: 다음에 말할 줄을 밝힌다(학습자 줄이면 그 줄, 아니면 선생님이 읽을 줄) */
+  rpHighlightNext(plan, rp) {
+    const lastYou = plan.slice(0, rp.next).map((l) => l.who).lastIndexOf("you");
+    const nextLearner = plan.findIndex((l, i) => i > lastYou && l.who === "learner");
+    this.rpHighlight(plan, nextLearner !== -1 && (rp.next >= plan.length || nextLearner < rp.next) ? nextLearner : rp.next);
+  }
+  /** 0.8.11b: 선생님이 지금 들려주는 문장이 자기 줄이면 그 줄을 밝힌다 */
+  rpSpeakHi(spoken, r) {
+    const step = this.lesson?.steps?.[this.lessonStep]; if (!step || !isRolePlay(step) || this.rp.comment) return;
+    const plan = rolePlan(step.teach), i = speakingLine(plan, this.rp.next, spoken, (r.played ?? []).join(" "));
+    if (i !== -1) this.rpHighlight(plan, i);
+  }
 
   finishLesson(practiced, fixed) {
     const L = this.lesson; if (!L || this.ui.lessonDone || this.closed || !this.pc) return;
@@ -1395,6 +1407,22 @@ export function learnerSaid(text, line) {
   const drop = (w) => w.filter((x) => !FILLER.has(x));
   const lw0 = rpWords(line), lw = drop(lw0).length ? drop(lw0) : lw0, sw = drop(rpWords(text));
   return findLine(sw, lw, needFor(lw.length, 0.6)) !== null;
+}
+const wordsAt = (a, b) => { for (let i = 0; i + b.length <= a.length; i++) if (b.every((x, k) => a[i + k] === x)) return i; return -1; };
+/** 0.8.11b(11/20 실장님): 선생님이 지금 소리 내는 문장이 아직 안 읽은 자기 줄(next부터 이어진 선생님 줄)인가. 그 줄의 자리, 아니면 -1.
+ *  before = 이 대답에서 앞서 들려준 말. 학습자 줄을 대신 들려주는 중이면(학습자 줄 안에 선생님 줄이 든 1-1 같은 장면) 아니다. */
+export function speakingLine(plan, next, sentence, before = "") {
+  const sw = rpWords(sentence); if (!sw.length) return -1;
+  const bw = rpWords(before);
+  const reciting = plan.slice(0, next).some((l) => { if (l.who !== "learner") return false;
+    const lw = rpWords(l.en), at = wordsAt(lw, sw); return at > 0 && bw.length >= at && lw.slice(0, at).every((w, k) => bw[bw.length - at + k] === w); });
+  if (reciting) return -1;
+  for (let i = next; i < plan.length && plan[i].who === "you"; i++) {
+    const lw = rpWords(plan[i].en);
+    if (wordsAt(lw, sw) !== -1 && (sw.length >= 2 || lw.length <= 2)) return i;
+    if (lw.length >= 2 && wordsAt(sw, lw) !== -1) return i;
+  }
+  return -1;
 }
 /** 선생님 대답을 보고 자리를 옮긴다. next = 아직 안 읽은 선생님 줄의 자리(다 읽었으면 plan.length).
  *  직전 학습자 줄을 선생님이 대신 들려준 부분은 빼고 본다(1-1: 학습자 8번 줄 “Thanks! See you later!” 안에 선생님 9번 줄이 들어 있음).
