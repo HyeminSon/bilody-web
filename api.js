@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.6";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.8";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -96,11 +96,21 @@ export async function saveLessonProgress(data) {
 }
 
 /** 0.8.6 내 교재 사진(최대 5장, data URL) → 수업 계획. 함수에 CORS가 있어 바로 부른다(사진이 커서 web-proxy를 거치지 않음). */
-export async function myTextbook(images, level) {
+// 0.8.8: way = 공부 방식(auto·sentences·memorize·words·expressions·grammar), request = 학습자가 적은 바람(선택)
+export async function myTextbook(images, level, way = "auto", request = "") {
   const res = await call(`${SUPABASE_URL}/functions/v1/my-textbook`, {
-    method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ images, level }),
+    method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ images, level, way, request }),
   }, 120000);
   if (!res.ok && res.status !== 502) throw new ApiError(await errorCode(res), res.status);
+  return res.json();
+}
+
+/** 0.8.8 수업 중 공부 방식 바꾸기: 처음에 받은 plan으로 남은 단계만 다시 짠다(사진 다시 안 보냄). { ok, way, steps } */
+export async function myReplan(plan, way, request = "", readDone = false) {
+  const res = await call(`${SUPABASE_URL}/functions/v1/my-textbook`, {
+    method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" }, body: JSON.stringify({ plan, way, request, read_done: readDone }),
+  }, 20000);
+  if (!res.ok) throw new ApiError(await errorCode(res), res.status);
   return res.json();
 }
 
@@ -151,7 +161,7 @@ export async function finishSession(sessionId) { try { await fn("end-session", {
 // 0.9: character = 대화 상대(선생님 포함), lesson = 1:1 수업 정보(있으면 수업 모드)
 // 0.8.4: mode "placement" = 처음 이야기(레벨 확인). 선생님이 짧게 이야기하고 앱이 시작할 Book을 추천한다.
 export const realtimeKey = (presetId, speed, character = null, lesson = null, sessionId = null, mode = null) => fn("realtime-session", {
-  presetId, speed, features: ["picture", "word", ...(lesson && !/^K\d/.test(String(lesson.id ?? "")) ? ["lesson_app_led", "lesson_role_app"] : [])], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : mode ? { mode } : {}), ...(sessionId ? { sessionId } : {}) });
+  presetId, speed, features: ["picture", "word", ...(lesson && !/^K\d/.test(String(lesson.id ?? "")) ? ["lesson_app_led", "lesson_role_app", ...(/^MY-/.test(String(lesson.id ?? "")) ? ["study_way"] : [])] : [])], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : mode ? { mode } : {}), ...(sessionId ? { sessionId } : {}) });
 /** 0.8.4 처음 이야기 판정: { book, quote, good_ko, confidence } 또는 { failed: true } */
 export async function placementCheck(lines, sessionId) {
   try { return await fn("lesson-check", { mode: "placement", lines, session_id: sessionId ?? null }, false, 35000); }

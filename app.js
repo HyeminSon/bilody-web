@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.6";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.6";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.6";
-import * as L9 from "./lesson09.js?v=0.8.6";
-import { GUIDE } from "./guide.js?v=0.8.6";
-import { Player } from "./audio.js?v=0.8.6";
-import { Chat } from "./rt.js?v=0.8.6";
-import * as story from "./story.js?v=0.8.6";
-import * as push from "./push.js?v=0.8.6";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.6";
+import * as api from "./api.js?v=0.8.8";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.8";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.8";
+import * as L9 from "./lesson09.js?v=0.8.8";
+import { GUIDE } from "./guide.js?v=0.8.8";
+import { Player } from "./audio.js?v=0.8.8";
+import { Chat } from "./rt.js?v=0.8.8";
+import * as story from "./story.js?v=0.8.8";
+import * as push from "./push.js?v=0.8.8";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.8";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -447,12 +447,18 @@ function playVideo(v) {
   closeVideo();
   if (S.chat || S.story) return;
   const box = document.createElement("div"); box.id = "vidOverlay"; box.className = "vid-overlay";
-  box.innerHTML = `<div class="vid-bar"><b class="grow">${esc(v.title)}</b><button class="round" data-vclose aria-label="닫기">${I("close")}</button></div>
+  box.innerHTML = `<div class="vid-bar"><b class="grow">${esc(v.title)}</b><button class="link vid-land" data-vland>${I("screen_rotation")}가로로 보기</button><button class="round" data-vclose aria-label="닫기">${I("close")}</button></div>
     <video controls playsinline autoplay preload="metadata" ${v.poster ? `poster="${esc(v.poster)}"` : ""} src="${esc(v.url)}"></video>`;
   box.querySelector("[data-vclose]").onclick = closeVideo;
+  // 0.8.7(11/20 실장님): 동영상 강의는 가로로 볼 수 있게 — 전체 화면으로 키우고, 휴대폰이면 가로로 돌린다(앱과 같음)
+  box.querySelector("[data-vland]").onclick = async () => {
+    const vid = box.querySelector("video");
+    try { await (vid.requestFullscreen?.() ?? vid.webkitEnterFullscreen?.()); } catch { /* 전체 화면을 못 하면 그대로 */ }
+    try { await screen.orientation?.lock?.("landscape"); } catch { /* 컴퓨터·아이폰은 돌리기를 막아 둠: 전체 화면만 */ }
+  };
   document.body.appendChild(box);
 }
-function closeVideo() { const b = document.getElementById("vidOverlay"); if (b) { b.querySelector("video")?.pause(); b.remove(); } }
+function closeVideo() { const b = document.getElementById("vidOverlay"); if (b) { b.querySelector("video")?.pause(); b.remove(); try { screen.orientation?.unlock?.(); } catch { /* */ } } }
 
 async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
@@ -513,7 +519,8 @@ async function startMyLesson() {
   // 수준: 추천받은 Book → 지금 고른 어른 Book → 3
   const sel = H.index?.books.find((b) => b.id === H.bookId && b.kind !== "kids");
   const level = H.rec?.book ?? sel?.no ?? 3;
-  const run = L9.makeMyRun(M.photos.slice(), level, H.teacher);
+  const way = M.way ?? "auto", request = String(M.request ?? "").trim().slice(0, 200);
+  const run = L9.makeMyRun(M.photos.slice(), level, H.teacher, way, request);
   player.unlock(); player.setVolume(pref.get("volume", 1));
   S.lh = null;
   const t = H.teacher; const p = S.profile;
@@ -521,7 +528,7 @@ async function startMyLesson() {
   S.chat = chat; S.lesson = null;
   render();
   // 선생님과 대화를 시작하는 것과 동시에 서버가 교재를 읽는다(기다림 없음)
-  api.myTextbook(run.photos, level).then((r) => { if (S.chat !== chat) return; if (r?.ok) chat.myPlanReady(r); else chat.myPlanFailed(r?.reason_ko); })
+  api.myTextbook(run.photos, level, way, request).then((r) => { if (S.chat !== chat) return; if (r?.ok) chat.myPlanReady(r); else chat.myPlanFailed(r?.reason_ko); })
     .catch((e) => { if (S.chat === chat) chat.myPlanFailed(e?.code === "daily_limit" ? "오늘은 내 교재 수업을 더 할 수 없어요. 내일 다시 해 주세요." : "교재를 읽지 못했어요. 인터넷을 확인하고 다시 해 주세요."); });
   await chat.start();
 }
@@ -578,7 +585,7 @@ function renderStory() {
   return `<div class="story" id="story" style="background:${esc(u.bg)}">
     <div class="st-head"><div class="grow"><b id="stTitle">${esc(u.title)}</b><div id="stSub"></div>
       ${(p?.character ?? "tori") !== "tori" ? `<div class="st-sub">그림책은 토리가 읽어 줘요</div>` : ""}</div>
-      <button class="st-txtbtn" id="stTxtBtn" data-act="storyText" aria-label="글 보기">${I("subject")}글</button>
+      <button class="st-txtbtn" id="stTxtBtn" data-act="storyText" aria-label="텍스트 보기">${I("subject")}텍스트 보기</button>
       <span class="micchip" id="stMic">${I("mic_off")}마이크 꺼짐</span></div>
     <div class="st-main" id="stMain"><div class="st-pages" id="stPages"></div>
       <img id="stTori" class="st-tori" src="${animSrc("tori", "idle")}" alt=""></div>
@@ -954,7 +961,7 @@ function renderDialog() {
       <div class="book-list">${lib.stories.map((b) => `<div class="book-row"><button class="book" data-act="storyStart" data-v="${b.id}" data-longpress="${b.id}">
         ${story.thumbUrl(b.id) ? `<img src="${story.thumbUrl(b.id)}" alt="">` : ""}
         <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>
-        <button class="book-txt" data-act="storyBookText" data-v="${b.id}">${I("subject")}글 보기</button></div>`).join("")}</div>
+        <button class="book-txt" data-act="storyBookText" data-v="${b.id}">${I("subject")}텍스트 보기</button></div>`).join("")}</div>
       <div class="row end"><button class="link" data-act="closeDialog">닫기</button><button class="link" data-act="credits">그림 출처</button></div>`);
   }
   // 11/14 실장님: 9단계 모두 넣어 두기. 단계는 CEFR를 참고한 bilody 내부 단계(인증 아님)
@@ -1008,6 +1015,7 @@ function confirm(title, text, yes, onYes, danger = false) { S.dialog = { kind: "
 
 // ---------------- 누름 처리 ----------------
 app.addEventListener("change", (e) => { if (e.target?.id === "myFile") { addMyPhotos(e.target.files ?? []); e.target.value = ""; } });
+app.addEventListener("input", (e) => { if (e.target?.id === "myReq" && S.lh?.my) S.lh.my.request = e.target.value; });   // 0.8.8 원하는 방식(다시 그리지 않음)
 app.addEventListener("click", async (e) => {
   const stop = e.target.closest("[data-stop]");
   const el = e.target.closest("[data-act]"); if (!el) return;
@@ -1119,10 +1127,11 @@ app.addEventListener("click", async (e) => {
     case "lsHome": await endLesson(false); break;
     case "myOpen": {
       if (S.chat) await endLesson(true); else if (!S.lh) await openLessonHome();
-      if (S.lh) { S.lh.my = { photos: [], busy: false, error: null }; render(); }
+      if (S.lh) { S.lh.my = { photos: [], busy: false, error: null, way: "auto", request: "" }; render(); }
       break;
     }
     case "myBack": if (S.lh) { S.lh.my = null; render(); } break;
+    case "myWay": if (S.lh?.my) { S.lh.my.way = v; render(); } break;   // 0.8.8 공부 방식
     case "myDel": if (S.lh?.my) { S.lh.my.photos.splice(Number(v), 1); render(); } break;
     case "myStart": await startMyLesson(); break;
     case "lsTalk": if (chatOpening) break; chatOpening = true; try { await endLesson(false); await openChat(); } finally { chatOpening = false; } break;

@@ -375,7 +375,7 @@ input[type=range] { width: 100%; accent-color: var(--purple); margin: 10px 0 14p
 .lesson-item img, .lesson-noimg { align-self: flex-start; margin-top: 2px; }
 
 /* 11/14 그림책 글 보기(보호자용, 기본 숨김) */
-.st-txtbtn { display: inline-flex; align-items: center; gap: 3px; padding: 6px 10px; min-height: 36px; border-radius: 999px; font-size: 12px; font-weight: 600;
+.st-txtbtn { display: inline-flex; align-items: center; gap: 3px; padding: 6px 10px; min-height: 36px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap;
   color: rgba(53, 16, 47, .55); background: rgba(255, 255, 255, .6); }
 .st-txtbtn .mi { font-size: 16px; } .st-txtbtn.on { background: var(--purple); color: #fff; }
 .st-text { margin: 2px 16px 0; padding: 8px 12px; background: rgba(255, 255, 255, .78); border-radius: 12px; font-size: 15px; line-height: 1.45; color: #35102F; }
@@ -472,7 +472,7 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .nav-pill .mi { font-size: 20px; }
 .nav-pill:active { transform: scale(.96); }
 .lh-unit { font-size: 13px; font-weight: 700; color: #6d28d9; margin: 12px 4px 4px; }
-.lh-item b { min-width: 72px; display: inline-block; }
+.lh-item b { min-width: 84px; margin-right: 8px; display: inline-block; white-space: nowrap; }   /* 0.8.7: Lesson 번호와 제목 사이를 확실히 띄움 */
 /* 0.8.3 동영상 강의 */
 .vseries { display: flex; flex-direction: column; gap: 8px; padding: 16px 18px; }
 .vitem { display: flex; gap: 12px; align-items: center; background: var(--lav, #f5f0ff); border-radius: 14px; padding: 10px 12px; text-align: left; min-height: 56px; }
@@ -481,6 +481,7 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .vid-overlay { position: fixed; inset: 0; z-index: 60; background: #000; display: flex; flex-direction: column; }
 .vid-bar { display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: #fff; }
 .vid-bar .round { background: rgba(255,255,255,.15); color: #fff; }
+.vid-land { color: #fff; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; white-space: nowrap; } .vid-land .mi { font-size: 18px; }
 .vid-overlay video { flex: 1; width: 100%; min-height: 0; background: #000; }
 /* 0.8.4 처음 이야기·추천 */
 .pl-head { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
@@ -569,3 +570,12 @@ button.pl-line:active { transform: scale(.98); }
 .preview-btn { width: 100%; min-height: 48px; font-size: 15px; margin: 4px 0 8px; }
 .cp-head { display: flex; align-items: center; gap: 14px; } .cp-head img { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; background: var(--lilac); flex: none; }
 .cp-head h2 { margin: 0; } .cp-intro { margin: 12px 0 2px; color: var(--plum); }
+/* 0.8.8 내 교재: 공부 방식 고르기 */
+.my-way { display: flex; flex-direction: column; gap: 8px; background: #fff; border: 1px solid #E8DEFA; border-radius: 16px; padding: 12px; }
+.my-way b { color: var(--plum); }
+.my-way-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.way-chip { min-height: 40px; padding: 8px 12px; border-radius: 999px; border: 1.5px solid #D9CCF3; background: #fff; color: var(--plum); font-size: 14px; font-weight: 700; transition: transform .12s ease, background-color .15s ease, border-color .15s ease; }
+.way-chip.on { background: var(--purple); border-color: var(--purple); color: #fff; }
+.way-chip:active { transform: scale(0.96); }
+.my-way input { width: 100%; box-sizing: border-box; min-height: 44px; border: 1.5px solid #D9CCF3; border-radius: 12px; padding: 10px 12px; font-size: 15px; font-family: inherit; color: var(--plum); background: #FBF9FF; }
+.my-way input:focus { outline: none; border-color: var(--purple); background: #fff; }

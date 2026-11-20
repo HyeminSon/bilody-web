@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.6";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.6";
+import * as api from "./api.js?v=0.8.8";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.8";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -358,17 +358,39 @@ export function renderPlResult(d, t, books, esc) {
 export const MY_MAX = 5;
 /** 사진을 올리자마자 시작하는 첫 부분. 서버가 교재를 읽는 동안(10~20초) 선생님과 가벼운 대화를 한다(기다림 없음).
  *  화제는 선생님이 아는 학습자 이야기(기억·수업 이력)에 따라 그때그때 다르게. 교재가 준비되면 앱이 알려 준다. */
-export const MY_WARMUP = "This is the very start of a class with the learner's own textbook. The learner has just shared photos of a few pages, and the app is reading them now; it takes a few seconds and the app will tell you when the pages are ready. Never guess what is in the photos and do not teach anything yet.\n" +
+export const MY_WARMUP = "This is the very start of a class with the learner's own textbook. The learner has just shared photos of a few pages, and the app is reading them now; it takes a few seconds. Never guess what is in the photos, do not teach anything yet, and never talk about waiting for the pages or about what happens when they are ready.\n" +
   "1) Greet the learner by name. In one short sentence say you are taking a look at their textbook right now (for example: Oh, your own textbook! Let me take a look.).\n" +
   "2) While you look, have a short, genuine chat, one question per turn. Choose the topic from what you know: if your notes say something the learner told you before, ask how that went; if this is your first class together, introduce yourself as your class notes say and ask why they are learning English or about their day; if you already met today, skip the greeting and pick something new. Do not ask the same question you asked in an earlier class. React to what they actually say with real interest, and share a small thing about yourself now and then. Korean answers are fine; respond naturally.\n" +
   "This part is done only after the learner has answered at least two of your questions.";
-export const MY_READY = (r) => `(App: the textbook pages are ready. Today: ${String(r.title_en ?? "").replace(/"/g, "'")} — ${(r.steps ?? []).filter((x) => x.type === "card").length} expressions from the learner's book. Finish the chat naturally; the app will start the textbook part right after.)`;
+// 0.8.8(11/20 실장님): 공부 방식. 사진 올리는 화면에서 고르거나, 몸풀기·수업 중에 말로 바꾼다.
+export const MY_WAYS = [["auto", "알아서 해 주세요"], ["sentences", "문장 하나하나 설명"], ["memorize", "문장 외우기"], ["words", "중요 단어 위주"], ["expressions", "핵심 표현으로 말하기"], ["grammar", "문법 설명"]];
+export const wayKo = (w) => (MY_WAYS.find((x) => x[0] === w) ?? MY_WAYS[0])[1];
+const WAY_EN = { sentences: "go through every sentence, explaining each one and saying it together", memorize: "learn the sentences by heart", words: "focus on the important words", expressions: "practise the key expressions in conversation", grammar: "understand the grammar", auto: "a good mix of the text, the key expressions and the words" };
+/** 몸풀기 지시: 방식을 이미 골랐으면 알려 주고, 아니면 첫 질문으로 묻게 한다(대답은 앱·change_study_way가 받는다). */
+export function myWarmup(way, request) {
+  if (request || (way && way !== "auto")) return MY_WARMUP + `\nThe learner already chose how to study these pages: ${WAY_EN[way] ?? WAY_EN.auto}${request ? ` (in their words: "${String(request).replace(/"/g, "'").slice(0, 200)}")` : ""}. In your first turn, after the greeting, say in a few words that you will do it that way; do not ask about it again.`;
+  return MY_WARMUP.replace("2) While you look, have a short, genuine chat", "2) Your first question, right after the greeting: ask how they would like to study these pages today, and give the choices in a few words (going through each sentence, memorizing the sentences, the important words, the key expressions, or the grammar; or you can choose). When they answer, call change_study_way. Then, while you look, have a short, genuine chat") + "\nAnswering how they want to study counts as one of those answers.";
+}
+/** 학습자 말 → 공부 방식(서버 wayFromText와 같은 결). asked: 선생님이 방금 방식을 물었음. 수업 중에는 부탁하는 말일 때만. */
+export function wayFromSpeech(t, asked = false) {
+  const s = String(t ?? "").toLowerCase();
+  const way = /외우|외울|외워|암기|memori[sz]|by heart/.test(s) ? "memorize"
+    : /(문장|한\s?줄).{0,8}(하나하나|하나씩|씩|마다|전부|모두)|한\s?문장씩|문장마다|sentence by sentence|each sentence|every sentence|one sentence at a time|line by line/.test(s) ? "sentences"
+    : /단어|어휘|낱말|vocab/.test(s) || /\b(focus on|only|just|important) (the )?words\b/.test(s) || (asked && /\bwords?\b/.test(s)) ? "words"
+    : /문법|grammar/.test(s) ? "grammar"
+    : /표현\s?(위주|중심|만|으로|연습)|(focus on|practi[cs]e) (the )?(key )?expressions/.test(s) || (asked && /표현|expressions?/.test(s)) ? "expressions"
+    : asked && /알아서|아무거나|you decide|you choose|anything is fine|whatever/.test(s) ? "auto" : null;
+  if (!way || asked) return way;
+  return /해\s?줘|해\s?주세요|해\s?줄래|해\s?주실|하고\s?싶|할래|하자|할게요|도와|위주|중심|부탁|원해|좋겠|싶어|please|can we|could we|can you|could you|i want|i'd like|let'?s|help me|focus/.test(s) ? way : null;
+}
+export const MY_READY = (r) => `(App: the textbook pages are ready. Today: ${String(r.title_en ?? "").replace(/"/g, "'")} — ${(r.steps ?? []).filter((x) => x.type === "card").length} expressions from the learner's book. Your private note only: keep chatting naturally and never mention the pages, waiting, the next part or the app. The textbook part starts by itself after the learner's next answer.)`;
 export const MY_FAILED = "(App: the pages could not be used for a lesson today. In two short sentences, kindly say you could not read the pages clearly and that they can try again with brighter, straight photos of the pages. Then say a warm goodbye. Ask no question.)";
 export const MY_STILL = "(App: still reading the pages. Keep the chat going with one more easy question.)";
 
-export function makeMyRun(photos, level, teacher) {
+export function makeMyRun(photos, level, teacher, way = "auto", request = "") {
   const run = { id: "MY-1", my: true, kids: false, title: "내 교재", titleEn: "", goal: "", koreanOk: true, session: 1, sessionCount: 1, no: 1, bookId: null, bookNo: level, teacher,
-    steps: [{ type: "intro", my: true, teach: MY_WARMUP }], expressions: [], photos, found: [], pending: true, failed: null, unitNo: null, unitTitle: null, lesson: null };
+    steps: [{ type: "intro", my: true, teach: myWarmup(way, request) }], expressions: [], photos, found: [], pending: true, failed: null, unitNo: null, unitTitle: null, lesson: null,
+    way, request, plan: null, wayAsked: !request && way === "auto" };
   run.bookLabel = "내 교재";
   run.info = { id: run.id, session: 1, title: "내 교재", title_en: "the learner's own textbook pages", goal: "Learn and use the key expressions from the learner's own textbook pages", book: level, korean_ok: true, expressions: [] };
   return run;
@@ -377,6 +399,7 @@ export function makeMyRun(photos, level, teacher) {
 export function applyMyPlan(run, r) {
   run.title = r.title || "내 교재"; run.titleEn = r.title_en || ""; run.goal = r.goal || ""; run.found = r.found ?? [];
   run.steps.push(...(r.steps ?? [])); run.expressions = (r.steps ?? []).filter((x) => x.type === "card").map((x) => plain(x.en)); run.pending = false;
+  run.plan = r.plan ?? null; if (r.way) run.way = r.way;
 }
 
 export function renderMyPick(M, H, esc, I) {
@@ -388,6 +411,10 @@ export function renderMyPick(M, H, esc, I) {
     <div class="my-grid">${M.photos.map((u, i) => `<div class="my-thumb"><img src="${esc(u)}" alt=""><button class="round small" data-act="myDel" data-v="${i}" aria-label="사진 빼기">${I("close")}</button></div>`).join("")}
       ${M.photos.length < MY_MAX ? `<label class="my-add">${I("add_a_photo")}<span class="small b">사진 ${M.photos.length ? "더 " : ""}고르기</span><span class="muted tiny">${M.photos.length}/${MY_MAX}</span><input id="myFile" type="file" accept="image/*" multiple hidden></label>` : ""}</div>
     <ul class="my-tips muted small"><li>한 쪽이 화면에 꽉 차게, 밝은 곳에서 똑바로 찍어 주세요.</li><li>사진은 수업을 준비하는 데만 쓰고 저장하지 않아요.</li><li>이름·전화번호처럼 적어 둔 개인정보는 가리고 찍어 주세요.</li></ul>
+    <div class="my-way"><b class="small">어떻게 공부할까요?</b>
+      <div class="my-way-chips">${MY_WAYS.map(([w, ko]) => `<button class="way-chip ${(M.way ?? "auto") === w ? "on" : ""}" data-act="myWay" data-v="${w}" aria-pressed="${(M.way ?? "auto") === w}">${esc(ko)}</button>`).join("")}</div>
+      <input id="myReq" type="text" maxlength="200" value="${esc(M.request ?? "")}" placeholder="원하는 방식이 있으면 적어 주세요 (선택)">
+      <span class="muted tiny">수업 중에도 말로 바꿀 수 있어요. 예: “단어 위주로 해 주세요”</span></div>
     <div class="my-teacher"><img src="${teacherImg(t.id)}" alt=""><span class="grow">내 선생님 <b>${esc(t.ko)}</b></span><button class="link" data-act="lhTeacher">바꾸기</button></div>
     ${M.error ? `<p class="error small">${esc(M.error)}</p>` : ""}
     <button class="pill primary" data-act="myStart" ${M.photos.length && !M.busy ? "" : "disabled"}>${I("play_arrow")}${M.busy ? "사진 준비하는 중…" : "이 사진으로 수업 시작"}</button>
