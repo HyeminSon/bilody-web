@@ -1,14 +1,14 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
-import * as api from "./api.js?v=0.8.8";
-import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.8";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.8";
-import * as L9 from "./lesson09.js?v=0.8.8";
-import { GUIDE } from "./guide.js?v=0.8.8";
-import { Player } from "./audio.js?v=0.8.8";
-import { Chat } from "./rt.js?v=0.8.8";
-import * as story from "./story.js?v=0.8.8";
-import * as push from "./push.js?v=0.8.8";
-import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.8";
+import * as api from "./api.js?v=0.8.9";
+import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.9";
+import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.9";
+import * as L9 from "./lesson09.js?v=0.8.9";
+import { GUIDE } from "./guide.js?v=0.8.9";
+import { Player } from "./audio.js?v=0.8.9";
+import { Chat } from "./rt.js?v=0.8.9";
+import * as story from "./story.js?v=0.8.9";
+import * as push from "./push.js?v=0.8.9";
+import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.9";
 
 const $ = (sel, root = document) => root.querySelector(sel);
 /** 앱과 같은 아이콘(Material Icons Round). o=true면 테두리형(Outlined). */
@@ -362,7 +362,7 @@ function updateStage() {
   showWebPic($("#lsWord"), u.webPicture);
   showHelpCard($("#lsCard"), u.card, `${byId(chat.character).ko} 선생님`);
   const i = Math.max(0, u.lessonStep); const step = run.steps[i];
-  $("#lsSub").textContent = run.my ? ["내 교재", run.pending ? "선생님이 교재를 읽는 중" : L9.stepLabel(step) || null].filter(Boolean).join(" · ") : run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
+  $("#lsSub").textContent = run.my ? (run.pending ? "선생님이 교재를 읽는 중" : L9.stepLabel(step) || "") : run.kids ? `${L9.stepLabel(step)} · 어른 목소리로만 시험` : [run.unitNo != null ? `${L9.T.unit(run.unitNo)}${run.unitTitle ? " " + run.unitTitle : ""}` : null, L9.T.part(run.session), L9.stepLabel(step) || null].filter(Boolean).join(" · ");
   $("#lsBar").style.width = `${((i + 1) / run.steps.length) * 100}%`;
   const pg = $("#lsPage"); pg.textContent = step?.page ? L9.T.page(step.page) : ""; pg.hidden = !step?.page;
   // 11/18: PDF 뷰어 쪽 = 인쇄 쪽(교재 1118판)이라 그 쪽으로 바로 연다
@@ -388,10 +388,11 @@ function updateStage() {
   face.className = st === "listen" ? "listen" : u.lessonScene ? "scene" : "";
   $("#lsState").textContent = u.lessonScene ? "장면 재생 중" : { speak: "말하는 중", listen: "듣는 중", wait: "생각 중" }[st] ?? t.ko;
   const running = !["stopped", "disconnected", "idle"].includes(u.state);
-  const ck = `${running}|${u.canRestart}|${u.lessonScene}`;
+  const ck = `${running}|${u.canRestart}|${u.lessonScene}|${(S.chat?.lessonStep ?? 0) > 0}`;
   if ($("#lsCtl").dataset.k !== ck) {
     $("#lsCtl").dataset.k = ck; const can = running && !u.lessonScene;
-    $("#lsCtl").innerHTML = `<button class="ls-btn" data-act="lsSlow" ${can ? "" : "disabled"}>${I("replay")}<span>천천히 다시</span></button>
+    const back = can && (S.chat?.lessonStep ?? 0) > 0;
+    $("#lsCtl").innerHTML = `<button class="ls-btn" data-act="lsPrev" ${back ? "" : "disabled"}>${I("skip_previous")}<span>이전으로</span></button>
       ${running ? `<button class="round big dark" data-act="pause" aria-label="잠깐 멈추기">${I("pause")}</button>` : `<button class="round big dark" data-act="restart" aria-label="다시 시작" ${u.canRestart ? "" : "disabled"}>${I("refresh")}</button>`}
       <button class="ls-btn" data-act="lsSkip" ${can ? "" : "disabled"}>${I("skip_next")}<span>넘어가기</span></button>`;
   }
@@ -1135,7 +1136,8 @@ app.addEventListener("click", async (e) => {
     case "myDel": if (S.lh?.my) { S.lh.my.photos.splice(Number(v), 1); render(); } break;
     case "myStart": await startMyLesson(); break;
     case "lsTalk": if (chatOpening) break; chatOpening = true; try { await endLesson(false); await openChat(); } finally { chatOpening = false; } break;
-    case "lsSlow": S.chat?.slowAgain(); break;   // 0.8.2: 한 번만 느리게 다시(학습자 말로 보내지 않음)
+    case "lsSlow": S.chat?.slowAgain(); break;
+    case "lsPrev": S.chat?.prevStep(); break;   // 0.8.9 ‘이전으로’(‘천천히 다시’ 자리)   // 0.8.2: 한 번만 느리게 다시(학습자 말로 보내지 않음)
     case "lsSkip": S.chat?.skipStep(); break;    // 0.8.2: 앱이 직접 다음 부분으로
     case "kWord": S.kids?.tapWord(v); break;
     case "kPick": S.kids?.pick(v, el.dataset.ok === "1"); break;

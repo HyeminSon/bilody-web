@@ -1,7 +1,7 @@
 // 0.9 1:1 수업(앱 lesson/Textbook.kt·ui/Lessons.kt의 웹판, 11/17).
 // 교재 글은 이 사이트의 tb/*.json, 그림은 Supabase 공개 보관함(tb), 권 PDF는 lessons/pdf.
-import * as api from "./api.js?v=0.8.8";
-import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.8";
+import * as api from "./api.js?v=0.8.9";
+import { byId, sceneVoice, teacherImg, TEACHERS } from "./characters.js?v=0.8.9";
 
 export const IMG = "https://rhozyegydubhtovrfrmo.supabase.co/storage/v1/object/public/tb/";
 export const imgUrl = (p) => (p ? IMG + String(p).replace(/^img\//, "") : "");
@@ -39,7 +39,7 @@ export function makeRun(book, L, session) {
     bookId: book.id, bookNo: book.no, no: L.no, sessionCount: sessions.length || 1, teacher: L.teacher, letter: L.letter, lesson: L,
     unitNo: L.unit ?? null, unitTitle: (book.units ?? []).find((u) => u.no === L.unit)?.title ?? null };
   run.bookLabel = T.book(book.no, run.kids);
-  run.info = { id: run.id, session, title: run.title, title_en: run.titleEn, goal: L.goal ?? "", book: book.no, korean_ok: run.koreanOk, expressions };
+  run.info = { id: run.id, session, parts: run.sessionCount, title: run.title, title_en: run.titleEn, goal: L.goal ?? "", book: book.no, korean_ok: run.koreanOk, expressions };
   return run;
 }
 
@@ -64,7 +64,7 @@ export function marked(s, esc) {
 const STEP_LABEL = { intro: "오늘 배울 것", card: "오늘의 표현", tf: "맞으면 T, 틀리면 F", frame: "문장 틀", grammar: "핵심 문법·자주 틀리는 표현", drill: "이럴 땐 뭐라고 해요?",
   done: "마무리", review: "지난 시간 복습", more: "같이 익히는 표현", tips: "알아 두면 좋은 것", pics: "낱말 그림", words: "낱말", my: "내 이야기", read: "읽을거리", can: "오늘 할 수 있게 된 것" };
 Object.assign(STEP_LABEL, { k_letter: "오늘의 글자", k_words: "그림 낱말", k_chant: "챈트", k_pick: "그림 고르기", k_hunt: "글자 찾기", k_say: "말해 보기", k_stars: "오늘 할 일 끝" });
-export const stepLabel = (s) => (s?.type === "dialogue" ? (s.play ? "장면 듣기" : "역할 읽기") : s?.type === "card" ? `오늘의 표현 ${s.n ?? ""}` : STEP_LABEL[s?.type] ?? "");
+export const stepLabel = (s) => s?.label ? s.label : (s?.type === "dialogue" ? (s.play ? "장면 듣기" : "역할 읽기") : s?.type === "card" ? `오늘의 표현 ${s.n ?? ""}` : STEP_LABEL[s?.type] ?? "");
 
 // ---------- 수업 홈 ----------
 export function renderHome(H, esc, I) {
@@ -142,7 +142,7 @@ export function stepHtml(s, u, run, esc, I) {
     case "card": return card(`<div class="accent small b">오늘의 표현 ${esc(s.n)}</div><div class="ls-big">${m(s.en)}</div><div class="ls-ko">${esc(s.ko)}</div><hr><div class="muted small">${m(s.when)}</div><div class="muted small">${m(s.extra)}</div>`);
     case "dialogue": {
       const play = !!s.play;
-      return `${play ? `<img class="ls-scene" src="${imgUrl(`img/s/${run.id}.jpg`)}" alt="">` : ""}${s.title ? `<div class="accent small b">${esc(s.title)}</div>` : ""}
+      return `${play ? `<img class="ls-scene" src="${imgUrl(`img/s/${run.id}.jpg`)}" alt="">` : ""}${s.title ? `<div class="accent small b">${esc(s.title)}</div>` : ""}${s.hint ? `<div class="muted small">${esc(s.hint)}</div>` : ""}
         ${(s.lines ?? []).map((ln, i) => { const mine = !play && (s.swapped ? ln.who?.code !== "J" : ln.who?.code === "J"); const hi = i === u.lessonHiLine;
           return `<div class="ls-line ${hi ? "hi" : ""} ${mine ? "mine" : ""}"><img src="${imgUrl(`img/f/${ln.who?.id ?? "grace"}.jpg`)}" alt=""><div class="grow">
             <div class="tiny b ${mine ? "ok" : "accent"}">${esc(ln.who?.en ?? "")}${mine ? " · 내 차례" : ""}</div><div class="ls-l-en">${m(ln.en)}</div><div class="muted small">${esc(ln.ko)}</div></div></div>`; }).join("")}`;
@@ -160,7 +160,7 @@ export function stepHtml(s, u, run, esc, I) {
       return `<div class="ls-pic ${hi ? "hi" : ""}"><div class="sprite" style="background-image:url('${imgUrl(p.sprite)}');background-position:${(c % 4) * 100 / 3}% ${Math.floor(c / 4) * 50}%"></div><b>${esc(p.en)}</b><span class="muted tiny">${esc(p.ko)}</span></div>`; }).join("")}</div>`;
     case "words": return card((s.items ?? []).map((w) => `<div><b>${esc(w[0])}</b> ${esc(w[1])}</div><div class="muted tiny">${esc(w[2] ?? "")}</div>`).join(""));
     case "my": return (s.role ? card(`<b class="accent">역할 카드로 연습해요</b><div class="small">${m(s.role)}</div>`) : "") + card((s.items ?? []).map((q, i) => `<div class="ls-q b">${i + 1}. ${esc(q[0])}</div><div class="muted tiny">도움: ${esc(q[1] ?? "")}</div>`).join(""));
-    case "read": return card(`<div class="row"><b class="ls-q grow">${esc(s.title)}</b>${s.face ? `<img class="face" src="${imgUrl(s.face)}" alt="">` : ""}</div><div class="ls-read">${m(s.text)}</div><div class="muted tiny">${esc(s.gloss)}</div>${(s.questions ?? []).map((q, i) => `<div class="accent b small">Q${i + 1}. ${esc(q)}</div>`).join("")}`);
+    case "read": return card(`${s.hint ? `<div class="accent small b">${esc(s.hint)}</div>` : ""}<div class="row"><b class="ls-q grow">${esc(s.title)}</b>${s.face ? `<img class="face" src="${imgUrl(s.face)}" alt="">` : ""}</div><div class="ls-read">${m(s.text)}</div><div class="muted tiny">${esc(s.gloss)}</div>${(s.questions ?? []).map((q, i) => `<div class="accent b small">Q${i + 1}. ${esc(q)}</div>`).join("")}`);
     case "can": return card(`<div class="accent small b">오늘 할 수 있게 된 것</div>${(s.items ?? []).map((x) => `<div>${I("check", "ok")} ${esc(x)}</div>`).join("")}`);
     // 0.9.4 어린이 수업(AI 선생님이 듣고 가르침). 누른 것은 선생님에게 (App: …) 메모로.
     case "k_letter": return `<img class="ls-scene" src="${imgUrl(s.scene)}" alt=""><div class="k-letter">${esc(s.letter)} ${esc(String(s.letter).toLowerCase())}</div><p class="center-text accent">${esc(s.name_ko)} · 소리 ‘${esc(s.sound_ko ?? "")}’</p>`;

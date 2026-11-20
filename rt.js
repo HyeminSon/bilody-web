@@ -1,11 +1,11 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.8";
-import { PRESET } from "./config.js?v=0.8.8";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.8";
-import { sceneVoice } from "./characters.js?v=0.8.8";
-import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.8";
+import * as api from "./api.js?v=0.8.9";
+import { PRESET } from "./config.js?v=0.8.9";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.9";
+import { sceneVoice } from "./characters.js?v=0.8.9";
+import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.9";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -143,6 +143,11 @@ export class Chat {
 
   send(obj) {
     const d = this.dc; if (!d || d.readyState !== "open") return false;
+    // 0.8.9(11/20 비용 검토): 수업 중 앱이 보내는 지시(시스템 메모)에 이름표를 달아, 단계가 바뀌면 지난 단계 메모를 지운다(매 대답마다 다시 읽던 양을 줄임)
+    if (obj?.type === "conversation.item.create" && obj.item?.role === "system" && this.lesson && this.appLed && !obj.item.id) {
+      const id = `bn${Date.now().toString(36)}${(this.noteSeq = (this.noteSeq ?? 0) + 1)}`;
+      obj = { ...obj, item: { ...obj.item, id } }; (this.notes ??= []).push({ id, at: this.lessonStep });
+    }
     try { d.send(JSON.stringify(obj)); return true; } catch { return false; }
   }
 
@@ -258,8 +263,9 @@ export class Chat {
         break;
       }
       case "response.done": {
-        if (this.ignoredResp && ev.response?.id === this.ignoredResp) { this.ignoredResp = null; return; }
+        // 0.8.9(Codex 검토): 버린 대답도 사용량은 청구되므로 먼저 기록한다
         if (ev.response?.usage) this.log("rt_usage", ev.response.usage);
+        if (this.ignoredResp && ev.response?.id === this.ignoredResp) { this.ignoredResp = null; return; }
         const r = this.resp;
         if (r && !r.done) {
           takeSentences(r.pending, true).sentences.forEach((s) => this.enqueue(r, s));
@@ -300,7 +306,8 @@ export class Chat {
     }
     if (this.lesson && !this.story) sentence = spokenFix(sentence);   // 0.8.6: 빈칸·빗금은 소리로 읽을 수 없다(‘something’, ‘슬래시’로 읽혔음)
     const voice = this.voiceId, speed = this.story ? 1 : (r.slow ? Math.max(0.7, this.speed * 0.8) : this.speed), sid = this.sessionId;
-    const job = (async () => { await this.slot(); try { return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
+    // 0.8.9(Codex 검토): 끼어들기로 취소된 대답의 문장은 순서를 기다린 뒤 합성하지 않는다(들려주지 않을 문장에 비용이 들었음)
+    const job = (async () => { await this.slot(); try { if (r.epoch !== this.epoch || r.blocked) return null; return await api.say(sentence, voice, speed, sid); } finally { this.release(); } })();
     job.catch(() => {});
     r.chain = r.chain.then(async () => {
       if (r.epoch !== this.epoch || r.blocked) return;
@@ -312,7 +319,7 @@ export class Chat {
         if (!r.first) this.log("tts_cut", { code: e?.code ?? "error" });
         return;
       }
-      if (r.epoch !== this.epoch) return;
+      if (r.epoch !== this.epoch || !s) return;
       // 11/18 김연경님 시험: 수업 문장 하나가 안전검사에 잘못 걸려 ‘Hmm, let's talk about something else.’로 바뀌고 나머지 말이 버려짐.
       // 수업(교재 내용)에서는 걸린 문장만 조용히 빼고 이어 간다. 원문은 확인용으로 남긴다(선생님 말).
       if (s.result !== "ok" && this.lesson && !this.story) { this.log("tts_flagged_lesson", { result: s.result, text: sentence.slice(0, 300) }); return; }
@@ -675,6 +682,7 @@ export class Chat {
     const L = this.lesson; if (!L) return;
     const step = L.steps[i]; if (!step) return this.finishLesson([], []);
     if (!this.lessonStartedAt) this.lessonStartedAt = Date.now();
+    this.dropOldNotes(i);
     this.lessonStep = i; this.stepLineAt = (this.lineSeq ?? 0) + 1; this.stepHolds = 0; this.doneHeld = null;
     this.stepLog = []; this.wrapAsked = false; this.quietCount = 0; this.checkFails = 0; this.sceneIntro = null;
     this.set({ lessonStep: i, lessonHiLine: -1, lessonHiWord: null });
@@ -683,6 +691,15 @@ export class Chat {
     if (!L.my) { let k = L.steps.slice(0, i).filter((x) => !x.swapped).length; if (step.swapped) k -= 1; try { this.onLessonStep?.(Math.max(0, k)); } catch { /* */ } }
     if (step.type === "dialogue" && step.play) { if (this.appLed && i > 0) this.introScene(i, step); else this.playScene(step); }
     else { this.openMic(); this.sendStepTeach(i); }
+  }
+
+  /** 0.8.9: 지금 단계(i)보다 앞선 단계에서 보낸 지시 메모를 대화에서 지운다. 대화(선생님·학습자 말)는 그대로 둔다. */
+  dropOldNotes(i) {
+    if (!this.notes?.length) return;
+    const old = this.notes.filter((n) => n.at < i && n.at >= 0); if (!old.length) return;
+    for (const n of old) this.send({ type: "conversation.item.delete", item_id: n.id });
+    this.notes = this.notes.filter((n) => !(n.at < i && n.at >= 0));
+    this.log("lesson_notes_dropped", { step: i, n: old.length });
   }
 
   /** 0.8.2 장면을 틀기 전에 선생님이 한마디로 이어 준다(예전엔 칭찬 한마디 뒤 갑자기 다른 목소리가 나왔음). 그동안 마이크는 끈다. */
@@ -726,7 +743,7 @@ export class Chat {
       if (n.final && !this.rp.final) { this.rp.final = true; this.rp.finalAt = this.stepLog.filter((l) => l.who === "learner").length; }
       this.rpHighlight(plan, startAt === 0 && plan[0]?.who === "you" ? 0 : plan.findIndex((l) => l.who === "learner"));
       note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : back) +
-        `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${step.swapped && !resumed ? "Now the same scene once more with the roles switched, so the learner practices the other side too. " : ""}${n.note}`;
+        `Lesson step ${i + 1} of ${L.steps.length} (role reading). The learner's screen now shows the scene. ${step.swapped && !resumed && !step.p3 ? "Now the same scene once more with the roles switched, so the learner practices the other side too. " : ""}${step.rolehint ?? ""}${n.note}`;
     }
     this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: note }] } });
     this.send({ type: "response.create" });
@@ -749,7 +766,7 @@ export class Chat {
     this.set({ lessonScene: true, micOn: false, state: "speaking" });
     const sid = this.sessionId, sp = this.speed;
     let failed = 0;
-    const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid); } finally { this.release(); } })(); j.catch(() => {}); return j; });
+    const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid, false, true); } finally { this.release(); } })(); j.catch(() => {}); return j; });
     for (let k = 0; k < lines.length; k++) {
       if (my !== this.sceneGen || this.closed || !this.pc) return;
       this.set({ lessonHiLine: k });
@@ -885,6 +902,18 @@ export class Chat {
     if (n < L.steps.length) this.startLessonStep(n); else this.endWithGoodbye(this.stepLog.slice(), this.lessonGen);
   }
 
+  /** 0.8.9 ‘이전으로’ 단추(11/20 실장님: ‘넘어가기’를 잘못 눌렀을 때 돌아가기). 앞 부분을 처음부터 다시 한다. */
+  prevStep() {
+    const L = this.lesson; if (!L || this.closed || !this.pc || this.ui.lessonDone || this.lessonStep <= 0 || this.wayBusy) return;
+    if (!this.appLed) return;
+    const n = this.lessonStep - 1;
+    this.log("lesson_prev", { step: this.lessonStep });
+    this.sceneGen++; this.sceneIntro = null; this.doneHeld = null; this.interruptReply(); this.player.stop();
+    if (this.ui.lessonScene) this.set({ lessonScene: false, lessonHiLine: -1 });
+    const tgt = L.steps[n]; this.wayNote = tgt?.type === "dialogue" && tgt.play ? "" : "The learner went back to this part to do it again. Start it again from the beginning, with no welcome-back sentence. ";
+    this.startLessonStep(n);
+  }
+
   /** ‘천천히 다시’ 단추(0.8.2): 방금 한 말을 한 번 더, 이번 한 번만 느리게. 학습자 말로 기록하지 않는다. */
   slowAgain() {
     if (!this.lesson || this.closed || !this.pc || this.ui.lessonScene || this.ui.lessonDone) return;
@@ -921,7 +950,7 @@ export class Chat {
     if (!step || isRolePlay(step)) return;
     const text = r.text.trim();
     const learnerTurns = this.stepLog.filter((l) => l.who === "learner").length;
-    if (!text || !(learnerTurns > 0 || step.type === "done") || /\?["”’]?\s*$/.test(text) || /_{2,}/.test(text)) return;
+    if (!text || !(learnerTurns > 0 || step.type === "done") || waitsLearner(text) || /_{2,}/.test(text)) return;
     const p = this.checkLesson(step, [...this.stepLog, { who: "teacher", text }], at); p.catch(() => {});
     r.precheck = { at, text, said: this.lessonSaid, p };
   }
@@ -1021,9 +1050,15 @@ export class Chat {
     const learnerTurns = lines.filter((l) => l.who === "learner").length;
     const last = (r.played ?? []).join(" ").trim();
     if (isRolePlay(step) && this.rp?.step === at) { this.rolePlayAfterReply(step, last, lines); return; }
-    if (!last || !(learnerTurns > 0 || step.type === "done") || /\?["”’]?\s*$/.test(last)) return;
+    // 0.8.9(11/20 수업 기록): 읽기·외우기 부분은 화면 문장을 학습자가 다 말했는지 앱이 센다. 다 말했으면 선생님이 질문을 덧붙였어도 넘긴다(곁길로 1분 반 샜음).
+    if (readAllSaid(step, lines) && last && !this.myWait("read_done")) { this.log("lesson_part_done", { step: at, why: "read_all_said" }); if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; } await this.endWithGoodbye(lines, gen); return; }
+    // 0.8.9 비용: 선생님이 학습자에게 무엇을 시키거나 물은 직후면 ‘다 했는지’ 확인을 부르지 않는다(확인의 70%가 ‘기다리는 중’이었음)
+    if (!last || !(learnerTurns > 0 || step.type === "done") || waitsLearner(last)) return;
     const pre = r.precheck;
-    const chk = await (pre && pre.at === at && pre.text === last && pre.said === saidBefore ? pre.p : this.checkLesson(step, lines, at));
+    // 0.8.9(Codex 검토): 들려준 말이 미리 확인한 말에서 문장 몇 개만 빠진 것이면 그 확인을 그대로 쓴다(같은 대답에 확인을 두 번 불렀음)
+    const sameAsPre = pre && pre.at === at && pre.said === saidBefore && (pre.text === last || subsetOf(last, pre.text));
+    if (pre && pre.at === at && !sameAsPre) this.log("lesson_recheck", { step: at });
+    const chk = await (sameAsPre ? pre.p : this.checkLesson(step, lines, at));
     // 그사이 학습자가 말했거나 선생님이 다시 말하기 시작했으면 이 확인은 버린다.
     // 0.8.5: 다만 ‘다 했음’이었으면 기억해 두고, 학습자가 짧게만 답하면(lessonHeard) 바로 넘긴다.
     const okDone = !chk.failed && chk.complete && !chk.waiting;
@@ -1091,7 +1126,7 @@ export class Chat {
       const lastYou = plan.slice(0, rp.next).map((l) => l.who).lastIndexOf("you");
       const nextLearner = plan.findIndex((l, i) => i > lastYou && l.who === "learner");
       this.rpHighlight(plan, nextLearner !== -1 && (rp.next >= plan.length || nextLearner < rp.next) ? nextLearner : rp.next);
-      sys(note.note, note.respondNow);
+      sys((step.rolehint ?? "") + note.note, note.respondNow);   // 0.8.9 Part 3: 화면에 무엇이 가려져 있는지 줄마다 다시 알림
       return;
     }
     // 제자리: 선생님이 학습자에게 다시 청했거나 다른 말을 했다
@@ -1257,9 +1292,21 @@ export const isAck = (t) => { const s = String(t).toLowerCase().replace(/[^\p{L}
   const parts = s.split(/ (?=ok|okay|yes|yeah|thank|thanks|good|great|got|sure|right)/); return s.split(" ").length <= 5 && parts.every((p) => ACK_RE.test(p.trim())); };
 /** 0.8.6: 선생님이 시작할 준비가 됐는지 물었나 / 학습자가 준비됐다고 답했나 */
 /** 0.8.7: 학습자가 카드 표현을 몇 번 말했나(빈칸 앞 낱말들이 차례대로 들어 있으면 한 번, I'm = I am) */
+// 0.8.9(11/20 실장님 수업): 같은 문장을 그대로 되풀이한 것은 한 번으로 센다(“I'm really into science fiction movies”를 세 번 시켰음)
 export const exprSaid = (en, lines) => { const norm = (x) => rpWords(String(x).replace(/\bi['’]m\b/gi, "i am").replace(/_{2,}|…|\.\.\./g, " | "));
   const head = norm(String(en ?? "").split(/_{2,}|…|\.\.\./)[0]).filter((w) => w !== "|"); if (head.length < 2) return 0;
-  return lines.filter((l) => l.who === "learner").filter((l) => { const w = norm(l.text); outer: for (let i = 0; i + head.length <= w.length; i++) { for (let k = 0; k < head.length; k++) if (w[i + k] !== head[k]) continue outer; return true; } return false; }).length; };
+  const hit = lines.filter((l) => l.who === "learner").map((l) => norm(l.text)).filter((w) => { outer: for (let i = 0; i + head.length <= w.length; i++) { for (let k = 0; k < head.length; k++) if (w[i + k] !== head[k]) continue outer; return true; } return false; });
+  return new Set(hit.map((w) => w.join(" "))).size; };
+/** 0.8.9: 읽기·외우기 부분(지시에 1. "문장" 꼴로 적힌 문장들)을 학습자가 모두 말했나 */
+export const readSents = (st) => st?.type === "read" ? [...String(st.teach ?? "").matchAll(/^\d+\. "(.+?)"/gm)].map((m) => m[1]) : [];
+export const readAllSaid = (st, lines) => { const ss = readSents(st); if (!ss.length) return false; const mine = lines.filter((l) => l.who === "learner");
+  return ss.every((s) => mine.some((l) => learnerSaid(l.text, s))); };
+/** 0.8.9: 선생님이 방금 학습자에게 무엇을 시키거나 물었나(그러면 ‘다 했는지’ 확인 없이 학습자를 기다린다) */
+/** 0.8.9: a의 문장이 모두 b에 들어 있나(안전검사·말 다듬기로 문장 몇 개만 빠진 경우) */
+export const subsetOf = (a, b) => { const ss = String(a ?? "").split(/(?<=[.!?]["”’]?)\s+/).map((x) => x.trim()).filter(Boolean); return ss.length > 0 && ss.every((x) => String(b ?? "").includes(x)); };
+export const waitsLearner = (t) => { const s = String(t ?? "").trim(); return /\?["”’)]?\s*$/.test(s)
+  || /\b(your turn|go ahead|say it( again| once more| with me| once)?|say that|say the (whole |next |first |second |third |last )?(sentence|line)|try it( again)?|give it a try|try again|one more time|repeat( it| after me)?|from memory|fill in|please)[.!]?["”’)]?\s*$/i.test(s)
+  || /^((now|please|so|okay|ok|alright|next|and)[,]? )*(say|try|repeat|tell|ask|answer|read|fill|use|make|give)\b/i.test(s.split(/(?<=[.!?]["”’]?)\s+/).pop() ?? ""); };
 export const askedReady = (t) => /\b(ready|shall we (start|begin)|can we (start|begin)|let'?s (start|begin)\?)|준비(되|됐)/i.test(String(t));
 export const isReadyYes = (t) => { const s = String(t).toLowerCase().replace(/[^\p{L}\p{N}' ]/gu, " ").replace(/\s+/g, " ").trim(); if (!s) return false;
   if (isAck(s)) return !/^(oh|ah|hmm+|mm+|i see|thank you|thanks)$/.test(s);
@@ -1272,7 +1319,7 @@ export const asksNext = (t) => { const s = String(t).toLowerCase().replace(/[^\p
 export const isRolePlay = (st) => st?.type === "dialogue" && !st.play && rolePlan(st.teach).length > 0;
 /** 0.8.6 역할 바꿔 한 번 더: 상대 역이 한 사람이고 아직 안 바꾼 역할 읽기면, 줄의 (you)/(learner)를 바꾼 사본. 아니면 null. */
 export function swapRole(st) {
-  if (!isRolePlay(st) || st.swapped) return null;
+  if (!isRolePlay(st) || st.swapped || st.noswap) return null;
   const plan = rolePlan(st.teach);
   if (new Set(plan.filter((l) => l.who === "you").map((l) => l.name)).size !== 1 || !plan.some((l) => l.who === "learner")) return null;
   const teach = plan.map((l) => `${l.n}. ${l.name} (${l.who === "you" ? "learner" : "you"}): "${l.en}"`).join("\n");
@@ -1368,8 +1415,8 @@ export function roleNote(plan, next, first) {
   const learnerBefore = plan.slice(from, tIdx === -1 ? plan.length : tIdx).filter((l) => l.who === "learner");
   const slips = "Small slips, a missing Oh or Ha, or leaving out a short part of a long line are fine.";
   if (tIdx === -1) {
-    if (learnerBefore.length) return { note: head + `Now wait for the learner to say their last ${learnerBefore.length > 1 ? "lines" : "line"}, ${learnerBefore.map(lineQ).join(", then ")}. ${slips} Only if they say just a word or two of it, or something else, say the line once for them and ask them to try it (one retry only), and stop there. When they have said it, give one short warm comment on how they did, with no question.`, respondNow: first, final: true };
-    return { note: head + "All the lines are done. Give one short warm comment on how they did, with no question.", respondNow: true, comment: true };
+    if (learnerBefore.length) return { note: head + `Now wait for the learner to say their last ${learnerBefore.length > 1 ? "lines" : "line"}, ${learnerBefore.map(lineQ).join(", then ")}. ${slips} Only if they say just a word or two of it, or something else, say the line once for them and ask them to try it (one retry only), and stop there. When they have said it, react to the scene in a word or two (for example: Ha, poor Jiwoo! or Nice one.), with no comment on how they sounded and no question.`, respondNow: first, final: true };
+    return { note: head + "All the lines are done. React to the scene in a word or two, with no comment on how they sounded and no question.", respondNow: true, comment: true };
   }
   const t = plan[tIdx];
   if (!learnerBefore.length) return { note: head + `${first ? "Then" : "Now"} read ${lineQ(t)} once, exactly as written, word for word, and nothing after it.`, respondNow: true };
@@ -1379,7 +1426,7 @@ export function roleNote(plan, next, first) {
 export const ROLE_RETRY_NOTE = (l) => `(App: the learner will try their line once more. After that try, read your line ${l.n} right away, whatever they say. Do not ask them to repeat it again.)`;
 export const ROLE_FORCE_NOTE = (l) => `Now read line ${l.n} (${l.name}): "${l.en}" once, exactly as written, with nothing before or after it. Do not ask the learner to repeat anything.`;
 export const ROLE_LAST_NOTE = (l) => `The learner has not said their last line yet (line ${l.n}: "${l.en}"). Say that line once for them and ask them to say it. Add nothing else.`;
-export const ROLE_DONE_NOTE = "All the lines are done. Do not ask the learner to repeat anything. Give one short warm comment on how they did, with no question.";
+export const ROLE_DONE_NOTE = "All the lines are done. Do not ask the learner to repeat anything. React to the scene in a word or two, with no comment on how they sounded and no question.";
 /** 역할 읽기에서 같은 문장을 한 대답 안에 또 말하려 하면 거른다(선생님이 자기 줄을 두 번씩 읽는 일이 있었음). 그 문장이 대사 한 줄 안에 실제로 두 번 나오면 그대로 둔다. */
 export function roleRepeat(plan, seen, sentence) {
   const key = rpWords(sentence).join(" "); if (!key) return false;
@@ -1387,7 +1434,10 @@ export function roleRepeat(plan, seen, sentence) {
   return !plan.some((l) => l.who === "you" && sentWords(l.en).filter((x) => x === key).length >= 2);
 }
 // 0.8.2: 앱이 넘기는 방식에서는 예고 문장을 거의 지우지 않는다. 수업 자체를 말하는 문장(“Let me think…”, “keep us moving”, “the grammar step”)만 지운다. 질문·따옴표가 든 문장은 건드리지 않는다.
-const META = [/\bwe[’']?re in a good spot\b/i, /\b(we can|let'?s) use (that|this|it)\b[^.?!]*\bfor practice\b/i, /^(ok(ay)?,?\s+|alright,?\s+|now,?\s+)?let me think\b/i, /\bkeep (us|things|it) moving\b/i, /\bmove us (to|on|forward|along)\b/i, /\b(the|this|next|grammar|last) step\b/i, /\bwhat comes next\b/i, /\blet me (respond|reply)\b/i,
+const META = [/\b(i[’']ll|let me) use my own (word|example)\b/i, /\blet[’']?s use a (tiny |little |small )?hint\b/i, /\bbuild it back\b/i, /^that fits\.?$/i,
+  // 0.8.9(11/20 실장님 수업): 말투 평가(“You sounded steady and clear.”, “You kept the flow and sounded natural.”)
+  /\b(you|that|it) (sounded|sound|sounds) (so |very |really |nice and |steady and )?(natural|clear|steady|smooth|confident|fluent)\b/i, /\byou (kept the flow|stayed with it)\b/i,
+  /\bwe[’']?re in a good spot\b/i, /\b(we can|let'?s) use (that|this|it)\b[^.?!]*\bfor practice\b/i, /^(ok(ay)?,?\s+|alright,?\s+|now,?\s+)?let me think\b/i, /\bkeep (us|things|it) moving\b/i, /\bmove us (to|on|forward|along)\b/i, /\b(the|this|next|grammar|last) step\b/i, /\bwhat comes next\b/i, /\blet me (respond|reply)\b/i,
   // 11/19 확인 수업 15회: 문법 부분을 열 때 진행 방식을 말함(“I’ll think through each point one by one…”, “Let’s talk through this…”, “I’ll keep this quick and practical…”)
   /\b(let me|i[’']ll|i will) think (about|through)\b/i, /\b(let me|i[’']ll|i will|let[’']s|we[’']ll) (just )?(walk|talk|work|go|run) (you |us )?through\b/i,
   /\b(i[’']ll|i will|let[’']s|we[’']ll) (keep|take) (this|it|things) (quick|simple|short|step by step|one by one)\b/i];
