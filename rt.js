@@ -1189,8 +1189,8 @@ export function swapRole(st) {
   const teach = plan.map((l) => `${l.n}. ${l.name} (${l.who === "you" ? "learner" : "you"}): "${l.en}"`).join("\n");
   return { ...st, id: `${st.id ?? "roleplay"}-swap`, swapped: true, teach };
 }
-/** 0.8.6 선생님 문장을 소리로 바꾸기 전에: 빈칸(___)은 잠깐 쉼으로, 빗금은 ‘또는/or’로(‘a/an’이 ‘슬래시’로 읽혔음). */
-export const spokenFix = (s) => { const ko = /[가-힣]/.test(s); return String(s).replace(/_{2,}/g, "…")
+/** 0.8.6 선생님 문장을 소리로 바꾸기 전에: 빈칸(___)은 something으로(11/20 실장님: 선생님이 something 자리에 맞는 말을 넣으라고 설명), 빗금은 ‘또는/or’로(‘a/an’이 ‘슬래시’로 읽혔음). */
+export const spokenFix = (s) => { const ko = /[가-힣]/.test(s); return String(s).replace(/_{2,}/g, "something")
   .replace(/\b([A-Za-z]{1,12})\s*\/\s*([A-Za-z]{1,12})\b/g, (_m, a, b) => `${a} ${ko ? "또는" : "or"} ${b}`); };
 export const rpWords = (t) => String(t).toLowerCase().replace(/[’']/g, "'").replace(/[^a-z0-9' -]/g, " ").split(/[\s-]+/).filter(Boolean);
 const FILLER = new Set(["ha", "haha", "oh", "ah", "hmm", "um", "uh", "wow", "well", "hey", "aw", "ooh", "so"]);
