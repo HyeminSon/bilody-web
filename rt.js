@@ -1,11 +1,11 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.10";
-import { PRESET } from "./config.js?v=0.8.10";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.10";
-import { sceneVoice } from "./characters.js?v=0.8.10";
-import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.10";
+import * as api from "./api.js?v=0.8.11";
+import { PRESET } from "./config.js?v=0.8.11";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.11";
+import { sceneVoice } from "./characters.js?v=0.8.11";
+import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.11";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -345,6 +345,7 @@ export class Chat {
       }
       const ok = await this.player.play(s.pcm, s.rate);
       if (ok && r.epoch === this.epoch) r.played.push(spoken);
+      else if (!ok && r.epoch === this.epoch) r.lost = true;   // 0.8.10b(Codex 3차): 재생에 실패한 문장도 ‘못 들려줌’
     });
   }
 
@@ -1315,14 +1316,22 @@ export const readSents = (st) => st?.type === "read" ? [...String(st.teach ?? ""
 // 0.8.10(Codex 2차): 낱말 60%만 맞으면 통과라 ‘I cannot attend’에서 cannot을 빼도 됐음 → 부정어와 핵심 표현({{ }}) 낱말은 꼭 있어야 말한 것으로 친다.
 const NEG = new Set(["not", "no", "never", "nobody", "nothing", "nowhere", "neither", "nor", "cannot"]);
 const isNeg = (w) => NEG.has(w) || /n't$/.test(w);
-export const keyWordsOf = (st) => new Set([...String(st?.text ?? "").matchAll(/\{\{(.+?)\}\}/g)].flatMap((m) => rpWords(m[1])).filter((w) => w.length >= 3 && !isNeg(w)));
-export function saidExactly(text, sentence, keys = new Set()) {
-  if (!learnerSaid(text, sentence)) return false;
-  const tw = rpWords(text), sw = rpWords(sentence);
-  if (sw.some(isNeg) && !tw.some(isNeg)) return false;
-  return sw.filter((w) => keys.has(w)).every((w) => tw.includes(w));
+// 0.8.10b(Codex 3차): 부정어는 맞춘 그 문장 구간 안에서 있고 없음이 같아야 하고(덧붙인 No problem이나 넣은 not도 걸러냄),
+// 핵심 표현은 짧은 낱말(to·on)까지 이어진 구절 그대로 있어야 한다.
+const dropF = (w) => w.filter((x) => !FILLER.has(x));
+// can't·cannot·can not, don't·do not처럼 같은 말을 같은 낱말로(받아쓰기마다 다르게 적힘)
+const unNeg = (w) => w.flatMap((x) => x === "cannot" || x === "can't" ? ["can", "not"] : x === "won't" ? ["will", "not"] : x === "shan't" ? ["shall", "not"] : /n't$/.test(x) ? [x.slice(0, -3), "not"] : [x]);
+const exWords = (t) => dropF(unNeg(rpWords(t)));
+export const keyPhrasesOf = (st) => [...String(st?.text ?? "").matchAll(/\{\{(.+?)\}\}/g)].map((m) => exWords(m[1]).join(" ")).filter(Boolean);
+export function saidExactly(text, sentence, phrases = []) {
+  const lw0 = unNeg(rpWords(sentence)), lw = dropF(lw0).length ? dropF(lw0) : lw0, sw = exWords(text);
+  const span = findLine(sw, lw, needFor(lw.length, 0.6)); if (!span) return false;
+  const seg = sw.slice(span[0], span[1]);
+  if (lw.some(isNeg) !== seg.some(isNeg)) return false;
+  const has = (ws, p) => (" " + ws.join(" ") + " ").includes(" " + p + " ");
+  return phrases.every((p) => !has(lw, p) || has(seg, p));
 }
-export const readAllSaid = (st, lines) => { const ss = readSents(st); if (!ss.length) return false; const mine = lines.filter((l) => l.who === "learner"), keys = keyWordsOf(st);
+export const readAllSaid = (st, lines) => { const ss = readSents(st); if (!ss.length) return false; const mine = lines.filter((l) => l.who === "learner"), keys = keyPhrasesOf(st);
   return ss.every((s) => mine.some((l) => saidExactly(l.text, s, keys))); };
 /** 0.8.9: 선생님이 방금 학습자에게 무엇을 시키거나 물었나(그러면 ‘다 했는지’ 확인 없이 학습자를 기다린다) */
 /** 0.8.9: a의 문장이 모두 b에 들어 있나(안전검사·말 다듬기로 문장 몇 개만 빠진 경우) */
