@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.9";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.10";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -171,7 +171,8 @@ export async function placementCheck(lines, sessionId) {
 /** 문장 하나 → 안전검사 + 캐릭터 목소리(PCM 16비트). 검사를 통과 못 하면 서버가 고정 문장 소리를 준다. */
 // 0.8.9: cache=true면 서버가 한 번 만든 소리를 저장해 다시 쓴다(교재 장면 대사처럼 늘 같은 문장)
 export async function say(text, voice, speed, sessionId, preview = false, cache = false) {
-  const body = { text, voice, speed }; if (sessionId) body.sessionId = sessionId; if (preview) body.preview = true; if (cache) body.cache = true;
+  const body = { text, voice, speed }; if (sessionId) body.sessionId = sessionId; if (preview) body.preview = true;
+  if (cache) { body.cache = true; if (typeof cache === "string") body.cache_ref = cache; }   // 0.8.10: 교재 장면 대사(Book/과) — 서버가 교재 대사인지 확인한 뒤에만 저장
   const res = await fn("tts-say", body, true, 15000);
   const rate = Number(res.headers.get("X-Sample-Rate") || 24000);
   const result = res.headers.get("X-Result") || "ok";

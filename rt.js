@@ -1,11 +1,11 @@
 // 실시간 대화(안드로이드 RealtimeController의 웹판, A3: 글 대답 → 문장마다 안전검사 + 캐릭터 목소리).
 // 친구는 글로 대답하고, 문장이 끝날 때마다 tts-say로 소리를 만들어 차례로 들려준다.
 // 끝까지 들려준 문장만 기록하고(REQ-OPS-013), 사용자가 말을 시작하면 친구가 멈춘다.
-import * as api from "./api.js?v=0.8.9";
-import { PRESET } from "./config.js?v=0.8.9";
-import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.9";
-import { sceneVoice } from "./characters.js?v=0.8.9";
-import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.9";
+import * as api from "./api.js?v=0.8.10";
+import { PRESET } from "./config.js?v=0.8.10";
+import { takeSentences, decideCard, confused, wantsText, lastQuote, hasPracticeQuote } from "./text.js?v=0.8.10";
+import { sceneVoice } from "./characters.js?v=0.8.10";
+import { applyMyPlan, MY_READY, MY_FAILED, MY_STILL, wayFromSpeech, MY_WAYS } from "./lesson09.js?v=0.8.10";
 
 const PHOTO_HINT = "(The learner is showing you this photo. In simple English, say what the main thing is, teach one or two useful English words for it, then ask one short, easy question about it. " +
   "If you are not sure, say so honestly and guess kindly. If it shows a person, do not comment on their looks and do not guess who they are.)";
@@ -177,6 +177,7 @@ export class Chat {
         break;
       }
       case "conversation.item.input_audio_transcription.completed": {
+        if (ev.usage) this.log("stt_usage", ev.usage);   // 0.8.10 비용: 받아쓰기도 따로 청구됨
         const t = String(ev.transcript ?? "").trim();
         if (this.soft) {
           const real = /\p{L}/u.test(t) && !this.looksLikeEcho(t);
@@ -291,7 +292,7 @@ export class Chat {
   enqueue(r, sentence) {
     if (r.epoch !== this.epoch) return;
     // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
-    if (!this.story && !this.placement && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; this.log("ko_blocked", { len: sentence.length }); return; }
+    if (!this.story && !this.placement && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; r.lost = true; this.log("ko_blocked", { len: sentence.length }); return; }
     // 0.8.2: 앱이 넘기는 방식에서는 예고 문장을 지우지 않고 기록만 한다(도구가 없어 건너뛸 일이 없고, 질문·지시가 든 문장까지 지워졌음)
     // 수업 자체를 말하는 문장(“Let me think…”, “keep us moving”)은 앱 방식에서도 지운다.
     const meta = this.lesson && !this.story && isMetaTalk(sentence, this.lesson.steps?.[this.lessonStep]?.teach);   // 교재에 있는 문장(“I’ll think about it.”)은 지우지 않는다
@@ -316,13 +317,14 @@ export class Chat {
         const limit = e?.code === "daily_voice_limit";
         this.set({ notice: limit ? "오늘 친구 목소리를 만들 수 있는 양을 모두 썼어요. 자정이 지나면 다시 이야기할 수 있어요."
           : r.first ? "목소리를 만들지 못했어요. 다시 말해 주거나 글로 입력해 주세요." : "목소리를 다 만들지 못해 대답이 중간에 끊겼어요. 다시 말해 주세요." });
+        r.lost = true;   // 0.8.10: 들려주지 못한 문장이 있음(미리 받은 ‘다 했음’ 판정을 쓰지 않는다)
         if (!r.first) this.log("tts_cut", { code: e?.code ?? "error" });
         return;
       }
       if (r.epoch !== this.epoch || !s) return;
       // 11/18 김연경님 시험: 수업 문장 하나가 안전검사에 잘못 걸려 ‘Hmm, let's talk about something else.’로 바뀌고 나머지 말이 버려짐.
       // 수업(교재 내용)에서는 걸린 문장만 조용히 빼고 이어 간다. 원문은 확인용으로 남긴다(선생님 말).
-      if (s.result !== "ok" && this.lesson && !this.story) { this.log("tts_flagged_lesson", { result: s.result, text: sentence.slice(0, 300) }); return; }
+      if (s.result !== "ok" && this.lesson && !this.story) { r.lost = true; this.log("tts_flagged_lesson", { result: s.result, text: sentence.slice(0, 300) }); return; }
       const spoken = s.fixed ?? sentence;
       if (s.result !== "ok") r.blocked = true;   // 안전검사에 걸리면 고정 문장 하나만 들려주고 나머지는 버린다(앱과 같음)
       if (r.first) {
@@ -696,9 +698,10 @@ export class Chat {
   /** 0.8.9: 지금 단계(i)보다 앞선 단계에서 보낸 지시 메모를 대화에서 지운다. 대화(선생님·학습자 말)는 그대로 둔다. */
   dropOldNotes(i) {
     if (!this.notes?.length) return;
-    const old = this.notes.filter((n) => n.at < i && n.at >= 0); if (!old.length) return;
+    // 0.8.10(Codex 2차): ‘이전으로’로 돌아가면 떠난 부분의 메모도 남았음 → 새 부분을 시작할 때 지난 메모를 모두 지운다(새 부분 메모는 이 뒤에 보냄)
+    const old = this.notes.filter((n) => n.at >= 0); if (!old.length) return;
     for (const n of old) this.send({ type: "conversation.item.delete", item_id: n.id });
-    this.notes = this.notes.filter((n) => !(n.at < i && n.at >= 0));
+    this.notes = this.notes.filter((n) => n.at < 0);
     this.log("lesson_notes_dropped", { step: i, n: old.length });
   }
 
@@ -766,7 +769,7 @@ export class Chat {
     this.set({ lessonScene: true, micOn: false, state: "speaking" });
     const sid = this.sessionId, sp = this.speed;
     let failed = 0;
-    const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid, false, true); } finally { this.release(); } })(); j.catch(() => {}); return j; });
+    const jobs = lines.map((ln) => { const t = plain(ln.en); const j = (async () => { await this.slot(); try { return await api.say(t, sceneVoice(ln.who?.id), sp, sid, false, this.lesson?.bookId && !this.lesson.my ? `${this.lesson.bookId}/${this.lesson.id}` : false); } finally { this.release(); } })(); j.catch(() => {}); return j; });
     for (let k = 0; k < lines.length; k++) {
       if (my !== this.sceneGen || this.closed || !this.pc) return;
       this.set({ lessonHiLine: k });
@@ -1051,12 +1054,19 @@ export class Chat {
     const last = (r.played ?? []).join(" ").trim();
     if (isRolePlay(step) && this.rp?.step === at) { this.rolePlayAfterReply(step, last, lines); return; }
     // 0.8.9(11/20 수업 기록): 읽기·외우기 부분은 화면 문장을 학습자가 다 말했는지 앱이 센다. 다 말했으면 선생님이 질문을 덧붙였어도 넘긴다(곁길로 1분 반 샜음).
-    if (readAllSaid(step, lines) && last && !this.myWait("read_done")) { this.log("lesson_part_done", { step: at, why: "read_all_said" }); if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; } await this.endWithGoodbye(lines, gen); return; }
+    // 0.8.10(Codex 2차): 넘기기 전 다른 넘김과 같은 확인 — 그사이 학습자가 말했거나 말하는 중이면 기다린다.
+    if (readAllSaid(step, lines) && last) {
+      if (this.closed || !this.pc || gen !== this.lessonGen || at !== this.lessonStep || this.lessonSaid !== saidBefore || this.resp || this.ui.lessonDone) return;
+      if (this.holdForSpeech(() => this.lessonAfterReply(r), t0)) return;
+      if (this.myWait("read_done")) return;
+      this.log("lesson_part_done", { step: at, why: "read_all_said" }); if (at + 1 < L.steps.length) { this.startLessonStep(at + 1); return; } await this.endWithGoodbye(lines, gen); return;
+    }
     // 0.8.9 비용: 선생님이 학습자에게 무엇을 시키거나 물은 직후면 ‘다 했는지’ 확인을 부르지 않는다(확인의 70%가 ‘기다리는 중’이었음)
     if (!last || !(learnerTurns > 0 || step.type === "done") || waitsLearner(last)) return;
     const pre = r.precheck;
     // 0.8.9(Codex 검토): 들려준 말이 미리 확인한 말에서 문장 몇 개만 빠진 것이면 그 확인을 그대로 쓴다(같은 대답에 확인을 두 번 불렀음)
-    const sameAsPre = pre && pre.at === at && pre.said === saidBefore && (pre.text === last || subsetOf(last, pre.text));
+    // 0.8.10(Codex 2차): 단, 빠진 문장이 일부러 지운 진행 빈말일 때만. 한국어 차단·안전검사·목소리 실패로 못 들려준 문장이 있으면 들려준 말로 다시 확인한다.
+    const sameAsPre = pre && pre.at === at && pre.said === saidBefore && (pre.text === last || (!r.lost && subsetOf(last, pre.text)));
     if (pre && pre.at === at && !sameAsPre) this.log("lesson_recheck", { step: at });
     const chk = await (sameAsPre ? pre.p : this.checkLesson(step, lines, at));
     // 그사이 학습자가 말했거나 선생님이 다시 말하기 시작했으면 이 확인은 버린다.
@@ -1098,7 +1108,9 @@ export class Chat {
     const done = () => { if (this.holdForSpeech(done)) return; this.log("lesson_part_done", { step: at, roleplay: true });
       // 0.8.6(11/20 실장님): 역할을 바꿔 한 번 더(말하기는 반복이 중요). 상대 역이 한 사람인 장면만, 한 번만.
       const sw = !L.my && swapRole(step);
-      if (sw) { L.steps = L.steps.slice(); L.steps.splice(at + 1, 0, sw); this.log("role_swap", { step: at }); }
+      // 0.8.10(Codex 2차): ‘이전으로’로 돌아와 다시 끝냈을 때 같은 바꿔 읽기를 또 끼우지 않는다
+      const nx = L.steps[at + 1];
+      if (sw && !(nx?.swapped && nx.teach === sw.teach)) { L.steps = L.steps.slice(); L.steps.splice(at + 1, 0, sw); this.log("role_swap", { step: at }); }
       if (at + 1 < L.steps.length) this.startLessonStep(at + 1); else this.finishLesson([], []); };
     const mine = lines.filter((l) => l.who === "learner"), n = mine.length;
     if (rp.comment) { done(); return; }   // 마지막 칭찬까지 끝남
@@ -1155,6 +1167,7 @@ export class Chat {
     if (!this.lastMeter) return;
     const now = Date.now(); const sec = Math.min(60, Math.round((now - this.lastMeter) / 1000)); this.lastMeter = this.pc ? now : 0;
     if (sec <= 0) return;
+    this.log("active", { sec });   // 0.8.10 비용: 이 대화의 실제 이용 시간(분당 비용의 분모)
     const u = await api.addActiveSeconds(sec, PRESET); if (!u) return;
     this.updateRemaining(u.today_seconds, u.limit_seconds);
     if (u.limit_seconds > 0 && u.today_seconds >= u.limit_seconds && this.pc) { this.limitReached = true; if (this.lessonHold || (!this.player.isPlaying && !this.resp)) this.afterFriendFinished(); }
@@ -1299,8 +1312,18 @@ export const exprSaid = (en, lines) => { const norm = (x) => rpWords(String(x).r
   return new Set(hit.map((w) => w.join(" "))).size; };
 /** 0.8.9: 읽기·외우기 부분(지시에 1. "문장" 꼴로 적힌 문장들)을 학습자가 모두 말했나 */
 export const readSents = (st) => st?.type === "read" ? [...String(st.teach ?? "").matchAll(/^\d+\. "(.+?)"/gm)].map((m) => m[1]) : [];
-export const readAllSaid = (st, lines) => { const ss = readSents(st); if (!ss.length) return false; const mine = lines.filter((l) => l.who === "learner");
-  return ss.every((s) => mine.some((l) => learnerSaid(l.text, s))); };
+// 0.8.10(Codex 2차): 낱말 60%만 맞으면 통과라 ‘I cannot attend’에서 cannot을 빼도 됐음 → 부정어와 핵심 표현({{ }}) 낱말은 꼭 있어야 말한 것으로 친다.
+const NEG = new Set(["not", "no", "never", "nobody", "nothing", "nowhere", "neither", "nor", "cannot"]);
+const isNeg = (w) => NEG.has(w) || /n't$/.test(w);
+export const keyWordsOf = (st) => new Set([...String(st?.text ?? "").matchAll(/\{\{(.+?)\}\}/g)].flatMap((m) => rpWords(m[1])).filter((w) => w.length >= 3 && !isNeg(w)));
+export function saidExactly(text, sentence, keys = new Set()) {
+  if (!learnerSaid(text, sentence)) return false;
+  const tw = rpWords(text), sw = rpWords(sentence);
+  if (sw.some(isNeg) && !tw.some(isNeg)) return false;
+  return sw.filter((w) => keys.has(w)).every((w) => tw.includes(w));
+}
+export const readAllSaid = (st, lines) => { const ss = readSents(st); if (!ss.length) return false; const mine = lines.filter((l) => l.who === "learner"), keys = keyWordsOf(st);
+  return ss.every((s) => mine.some((l) => saidExactly(l.text, s, keys))); };
 /** 0.8.9: 선생님이 방금 학습자에게 무엇을 시키거나 물었나(그러면 ‘다 했는지’ 확인 없이 학습자를 기다린다) */
 /** 0.8.9: a의 문장이 모두 b에 들어 있나(안전검사·말 다듬기로 문장 몇 개만 빠진 경우) */
 export const subsetOf = (a, b) => { const ss = String(a ?? "").split(/(?<=[.!?]["”’]?)\s+/).map((x) => x.trim()).filter(Boolean); return ss.length > 0 && ss.every((x) => String(b ?? "").includes(x)); };
