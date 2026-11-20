@@ -108,12 +108,14 @@ async function refresh() {
 
 // ---------------- 그리기 ----------------
 let lastView = null;
+const TALK_GUIDE = false;   // 0.8.6: ‘이렇게 이야기해요’ 팝업(지금은 끔)
 function render() {
   // 0.8.4: 아직 추천을 받지 않았으면 처음 화면에서 ‘선생님과 5분 이야기’를 한 번 권한다(나중에 하기를 누르면 다시 묻지 않음)
   if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids && !S.plShown
       && !L9.plStore.get(pref) && !pref.get("pl_later", false) && !pref.get("lp_last", null) && !wantsPostSurvey()) { S.plShown = true; S.dialog = { kind: "plIntro", auto: true }; }
   // 0.8.6(11/20 실장님): ‘이렇게 이야기해요’는 처음 쓰는 사람에게만 팝업으로(화면 안 상자가 캐릭터 자리를 차지했음). 다른 창이 있으면 그 뒤에.
-  if (S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids
+  // 11/20 15:53 실장님: 이 팝업은 지금은 띄우지 않는다(TALK_GUIDE를 true로 바꾸면 다시 뜸)
+  if (TALK_GUIDE && S.stage === "main" && S.tab === "chat" && !S.dialog && !S.chat && !S.story && !S.lh && !S.vid && !S.kids
       && !pref.get("guideSeen", false) && !wantsPostSurvey()) S.dialog = { kind: "talkGuide" };
   const html = {
     loading: () => `<div class="center"><img class="logo-stacked" src="img/logo_stacked.png" alt="bilody"><div class="spinner"></div></div>`,
@@ -863,8 +865,8 @@ function renderSettings() {
     ${section("help", "도움말", "사용 안내 · 문의하기", "support_agent", `
       <button class="link" data-act="guide">사용 안내 보기</button><br>
       <button class="link" data-act="inquiry">문의하기</button><br>
-      <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button><br>
-      <button class="link" data-act="showGuideCard">첫 화면 안내 다시 보기</button>
+      <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button>${TALK_GUIDE ? `<br>
+      <button class="link" data-act="showGuideCard">첫 화면 안내 다시 보기</button>` : ""}
       <p class="muted tiny">앱을 쓸 수 없을 때는 초대해 준 운영자에게 연락해 주세요(삭제 요청 포함).</p>`)}
     <p class="version">bilody ${VERSION} · 비공개 시험판</p>
   </div>`;
