@@ -707,7 +707,7 @@ export class Chat {
     // 0.8.5(11/19 실장님 수업 기록): 첫 인사에서 고쳐 주기·따라 하기·자기소개·질문을 한꺼번에 하던 문제
     const teach = (this.appLed ? appTeach(step.teach) : (step.teach || "Continue the lesson, then call next_step.")) + " " + (step.type === "intro" ? WARMUP_NOTE : TURN_NOTE);
     let note = (resumed ? "The connection dropped for a moment and is back. Do not greet again. " : "") +
-      `Lesson step ${i + 1} of ${L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
+      `Lesson step ${i + 1} of ${L.pending ? "several (more parts come after this one)" : L.steps.length} (${step.type}). The learner's screen now shows this part of the textbook. Do this now: ${teach}`;
     // 0.8.2: 다시 연결되면 이 부분에서 이미 한 것을 알려 이어서 하게 한다(예전엔 처음부터 다시 했음)
     if (resumed && this.stepLog.length) note += `\nAlready done in this part before the connection dropped (most recent last):\n${this.stepLog.slice(-6).map((l) => `${l.who === "teacher" ? "You" : "Learner"}: ${l.text.slice(0, 300)}`).join("\n")}\nDo not start this part again: say one short sentence and continue from there.`;
     if (this.appLed && isRolePlay(step)) {

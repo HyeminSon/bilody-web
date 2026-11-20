@@ -257,10 +257,10 @@ function renderChat() {
     <div id="lines" class="lines"></div>
     ${guide}
     <p id="notice" class="error"></p>
-    ${chat ? "" : `<div class="controls one"><button class="pill secondary grow" data-act="lhOpen">${I("school")}1:1 수업</button><button class="pill secondary grow" data-act="vOpen">${I("smart_display")}동영상 강의</button></div>`}
-    <div class="controls" id="controls">${chat ? "" : `
+    <div class="controls ${chat ? "" : "home-ai"}" id="controls">${chat ? "" : `
       <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
-      ${S.kidsAvailable ? `<button class="pill secondary grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}`}</div>
+      <button class="pill tint grow" data-act="lhOpen">${I("school")}1:1 수업</button>`}</div>
+    ${chat ? "" : `<div class="controls home-content"><button class="pill media grow" data-act="vOpen">${I("smart_display")}동영상 강의</button>${S.kidsAvailable ? `<button class="pill media grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}</div>`}
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
       <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
       <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send" autocomplete="off">

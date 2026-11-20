@@ -544,3 +544,10 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .lh-actions > * { min-width: 0; } .lh-actions .pill { padding-left: 10px; padding-right: 10px; white-space: nowrap; }
 .my-grid > * { min-width: 0; } .my-add { overflow: hidden; }
 .lh-actions .pill + .pill { margin-top: 0; } .my-tb-btn .grow > * { overflow-wrap: anywhere; }
+/* 0.8.6(11/20 실장님): 처음 화면 — 윗줄 AI와 말하기(대화·1:1 수업), 아랫줄 콘텐츠 보기(동영상·그림책, 홈페이지 그림책 카드의 복숭아색) */
+.controls.home-ai { padding-bottom: 4px; }
+.pill.tint { color: var(--deep); background: #EDE6FF; box-shadow: 0 4px 12px rgba(109, 63, 224, .14); font-size: 17px; }
+.controls.home-content { padding-top: 10px; padding-bottom: 12px; }
+.pill.media { min-height: 48px; font-size: 15px; color: #7A3D14; background: #FFF4EA; border: 1px solid #F7DCC6; box-shadow: none; padding: 0 12px; }
+.pill.media .mi { font-size: 20px; color: #E8772E; }
+.pill.media:active:not(:disabled) { background: #FDE9D8; }
