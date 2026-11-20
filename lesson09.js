@@ -128,7 +128,7 @@ export function renderStageShell(run, I, esc) {
   </div>`;
 }
 
-export const lsTitle = (run, esc) => run.my ? `내 교재 · ${esc(run.title)}` : `${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}`;
+export const lsTitle = (run, esc) => run.my ? (run.pending || run.failed ? "내 교재" : `내 교재 · ${esc(run.title)}`) : `${run.bookLabel} · ${T.lesson(run.no)} · ${esc(run.title)}`;
 
 export function stepHtml(s, u, run, esc, I) {
   const m = (x) => marked(x, esc);

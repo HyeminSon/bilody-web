@@ -365,7 +365,7 @@ function updateStage() {
   // 11/18: PDF 뷰어 쪽 = 인쇄 쪽(교재 1118판)이라 그 쪽으로 바로 연다
   if (step?.page) pg.href = pg.href.split("#")[0] + "#page=" + step.page;
   const key = JSON.stringify([i, u.lessonHiLine, u.lessonHiWord, run.kTapN ?? 0, u.myReady ?? 0]);
-  if (run.my) { const tt = $("#lsTitle"); if (tt && tt.textContent !== `내 교재 · ${run.title}`) tt.innerHTML = L9.lsTitle(run, esc); }
+  if (run.my) { const tt = $("#lsTitle"); if (tt) { const h = L9.lsTitle(run, esc); if (tt.innerHTML !== h) tt.innerHTML = h; } }
   const body = $("#lsBody");
   if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }
   $("#lsNotice").textContent = u.notice ?? "";
