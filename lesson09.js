@@ -81,8 +81,8 @@ export function renderHome(H, esc, I) {
   const t = byId(H.teacher);
   return `<div class="lh">
     <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    ${H.rec ? `<p class="small pl-line"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()} <button class="link small" data-act="plIntro">다시 받기</button></p>`
-      : `<p class="small pl-line"><button class="link small" data-act="plIntro">어느 Book부터 할지 추천 받기</button></p>`}
+    ${H.rec ? `<div class="pl-line">${I("auto_awesome")}<span class="grow"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()}</span><button class="link" data-act="plIntro">다시 받기</button></div>`
+      : `<button class="pl-line" data-act="plIntro">${I("auto_awesome")}<span class="grow">어느 Book부터 할지 추천 받기</span>${I("chevron_right")}</button>`}
     ${(() => { const chip = (b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`;
       const kb = books.filter((b) => b.kind === "kids");
       // 0.8.6(11/20 실장님): 어른 Book은 한 줄에 세 개, Kids Book은 따로 한 줄, 그 아래 ‘내 교재로 수업하기’
@@ -134,7 +134,7 @@ export function stepHtml(s, u, run, esc, I) {
   const m = (x) => marked(x, esc);
   const card = (inner) => `<div class="card ls-card">${inner}</div>`;
   switch (s?.type) {
-    case "intro": if (s.my) return `<div class="my-photos ${run.pending ? "reading" : ""} ${(run.photos ?? []).length === 1 ? "one" : ""}">${(run.photos ?? []).map((u) => `<div class="my-ph"><img src="${esc(u)}" alt=""><i class="scan"></i></div>`).join("")}</div>
+    case "intro": if (s.my) return `<div class="my-photos ${run.pending ? "reading" : ""} n${Math.min(3, (run.photos ?? []).length)}">${(run.photos ?? []).map((u) => `<div class="my-ph"><img src="${esc(u)}" alt=""><i class="scan"></i></div>`).join("")}</div>
       ${card(run.failed ? `<div class="error b">${esc(run.failed)}</div>` : run.pending ? `<div class="accent b my-wait">${I("auto_stories")} 선생님이 교재를 읽고 있어요<span class="dots"><i></i><i></i><i></i></span></div><div class="muted small">그동안 선생님과 가볍게 이야기해요</div>`
         : `<div class="ls-en">${esc(run.titleEn)}</div><div class="muted">${esc(run.title)}</div>${run.goal ? `<div class="accent small b">오늘의 목표 · ${esc(run.goal)}</div>` : ""}
           <div class="my-found">${(run.found ?? []).map((x, i) => `<span class="tag pop" style="animation-delay:${i * 120}ms">${esc(x)}</span>`).join("")}</div>`)}`;
@@ -184,13 +184,21 @@ export function stepHtml(s, u, run, esc, I) {
 }
 
 export function renderDone(run, d, esc, I) {
+  // 0.8.6 사진을 읽지 못함(앱 MyFailedView와 같은 화면): 읽지 못했다는 말 + 까닭 + 찍는 요령 + ‘사진 다시 올리기’
+  if (run.my && run.failed) return `<div class="ls-done">
+    <div class="done-ic my-fail">${I("photo_camera")}</div><h2>사진을 읽지 못했어요</h2>
+    <p class="muted">${esc(run.failed)}</p>
+    <div class="card left"><b>이렇게 찍으면 잘 읽어요</b><div class="muted">• 한 쪽이 화면에 꽉 차게</div><div class="muted">• 밝은 곳에서, 그림자 없이</div><div class="muted">• 기울이지 말고 똑바로</div></div>
+    <button class="pill primary" data-act="myOpen">${I("photo_camera")}사진 다시 올리기</button>
+    <button class="link" data-act="lsExit">끝내기</button>
+  </div>`;
   return `<div class="ls-done">
     <div class="done-ic">${I("check")}</div><h2>오늘 할 일 끝!</h2>
     <p class="muted">${run.my ? `내 교재 · ${esc(run.title)} 수업을 마쳤어요` : `${run.bookLabel} · ${T.lesson(run.no)} · ${T.part(run.session)}을 마쳤어요`}</p>
     <div class="done-stats">${[[d.practiced.length, "익힌 표현"], [d.said, "말한 문장"], [`${d.minutes}분`, "수업 시간"]].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
     <div class="card"><b>오늘 익힌 표현</b>${d.practiced.map((x) => `<div class="b">${esc(x)}</div>`).join("")}
       ${d.fixed.length ? `<hr><div class="muted small">고친 문장</div>${d.fixed.map((x) => `<div>${esc(String(x).replace("->", "→"))}</div>`).join("")}` : ""}</div>
-    ${run.my && run.failed ? `<p class="error">${esc(run.failed)}</p><button class="pill primary" data-act="myOpen">${I("photo_camera")}사진 다시 올리기</button>` : `<button class="pill primary" data-act="lsTalk">대화하며 써 보기</button>`}
+    <button class="pill primary" data-act="lsTalk">대화하며 써 보기</button>
     <button class="link" data-act="lsExit">끝내기</button>
   </div>`;
 }

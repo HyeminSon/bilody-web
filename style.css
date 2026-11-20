@@ -551,3 +551,17 @@ u.hl { color: var(--deep); font-weight: 800; text-decoration-thickness: 2px; tex
 .pill.media { min-height: 48px; font-size: 15px; color: #7A3D14; background: #FFF4EA; border: 1px solid #F7DCC6; box-shadow: none; padding: 0 12px; }
 .pill.media .mi { font-size: 20px; color: #E8772E; }
 .pill.media:active:not(:disabled) { background: #FDE9D8; }
+/* 0.8.6(11/20 실장님): 수업 홈이 위로 쏠려 보임 → 덩어리 사이를 넓히고 추천 줄을 눈에 띄는 한 줄 카드로 */
+.lh { gap: 14px; padding-top: 8px; }
+.lh-top { margin-bottom: 2px; }
+.pl-line { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; margin: 0; padding: 12px 14px; border-radius: 14px; background: #F6F2FF; color: var(--plum); font-size: 15px; font-weight: 600; min-height: 48px; }
+.pl-line > .mi:first-child { color: var(--purple); font-size: 20px; }
+.pl-line .link { padding: 0 4px; min-height: 0; font-size: 14px; }
+button.pl-line:active { transform: scale(.98); }
+.lh-grid { gap: 8px; } .lh-grid .lh-chip, .lh-kids .lh-chip { padding: 11px 6px; }
+.lh-kids { margin-top: -4px; }
+.done-ic.my-fail { background: var(--lilac); color: var(--purple); }
+.ls-done .card.left { text-align: left; display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.my-photos.n1 { grid-template-columns: minmax(0, 220px); justify-content: center; }
+.my-photos.n2 { grid-template-columns: repeat(2, 1fr); }
+.my-photos.n3 { grid-template-columns: repeat(3, 1fr); }
