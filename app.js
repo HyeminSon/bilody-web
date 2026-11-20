@@ -21,7 +21,9 @@ const player = new Player();
 const pref = {
   get(k, d) { try { const v = localStorage.getItem(`bilody_${api.userId() ?? "anon"}_${k}`); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(`bilody_${api.userId() ?? "anon"}_${k}`, JSON.stringify(v)); } catch { /* */ }
-    if (/^(lp_|pl_)/.test(k) && k !== "lp_t" && !progSyncing) { pref.set("lp_t", Date.now()); clearTimeout(progTimer); progTimer = setTimeout(pushProgress, 1500); } },
+    if (/^(lp_|pl_)/.test(k) && k !== "lp_t" && !progSyncing) { pref.set("lp_t", Date.now()); clearTimeout(progTimer); progTimer = setTimeout(pushProgress, 1500); }
+    // 0.8.6: 수업 안 단계 위치(ls_)는 그 값의 시각으로 합치므로 lp_t는 건드리지 않고 올리기만
+    else if (/^ls_/.test(k) && !progSyncing) { clearTimeout(progTimer); progTimer = setTimeout(pushProgress, 800); } },
 };
 
 // ---------------- 0.8.5 1:1 수업 진도를 계정에 저장(안드로이드 앱과 같은 모양) ----------------
@@ -30,8 +32,10 @@ let progSyncing = false, progTimer = null;
 function progSnapshot() {
   const pre = `bilody_${api.userId() ?? "anon"}_lp_`; const books = {};
   try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const b = k?.startsWith(pre) ? k.slice(pre.length) : ""; if (/^[AK]\d+$/.test(b)) books[b] = pref.get("lp_" + b, "1:1"); } } catch { /* */ }
+  const pre2 = `bilody_${api.userId() ?? "anon"}_ls_`; const pos = {};
+  try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); const b = k?.startsWith(pre2) ? k.slice(pre2.length) : ""; const v = b ? pref.get("ls_" + b, null) : null; if (v && Number.isFinite(v.k) && Number.isFinite(v.t)) pos[b] = { k: v.k, t: v.t }; } } catch { /* */ }
   const pb = Number(pref.get("pl_book", 0));
-  return { books, last_book: pref.get("lp_last", null), teacher: pref.get("lp_teacher", null),
+  return { books, pos, last_book: pref.get("lp_last", null), teacher: pref.get("lp_teacher", null),
     pl: pb ? { book: pb, teacher: pref.get("pl_teacher", "grace"), at: pref.get("pl_at", 0) } : null, pl_later: !!pref.get("pl_later", false), t: pref.get("lp_t", 0) };
 }
 /** 서버가 합친 결과를 이 기기에 그대로 둔다(진도는 이미 더 앞선 쪽으로 합쳐져 옴). 바꾼 시각(lp_t)도 서버 것으로. */
@@ -46,6 +50,8 @@ function applyProgress(m) {
     if (m.pl?.book) { pref.set("pl_book", m.pl.book); pref.set("pl_teacher", m.pl.teacher ?? "grace"); pref.set("pl_at", m.pl.at ?? 0); }
     if (m.pl_later) pref.set("pl_later", true);
     if (m.t) pref.set("lp_t", m.t);
+    // 0.8.6: 다른 기기에서 더 나중에 저장한 수업 위치를 받는다
+    for (const [b, v] of Object.entries(m.pos ?? {})) { const cur = pref.get("ls_" + b, null); if (v && Number.isFinite(v.k) && Number.isFinite(v.t) && (!cur || !(cur.t >= v.t))) pref.set("ls_" + b, { k: v.k, t: v.t }); }
   } finally { progSyncing = false; }
   return JSON.stringify(progSnapshot()) !== before;
 }
@@ -455,7 +461,10 @@ async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
   const book = H.index.books.find((b) => b.id === H.bookId) ?? H.index.books[0];
   H.busy = true; render();
+  // 0.8.6: 다른 기기에서 멈춘 자리를 받아 오도록 진도를 먼저 맞춘다(3초 넘으면 이 기기 것으로)
+  const synced = Promise.race([syncProgress(), new Promise((r) => setTimeout(r, 3000))]);
   let L = null; try { L = (await L9.loadBook(book.file)).lessons.find((x) => x.id === lessonId); } catch { /* */ }
+  await synced;
   H.busy = false;
   // 0.9 헤니 검토: 교재를 받는 사이 수업 홈을 닫았거나 다른 화면(대화·그림책·다른 수업)으로 갔으면 아무것도 시작하지 않는다
   if (S.lh !== H || S.chat || S.story || S.kids || S.tab !== "chat") return;
@@ -475,7 +484,7 @@ async function startLesson(lessonId, session) {
   }
   const t = L9.progress.teacher(pref); const p = S.profile;
   const chat = new Chat({ voiceId: byId(t).voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: t, lesson: run });
-  chat.onLessonDone = (r) => { pref.set(posKey, null); if (S.chat === chat) L9.progress.done(pref, r); };
+  chat.onLessonDone = (r) => { pref.set(posKey, { k: 0, t: Date.now() }); if (S.chat === chat) L9.progress.done(pref, r); };
   chat.onLessonStep = (k) => pref.set(posKey, { k, t: Date.now() });
   S.chat = chat; S.lesson = null;
   render();
