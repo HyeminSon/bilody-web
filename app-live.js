@@ -5,7 +5,7 @@ import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFrien
 import * as L9 from "./lesson09.js?v=0.8.11";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
-import { LiveChat as Chat } from "./rt-live.js?v=0.8.12c";   // 11/21 GPT-Live 시험판: 이 줄만 다름
+import { LiveChat as Chat } from "./rt-live.js?v=0.8.12d";   // 11/21 GPT-Live 시험판: 이 줄만 다름
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";

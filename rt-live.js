@@ -214,7 +214,10 @@ export class LiveChat extends Chat {
       case "session.usage.updated": this.liveUsage = ev.usage ?? this.liveUsage; break;
       case "session.closed": this.liveUsage = ev.usage ?? this.liveUsage; if (this.pc && !this.closed) this.lost(); break;
       case "error": this.log("rt_error", { code: ev.error?.code ?? "error", msg: String(ev.error?.message ?? "").slice(0, 160), live: true }); break;
-      default: break;
+      default:
+        // 11/21 실장님 시험: 사진을 말해 놓고 안 띄움 → 맡긴 일(위임)이 어떻게 됐는지 기록한다
+        if (/^session\.delegation\./.test(ev.type)) this.log("live_delegation", { type: ev.type.split(".").pop(), id: ev.delegation?.id ?? ev.delegation_id ?? null });
+        break;
     }
   }
 
@@ -226,7 +229,8 @@ export class LiveChat extends Chat {
       this.log("live_tool", { name: c.name, args: String(c.args).slice(0, 120) });
       if (this.lesson && ["highlight_word", "highlight_line", "change_study_way"].includes(c.name)) this.runLessonTool(c);
       else this.runTool(c);
-    } else if (e.type === "error" || e.type === "response.failed") this.log("live_tool_error", { type: e.type, msg: String(e.error?.message ?? e.response?.error?.message ?? "").slice(0, 160) });
+    } else if (e.type === "response.completed") this.log("live_deleg_done", { id: ev.delegation_id ?? null });
+    else if (e.type === "error" || e.type === "response.failed") this.log("live_tool_error", { type: e.type, msg: String(e.error?.message ?? e.response?.error?.message ?? "").slice(0, 160) });
   }
 
   learnerDelta(d) {
@@ -248,6 +252,14 @@ export class LiveChat extends Chat {
     if (!t) return;
     // rt.js가 받아쓰기 완료를 처리하는 길을 그대로 탄다(기록·자막·단계 확인·역할 읽기 판정)
     super.onEvent({ type: "conversation.item.input_audio_transcription.completed", transcript: t });
+    // 11/21 실장님 시험: 학습자가 말을 마쳤는데 선생님이 27초 넘게 아무 말도 안 함 → 7초 동안 조용하면 대답하라고 알린다(한 번)
+    clearTimeout(this.stallTimer);
+    const at = Date.now();
+    this.stallTimer = setTimeout(() => {
+      if (this.closed || !this.pc || this.lastOutAt > at || this.resp || this.lAcc || this.ui.lessonScene) return;
+      this.log("live_stall", { waited_ms: Date.now() - at });
+      this.raw({ type: "session.instructions.append", content: "The learner has finished speaking and is waiting for you. Reply to what they just said now, in your own words.", delegation_id: null });
+    }, 7000);
   }
 
   teacherDelta(d) {
@@ -314,7 +326,7 @@ export class LiveChat extends Chat {
   setVolume(v) { if (this.audioEl) this.audioEl.volume = Math.min(1, v); }
 
   teardown() {
-    clearInterval(this.ticker); this.ticker = null;
+    clearInterval(this.ticker); this.ticker = null; clearTimeout(this.stallTimer);
     if (this.dc?.readyState === "open") this.raw({ type: "session.close" });
     if (this.liveUsage) this.log("live_usage", { ...this.liveUsage, voice: this.liveVoice ?? null });
     if (this.audioEl) { try { this.audioEl.srcObject = null; } catch { /* */ } }
