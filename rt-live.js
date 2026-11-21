@@ -31,6 +31,11 @@ function chunks(text, max = 420) {
   if (buf) out.push(buf);
   return out;
 }
+// 11/21 시험: GPT-Live는 처음 지시문의 ‘권별 한국어 규칙’을 잘 따르지 않았다(Book 1인데 영어만). 그 자리에서 하라는 구체적 지시는 따른다.
+// 그래서 앱 메모(말하게 하는 메모)마다 끝에 한 줄로 다시 알리고, 학습자가 말하기 시작할 때도 조용한 메모로 한 번 더 알린다(Book 1~4만).
+const KO_NOW = (book) => book <= 2
+  ? "Language for this beginner learner: whenever you explain, give an instruction, ask them to say or answer something, or check an answer, say it in one very short English sentence and then the same meaning in one short Korean sentence (해요체). Do this even when they answer in English. Small talk and quick praise stay in English."
+  : book <= 4 ? "Language for this learner: when you explain a new meaning or grammar point or start a new kind of activity, add one short Korean sentence (해요체) right after the English. Otherwise speak simple English." : "";
 export const liveVoiceFor = (teacher) => { try { return localStorage.getItem("bilody_live_voice_" + teacher) || null; } catch { return null; } };
 
 async function freshToken() {
@@ -66,8 +71,9 @@ export class LiveChat extends Chat {
       if (stale()) return abandon();
       this.stream = stream;
       pc = new RTCPeerConnection(); this.pc = pc;
-      if (this.stream) { this.track = this.stream.getAudioTracks()[0]; this.track.enabled = false; pc.addTrack(this.track, this.stream); }
-      else pc.addTransceiver("audio", { direction: "recvonly" });
+      // GPT-Live는 들어오는 소리(RTP)가 끊기면 지시를 처리하지 않고 30초 뒤 세션을 닫는다(11/21 시험: 소리 없는 트랙은 패킷 0개).
+      // 그래서 마이크를 끄지 않고 웹 오디오로 소리 크기만 0으로 줄이고, 들리지 않을 만큼 작은 잡음을 늘 함께 보낸다.
+      this.addSendTrack(pc, stream);
       pc.ontrack = (e) => this.attachAudio(e.streams[0]);
       pc.onconnectionstatechange = () => { if (["failed", "disconnected"].includes(pc.connectionState) && this.pc === pc) this.lost(); };
       const dc = pc.createDataChannel("oai-events"); this.dc = dc;
@@ -106,6 +112,22 @@ export class LiveChat extends Chat {
       this.set({ state: code === "daily_limit" ? "stopped" : "disconnected", micOn: false, canRestart: code !== "daily_limit", notice: msg });
       this.log("rt_connect_failed", { code, live: true });
     }
+  }
+
+  addSendTrack(pc, stream) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    const ctx = this.player.ctx ?? (this.sendCtx ??= new AC());
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    const dest = ctx.createMediaStreamDestination();
+    const nb = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate), d = nb.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.0005;
+    const noise = ctx.createBufferSource(); noise.buffer = nb; noise.loop = true; noise.connect(dest); noise.start();
+    let gain = null;
+    if (stream) { const src = ctx.createMediaStreamSource(stream); gain = ctx.createGain(); gain.gain.value = 0; src.connect(gain); gain.connect(dest); }
+    this.liveSend = { noise, dest, gain, track: dest.stream.getAudioTracks()[0] };
+    pc.addTrack(this.liveSend.track, dest.stream);
+    // rt.js는 track.enabled로 마이크를 켜고 끈다 → 소리 크기(0/1)로 바꿔 준다
+    this.track = gain ? { on: false, get enabled() { return this.on; }, set enabled(v) { this.on = !!v; gain.gain.setTargetAtTime(v ? 1 : 0, ctx.currentTime, 0.02); }, stop() {} } : null;
   }
 
   attachAudio(stream) {
@@ -164,12 +186,13 @@ export class LiveChat extends Chat {
     const notes = this.notesBuf.splice(0), speak = this.speakWanted; this.speakWanted = false;
     if (!notes.length && !speak) return;
     const text = notes.length ? notes.join("\n\n") : "It is your turn to speak now. Continue naturally, following your instructions and the latest notes.";
+    const ko = this.lesson ? KO_NOW(Number(this.lesson.info?.book ?? 9)) : "";
     const parts = chunks(text);
     if (!speak) { parts.forEach((p) => this.raw({ type: "session.thinking.append", content: p, delegation_id: null })); this.log("live_note", { speak: false, n: parts.length }); return; }
-    if (parts.length === 1) this.raw({ type: "session.instructions.append", content: parts[0], delegation_id: null });
+    if (parts.length === 1 && toks(parts[0] + ko) <= 480) this.raw({ type: "session.instructions.append", content: parts[0] + (ko ? "\n" + ko : ""), delegation_id: null });
     else {
       parts.forEach((p, k) => this.raw({ type: "session.thinking.append", content: `App note, part ${k + 1} of ${parts.length}:\n${p}`, delegation_id: null }));
-      this.raw({ type: "session.instructions.append", content: "Now do what the app note you just received says, in your own natural words. Never read the note aloud.", delegation_id: null });
+      this.raw({ type: "session.instructions.append", content: "Now do what the app note you just received says, in your own natural words. Never read the note aloud." + (ko ? " " + ko : ""), delegation_id: null });
     }
     this.lastAskAt = Date.now();
     this.log("live_note", { speak: true, n: parts.length });
@@ -194,6 +217,8 @@ export class LiveChat extends Chat {
     const now = Date.now();
     if (!this.lAcc) {
       this.lastSpeechStart = now; clearTimeout(this.idleTimer); clearTimeout(this.quietTimer); this.onSpeechStart?.();
+      const ko = this.lesson ? KO_NOW(Number(this.lesson.info?.book ?? 9)) : "";
+      if (ko && this.lessonStep >= 0) this.raw({ type: "session.thinking.append", content: "Reminder for your next reply. " + ko, delegation_id: null });
       this.set({ state: "listening", speech: true });
     }
     this.lAcc += d; this.lastInAt = now;
@@ -241,7 +266,9 @@ export class LiveChat extends Chat {
     r.pending = ""; r.done = true;
     // 학습자가 말하는 사이에 끼어든 짧은 맞장구(Mm., Right.)는 대답으로 치지 않는다
     if (this.lAcc && r.text.trim().split(/\s+/).length <= 2 && !/\?/.test(r.text)) {
-      this.epoch++; this.resp = null; this.closeAssistantLine(false); this.log("live_backchannel", { text: r.text.slice(0, 40) });
+      this.epoch++; this.resp = null; this.log("live_backchannel", { text: r.text.slice(0, 40) });
+      const lines = [...this.ui.lines]; const k = lines.map((l) => l.role === "assistant" && l.pending).lastIndexOf(true);
+      if (k !== -1) { lines.splice(k, 1); this.set({ lines }); }   // 화면 자막에서도 맞장구는 뺀다
       return;
     }
     this.lessonPrecheck(r);
@@ -274,6 +301,7 @@ export class LiveChat extends Chat {
     if (this.liveUsage) this.log("live_usage", { ...this.liveUsage, voice: this.liveVoice ?? null });
     if (this.audioEl) { try { this.audioEl.srcObject = null; } catch { /* */ } }
     this.analyser = null; this.lAcc = "";
+    if (this.liveSend) { try { this.liveSend.noise.stop(); this.liveSend.gain?.disconnect(); this.liveSend.track.stop(); } catch { /* */ } this.liveSend = null; }
     super.teardown();
   }
 }

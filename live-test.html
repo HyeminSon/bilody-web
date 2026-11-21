@@ -255,7 +255,7 @@ $("vList").onclick = async (e) => {
   renderVoices();
 };
 async function audition(voice, sample) {
-  const ac = new AudioContext(); const dst = ac.createMediaStreamDestination(); const g = ac.createGain(); g.gain.value = 0; const o = ac.createOscillator(); o.connect(g); g.connect(dst); o.start();
+  const ac = new AudioContext(); const dst = ac.createMediaStreamDestination(); const nb = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() * 2 - 1) * 0.0005; const ns = ac.createBufferSource(); ns.buffer = nb; ns.loop = true; ns.connect(dst); ns.start();   // 소리 없는 트랙은 패킷이 안 나가 GPT-Live가 멈춤
   const pc = new RTCPeerConnection(); pc.addTrack(dst.stream.getAudioTracks()[0], dst.stream);
   const dc = pc.createDataChannel("oai-events");
   const el = new Audio(); el.autoplay = true;
