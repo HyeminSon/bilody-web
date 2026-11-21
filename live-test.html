@@ -161,11 +161,11 @@ function goStep(i) {
   parts.forEach((c, k) => send({ type: "session.thinking.append", content: `${head}, plan ${k + 1}/${parts.length}:\n${c}`, delegation_id: null }));
   if (st.type === "dialogue" && st.play) mark("app", "(장면 대사는 화면에서 읽어 주세요)");
   const scene = st.type === "dialogue" && st.play ? " The learner has just read the scene on screen; there is no recording to play, so do not wait for one." : "";
-  send({ type: "session.instructions.append", content: `${head} is now on the learner's screen.${scene} Start this part now, following the plan you just received for it. Work only on this part.`, delegation_id: null });
+  send({ type: "session.instructions.append", content: `${head} is now on the learner's screen.${scene} Start this part now, following the plan you just received for it. Work only on this part.${remind ? " " + remind : ""}`, delegation_id: null });
 }
 
 // ---- 연결 ----
-let pc = null, trialId = null, usage = null, t0 = 0, stream = null;
+let pc = null, trialId = null, usage = null, t0 = 0, stream = null, remind = "";
 $("startBtn").onclick = async () => {
   $("startBtn").disabled = true; $("status").textContent = "연결 중…";
   try {
@@ -192,7 +192,7 @@ $("startBtn").onclick = async () => {
     const body = { action: "start", mode: $("mode").value, teacher: $("teacher").value, voice: $("voice").value, sdp: pc.localDescription.sdp };
     if (body.mode === "lesson") Object.assign(body, { book: $("book").value, lesson: $("lesson").value, session: Number($("session").value) });
     const r = await call(body);
-    trialId = r.id; t0 = Date.now();
+    trialId = r.id; t0 = Date.now(); remind = r.remind || "";
     if (body.mode === "lesson") {
       const L = bookData.lessons.find((l) => l.id === body.lesson);
       steps = (L.sessions.find((s) => s.n === body.session) ?? L.sessions[0]).steps;
