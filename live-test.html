@@ -230,7 +230,7 @@ $("saveFb").onclick = async () => {
   catch (e) { $("doneMsg").textContent = "저장하지 못했어요: " + e.message; }
 };
 // ---- 목소리 고르기(11/21): 견본을 한 번 듣고 녹음해 두면 다시 들을 때는 무료 ----
-const VOICES = [["marin","기본 목소리(지난 시험에서 쓴 것)"],["gleam","북미, 여, 자연"],["meridian","북미, 남, 자연"],["delta","미국 남부, 여, 합성"],["cinder","미국 남부, 남, 합성"],["willow","아일랜드, 여, 자연"],["stone","아일랜드, 남, 자연"],["vesper","영국, 남, 자연"],["quartz","호주, 여, 합성"],["ripple","호주, 남, 자연"],["beacon","필리핀, 남, 합성"],["noeul","한국어, 여, 자연"],["cedar","목록에 없음(되는지 확인용)"]];
+const VOICES = [["marin","기본 목소리(지난 시험에서 쓴 것)"],["gleam","북미, 여, 자연"],["meridian","북미, 남, 자연"],["delta","미국 남부, 여, 합성"],["cinder","미국 남부, 남, 합성"],["willow","아일랜드, 여, 자연"],["stone","아일랜드, 남, 자연"],["vesper","영국, 남, 자연"],["quartz","호주, 여, 합성"],["ripple","호주, 남, 자연"],["beacon","필리핀, 남, 합성"],["noeul","한국어, 여, 자연"],["cedar","남, 자연(기존 Realtime 목소리)"],["ash","남(기존 Realtime)"],["verse","남(기존 Realtime)"],["ballad","남(기존 Realtime)"],["echo","남(기존 Realtime)"],["coral","여(기존 Realtime)"],["sage","여(기존 Realtime)"],["shimmer","여(기존 Realtime)"],["alloy","중성(기존 Realtime)"]];
 const DEF = { grace: "marin", daniel: "meridian", chloe: "gleam", ben: "cinder", maya: "delta" };
 const NAMES = { grace: "Grace", daniel: "Daniel", chloe: "Chloe", ben: "Ben", maya: "Maya" };
 const clips = {};
