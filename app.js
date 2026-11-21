@@ -1,11 +1,12 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
 import * as api from "./api.js?v=0.8.11";
 import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.11";
-import { CHARACTERS, TEACHERS, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.11";
-import * as L9 from "./lesson09.js?v=0.8.11";
+import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartner, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.13";
+import * as L9 from "./lesson09.js?v=0.8.13";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
 import { Chat } from "./rt.js?v=0.8.11";
+import { LiveChat } from "./rt-live.js?v=0.8.12d";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";
@@ -86,11 +87,20 @@ async function work(fn) {
 }
 
 // ---------------- 시작 ----------------
+// 0.8.13: 지금 고를 수 없는 대화 상대(마야·클로이·벤·누비)를 골라 둔 계정은 그레이스·토리로 옮긴다(친구 이름을 바꿔 썼으면 그 이름은 둔다)
+async function fixPartner() {
+  const p = S.profile; if (!p?.character) return;
+  const id = chatPartner(p.character); if (id === p.character) return;
+  const c = byId(id); const was = byId(p.character);
+  const friendName = isTeacher(id) || !p.friend_name || p.friend_name === was.en ? c.en : p.friend_name;
+  try { await api.saveProfile({ friendName, myName: p.my_name, presetId: p.preset_id, color: c.colorId, character: c.id }); S.profile = await api.loadProfile(); } catch { /* 다음에 다시 */ }
+}
 async function refresh() {
   if (!api.signedIn()) { S.stage = "auth"; return render(); }
   try {
     const consent = await api.hasConsent(CONSENT_VERSION);
     S.profile = await api.loadProfile();
+    await fixPartner();
     S.stage = !consent ? "consent" : !S.profile?.my_name ? "names" : "main";
     if (S.stage === "main") {
       const [pr, ps, rem] = await Promise.all([api.myProgress(), api.presets(), push.load(), syncProgress()]);
@@ -164,14 +174,14 @@ function renderConsent() {
 
 function charPicker(sel) {
   // 0.9: 선생님(사람)도 대화 상대로 고를 수 있다(시험자 의견). 앱 CharacterPicker와 같게 선생님 줄이 위.
-  return `<b class="small">선생님</b><div class="picker teachers">${TEACHERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
+  return `<b class="small">선생님</b><div class="picker teachers">${CHAT_TEACHERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
     <img src="${teacherImg(c.id)}" alt=""><span>${c.ko}</span></button>`).join("")}</div>
-  <b class="small">bilody 친구</b><div class="picker">${CHARACTERS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
+  <b class="small">bilody 친구</b><div class="picker">${PICK_FRIENDS.map((c) => `<button class="pick ${c.id === sel ? "on" : ""}" data-act="pick" data-v="${c.id}" style="--c:${c.color}">
     <img src="img/char_${c.id}.webp" alt=""><span>${c.ko}</span></button>`).join("")}</div>`;
 }
 
 function renderNames() {
-  const c = byId(S.nameDraft?.character ?? S.profile?.character);
+  const c = byId(S.nameDraft?.character ?? chatPartner(S.profile?.character ?? "tori"));
   const d = S.nameDraft ??= { character: c.id, friend: S.profile?.friend_name ?? c.en, me: S.profile?.my_name ?? "" };
   return `<div class="page center-col">
     <h1>함께 이야기할 상대를 골라요</h1>
@@ -696,7 +706,9 @@ async function openChat() {
   S.lh = null;
   const p = S.profile; const c = byId(p?.character);
   player.setVolume(pref.get("volume", 1));
-  S.chat = new Chat({ voiceId: c.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat() });
+  // 0.8.13(11/21 실장님): 그레이스·대니얼은 GPT-Live(목소리 포함), bilody 친구는 지금처럼
+  const live = LIVE_CHAT.has(c.id);
+  S.chat = new (live ? LiveChat : Chat)({ voiceId: c.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), ...(live ? { character: c.id } : {}) });
   // 교재로 배우기(11/14): 운영자 계정에서만 먼저 켠다
   // 0.9.2(11/17 실장님): ‘표현 익히기’(대화 속 교재 카드)는 뺌 — 교재 공부는 1:1 수업에서
   S.lesson = null;

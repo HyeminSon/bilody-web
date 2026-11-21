@@ -14,9 +14,20 @@ export const TEACHERS = [
   { id: "ben", profile: "보스턴 출신, 한국에서 10년 넘게 살았어요. 등산·야구·옛날 영화를 좋아해요.", selfIntro: "Hi, I'm Ben, from Boston. I've lived in Korea for over ten years. I'll show you how people really say it. And I'll tell a few bad jokes. Haha.", ko: "벤", en: "Ben", colorId: "ben", color: "#E7B04A", intro: "원어민이 진짜 쓰는 말과 뉘앙스를 알려 주는 선생님", forWhom: "더 자연스럽게 말하고 싶은 분", voice: "brhvfYWzMPuKJz4vBegD", teacher: true },
   { id: "maya", profile: "애틀랜타 출신, 서울에서 일하며 한국어를 배웠어요. 달리기와 음악 축제를 좋아해요.", selfIntro: "Hey, I'm Maya from Atlanta! I love running and music festivals. Don't worry about mistakes. Just talk to me. You've got this!", ko: "마야", en: "Maya", colorId: "maya", color: "#9BAE84", intro: "입이 트이도록 자신감을 북돋는 선생님", forWhom: "머릿속으론 아는데 입이 안 떨어지는 분", voice: "H4H00svEXeg2d8aZX2No", teacher: true },
 ];
+// 0.8.13(11/21 실장님): 대화하기 선생님은 그레이스·대니얼(GPT-Live), 1:1 수업은 클로이·벤(지금 목소리), bilody 친구와의 대화는 지금처럼.
+// 마야·누비는 고르지 못하게 뺀다(교재 장면 속 인물 목소리·옛 기록 표시는 그대로 쓰므로 목록에서는 지우지 않는다).
+export const CHAT_TEACHERS = TEACHERS.filter((t) => t.id === "grace" || t.id === "daniel");
+export const LESSON_TEACHERS = TEACHERS.filter((t) => t.id === "chloe" || t.id === "ben");
+export const PICK_FRIENDS = CHARACTERS.filter((c) => c.id !== "nubi");
+/** GPT-Live로 이야기하는 대화 상대. */
+export const LIVE_CHAT = new Set(["grace", "daniel"]);
 const ALL = [...CHARACTERS, ...TEACHERS];
 export const byId = (id) => ALL.find((c) => c.id === id) ?? CHARACTERS[0];
 export const isTeacher = (id) => TEACHERS.some((t) => t.id === id);
+/** 지금 고를 수 없는 대화 상대(마야·클로이·벤 / 누비)는 같은 쪽의 첫 상대(그레이스 / 토리)로. */
+export const chatPartner = (id) => CHAT_TEACHERS.some((t) => t.id === id) || PICK_FRIENDS.some((c) => c.id === id) ? id : isTeacher(id) ? "grace" : "tori";
+/** 1:1 수업 선생님은 클로이·벤 중에서(기본 클로이). */
+export const lessonTeacher = (id) => LESSON_TEACHERS.some((t) => t.id === id) ? id : "chloe";
 export const dotColor = (colorId) => ALL.find((c) => c.colorId === colorId)?.color ?? (colorId === "peach" ? "#F6B79A" : CHARACTERS[0].color);
 /** 선생님 그림(상태: idle·listen·speak·wait). */
 export const teacherImg = (id, st = "idle") => `img/teacher_${isTeacher(id) ? id : "grace"}_${st}.webp`;
