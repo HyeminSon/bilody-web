@@ -46,7 +46,7 @@
       <div><label>과</label><select id="lesson"></select></div>
       <div><label>회차(Part)</label><select id="session"></select></div>
     </div>
-    <div class="bar" style="margin-top:12px"><button id="startBtn">시작</button><span id="status">마이크 권한을 허용해 주세요.</span></div>
+    <div class="bar" style="margin-top:12px"><button id="startBtn">시작</button><span id="status">마이크 권한을 허용해 주세요. 단계는 선생님과 그 부분을 다 한 뒤에 넘겨 주세요.</span></div>
   </section>
 
   <section class="card hidden" id="screenCard">
@@ -141,13 +141,19 @@ function chunks(t, n = 1200) {
   if (buf) out.push(buf);
   return out.flatMap((c) => c.length > n ? c.match(new RegExp(`[\\s\\S]{1,${n}}`, "g")) : [c]);
 }
-let dc = null; let evn = 0;
-const send = (ev) => { if (dc?.readyState === "open") dc.send(JSON.stringify({ ...ev, event_id: "c" + (++evn) })); };
+let dc = null; let evn = 0; let pending = 0; let readyAt = 0;
+function nextState() {
+  const wait = pending > 0 || Date.now() < readyAt;
+  $("nextBtn").disabled = wait || stepIdx + 1 >= steps.length;
+  $("nextBtn").textContent = pending > 0 ? "선생님이 준비 중…" : "다음 단계";
+}
+setInterval(nextState, 500);
+const send = (ev) => { if (dc?.readyState !== "open") return; if (/\.append$/.test(ev.type)) pending++; dc.send(JSON.stringify({ ...ev, event_id: "c" + (++evn) })); nextState(); };
 function goStep(i) {
   if (i >= steps.length) return;
   stepIdx = i; const st = steps[i];
   $("stepLabel").textContent = `${i + 1} / ${steps.length} · ${st.type}`;
-  $("nextBtn").disabled = i + 1 >= steps.length;
+  readyAt = Date.now() + 4000;
   showStep(st);
   mark("step", `${i + 1}/${steps.length} ${st.type}`);
   const head = `Lesson step ${i + 1} of ${steps.length} (${st.type})`;
@@ -172,9 +178,10 @@ $("startBtn").onclick = async () => {
       let ev; try { ev = JSON.parse(e.data); } catch { return; }
       if (ev.type === "session.output_transcript.delta") addDelta("teacher", ev.delta);
       else if (ev.type === "session.input_transcript.delta") addDelta("learner", ev.delta);
+      else if (/^session\.(instructions|thinking|commentary)\.appended$/.test(ev.type)) { pending = Math.max(0, pending - 1); nextState(); }
       else if (ev.type === "session.usage.updated") usage = ev.usage;
       else if (ev.type === "session.closed") { usage = ev.usage ?? usage; finish(); }
-      else if (ev.type === "error") { mark("app", "(오류: " + (ev.error?.message || ev.error?.code) + ")"); }
+      else if (ev.type === "error") { if (ev.error?.client_event_id) pending = Math.max(0, pending - 1); if (!finished) mark("app", "(오류: " + (ev.error?.message || ev.error?.code) + ")"); }
     };
     dc.onopen = () => {
       $("status").textContent = "연결됐어요. 말씀하세요.";
@@ -199,7 +206,7 @@ $("startBtn").onclick = async () => {
     try { pc?.close(); stream?.getTracks().forEach((t) => t.stop()); } catch {}
   }
 };
-$("nextBtn").onclick = () => goStep(stepIdx + 1);
+$("nextBtn").onclick = () => { if (pending > 0 || Date.now() < readyAt) return; goStep(stepIdx + 1); };
 let finished = false;
 $("endBtn").onclick = () => { $("endBtn").disabled = true; $("nextBtn").disabled = true; send({ type: "session.close" }); setTimeout(finish, 8000); };
 async function finish() {
