@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>GPT-Live 시험</title>
+<style>
+  :root { --bg:#faf9fc; --fg:#1d1724; --muted:#6b6375; --line:#e4dfea; --brand:#8B5CF6; --card:#fff; --teach:#f3eefe; --learn:#eef7f2; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#17131c; --fg:#efeaf4; --muted:#a59cb0; --line:#332b3d; --card:#201a27; --teach:#2a2140; --learn:#1d2a24; } }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.5 -apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+  main { max-width:760px; margin:0 auto; padding:16px; }
+  h1 { font-size:20px; margin:4px 0 2px; } .sub { color:var(--muted); font-size:13px; margin:0 0 14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:6px 0 2px; }
+  select, input, textarea { width:100%; font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:10px; background:var(--bg); color:var(--fg); }
+  .row { display:grid; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:8px; }
+  button { font:inherit; font-weight:600; border:0; border-radius:12px; padding:11px 16px; background:var(--brand); color:#fff; cursor:pointer; min-height:44px; }
+  button.ghost { background:transparent; color:var(--fg); border:1px solid var(--line); }
+  button:disabled { opacity:.45; cursor:default; }
+  .bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  #status { font-size:13px; color:var(--muted); }
+  #screen .t { font-weight:700; } #screen .ko { color:var(--muted); font-size:14px; }
+  #screen .ln { margin:3px 0; }
+  #log { max-height:46vh; overflow:auto; }
+  .m { padding:8px 10px; border-radius:10px; margin:6px 0; white-space:pre-wrap; }
+  .m.teacher { background:var(--teach); } .m.learner { background:var(--learn); }
+  .m.step, .m.app { color:var(--muted); font-size:12px; padding:2px 4px; }
+  .hidden { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <h1>GPT-Live 시험</h1>
+  <p class="sub">운영자 전용 시험 페이지예요. 실제 bilody 앱과는 별개이고, 기록은 시험용으로만 저장돼요.</p>
+
+  <section class="card" id="setup">
+    <div class="row">
+      <div><label>방식</label><select id="mode"><option value="lesson">1:1 수업</option><option value="chat">대화하기</option></select></div>
+      <div><label>선생님</label><select id="teacher"><option>grace</option><option>daniel</option><option>chloe</option><option>ben</option><option>maya</option></select></div>
+      <div><label>목소리</label><select id="voice"><option>marin</option><option>quartz</option><option>ripple</option><option>vesper</option><option>willow</option><option>stone</option><option>gleam</option><option>meridian</option><option>beacon</option><option>delta</option><option>cinder</option><option value="noeul">noeul (한국어)</option></select></div>
+    </div>
+    <div class="row" id="lessonPick">
+      <div><label>교재</label><select id="book"></select></div>
+      <div><label>과</label><select id="lesson"></select></div>
+      <div><label>회차(Part)</label><select id="session"></select></div>
+    </div>
+    <div class="bar" style="margin-top:12px"><button id="startBtn">시작</button><span id="status">마이크 권한을 허용해 주세요.</span></div>
+  </section>
+
+  <section class="card hidden" id="screenCard">
+    <div class="bar" style="justify-content:space-between"><b id="stepLabel"></b>
+      <div class="bar"><button id="nextBtn">다음 단계</button><button class="ghost" id="endBtn">끝내기</button></div></div>
+    <div id="screen" style="margin-top:8px"></div>
+  </section>
+
+  <section class="card hidden" id="logCard"><b>대화 기록</b><div id="log"></div></section>
+
+  <section class="card hidden" id="doneCard">
+    <b>느낀 점 (선택)</b>
+    <textarea id="feedback" rows="3" placeholder="목소리, 반응 속도, 끼어들기, 지시 따르기 등"></textarea>
+    <div class="bar" style="margin-top:8px"><button id="saveFb">저장</button><span id="doneMsg"></span></div>
+  </section>
+</main>
+<audio id="remote" autoplay></audio>
+<script type="module">
+import { SUPABASE_URL, ANON_KEY } from "./config.js";
+const $ = (id) => document.getElementById(id);
+const FN = SUPABASE_URL + "/functions/v1/gpt-live-trial";
+const plain = (s) => String(s ?? "").replace(/\{\{(.+?)\}\}/g, "$1").replace(/\*(.+?)\*/g, "$1");
+const esc = (s) => plain(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]);
+
+async function token() {
+  let tk = {}; try { tk = JSON.parse(localStorage.getItem("bilody_tokens") || "{}"); } catch {}
+  if (!tk.access_token) throw new Error("bilody에 먼저 로그인해 주세요.");
+  const exp = JSON.parse(atob(tk.access_token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp * 1000;
+  if (exp - Date.now() > 120000) return tk.access_token;
+  const r = await fetch(SUPABASE_URL + "/auth/v1/token?grant_type=refresh_token", { method: "POST", headers: { apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ refresh_token: tk.refresh_token }) });
+  if (!r.ok) throw new Error("로그인이 만료됐어요. bilody를 한 번 열었다가 다시 와 주세요.");
+  const n = await r.json();
+  const next = { ...tk, ...n, expires_at_ms: (n.expires_at ?? 0) * 1000 };
+  try { localStorage.setItem("bilody_tokens", JSON.stringify(next)); } catch {}
+  return n.access_token;
+}
+async function call(body) {
+  const r = await fetch(FN, { method: "POST", headers: { Authorization: "Bearer " + await token(), apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error((j.error || r.status) + (j.detail ? " " + j.detail : ""));
+  return j;
+}
+
+// ---- 교재 고르기 ----
+const BOOKS = ["A1","A2","A3","A4","A5","A6","A7","A8","A9"];
+let bookData = null;
+$("book").innerHTML = BOOKS.map((b) => `<option>${b}</option>`).join("");
+async function loadBook() {
+  try { bookData = await (await fetch("./tb/" + $("book").value + ".json")).json(); } catch { bookData = null; }
+  $("lesson").innerHTML = (bookData?.lessons ?? []).map((l) => `<option value="${l.id}">${l.id} ${esc(l.title)}</option>`).join("");
+  loadSessions();
+}
+function loadSessions() {
+  const L = bookData?.lessons.find((l) => l.id === $("lesson").value);
+  $("session").innerHTML = (L?.sessions ?? []).map((s) => `<option value="${s.n}">Part ${s.n}</option>`).join("");
+}
+$("book").onchange = loadBook; $("lesson").onchange = loadSessions;
+$("mode").onchange = () => $("lessonPick").classList.toggle("hidden", $("mode").value !== "lesson");
+loadBook();
+
+// ---- 기록 ----
+const lines = []; let cur = null; let stepIdx = -1; let steps = [];
+function render() {
+  $("log").innerHTML = lines.map((l) => `<div class="m ${l.who}">${l.who === "teacher" ? "선생님: " : l.who === "learner" ? "나: " : ""}${esc(l.text)}</div>`).join("");
+  $("log").scrollTop = $("log").scrollHeight;
+}
+function addDelta(who, delta) {
+  if (!delta) return;
+  if (!cur || cur.who !== who) { cur = { who, text: "", step: Math.max(stepIdx, 0) }; lines.push(cur); }
+  cur.text += delta; render();
+}
+function mark(who, text) { cur = null; lines.push({ who, text, step: Math.max(stepIdx, 0) }); render(); }
+
+// ---- 화면(교재) ----
+function showStep(st) {
+  const parts = [];
+  for (const k of ["title_en", "title", "goal"]) if (typeof st[k] === "string") parts.push(`<div class="${k === "title_en" ? "t" : "ko"}">${esc(st[k])}</div>`);
+  if (st.en) parts.push(`<div class="t">${esc(st.en)}</div>`);
+  if (st.ko) parts.push(`<div class="ko">${esc(st.ko)}</div>`);
+  if (st.when) parts.push(`<div class="ko">${esc(st.when)}</div>`);
+  for (const l of st.lines ?? []) parts.push(`<div class="ln"><b>${esc(l.who?.en ?? "")}</b> ${esc(l.en)} <span class="ko">${esc(l.ko ?? "")}</span></div>`);
+  for (const it of st.items ?? []) parts.push(`<div class="ln">• ${esc(Array.isArray(it) ? it.join(" — ") : (typeof it === "string" ? it : (it.en ?? JSON.stringify(it))))}</div>`);
+  if (st.frame) parts.push(`<div class="ln">${esc(st.frame)}</div>`);
+  for (const r of st.rows ?? []) parts.push(`<div class="ln">• ${esc(Array.isArray(r) ? r.join(" / ") : JSON.stringify(r))}</div>`);
+  $("screen").innerHTML = parts.join("") || `<div class="ko">(${st.type})</div>`;
+}
+const appTeach = (t) => String(t ?? "").split("\n").filter((l) => !/^What comes next/i.test(l.trim()))
+  .map((l) => l.replace(/[^.\n]*\b(?:next_step|finish_session)\b[^.\n]*\.?/g, "").trimEnd()).join("\n").trim();
+function chunks(t, n = 1200) {
+  const out = []; let buf = "";
+  for (const line of t.split("\n")) { if ((buf + "\n" + line).length > n && buf) { out.push(buf); buf = line; } else buf = buf ? buf + "\n" + line : line; }
+  if (buf) out.push(buf);
+  return out.flatMap((c) => c.length > n ? c.match(new RegExp(`[\\s\\S]{1,${n}}`, "g")) : [c]);
+}
+let dc = null; let evn = 0;
+const send = (ev) => { if (dc?.readyState === "open") dc.send(JSON.stringify({ ...ev, event_id: "c" + (++evn) })); };
+function goStep(i) {
+  if (i >= steps.length) return;
+  stepIdx = i; const st = steps[i];
+  $("stepLabel").textContent = `${i + 1} / ${steps.length} · ${st.type}`;
+  $("nextBtn").disabled = i + 1 >= steps.length;
+  showStep(st);
+  mark("step", `${i + 1}/${steps.length} ${st.type}`);
+  const head = `Lesson step ${i + 1} of ${steps.length} (${st.type})`;
+  const parts = chunks(appTeach(st.teach) || "Continue the lesson.");
+  parts.forEach((c, k) => send({ type: "session.thinking.append", content: `${head}, plan ${k + 1}/${parts.length}:\n${c}`, delegation_id: null }));
+  if (st.type === "dialogue" && st.play) mark("app", "(장면 대사는 화면에서 읽어 주세요)");
+  const scene = st.type === "dialogue" && st.play ? " The learner has just read the scene on screen; there is no recording to play, so do not wait for one." : "";
+  send({ type: "session.instructions.append", content: `${head} is now on the learner's screen.${scene} Start this part now, following the plan you just received for it. Work only on this part.`, delegation_id: null });
+}
+
+// ---- 연결 ----
+let pc = null, trialId = null, usage = null, t0 = 0, stream = null;
+$("startBtn").onclick = async () => {
+  $("startBtn").disabled = true; $("status").textContent = "연결 중…";
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    pc = new RTCPeerConnection();
+    pc.ontrack = (e) => { $("remote").srcObject = e.streams[0]; };
+    stream.getTracks().forEach((t) => pc.addTrack(t, stream));
+    dc = pc.createDataChannel("oai-events");
+    dc.onmessage = (e) => {
+      let ev; try { ev = JSON.parse(e.data); } catch { return; }
+      if (ev.type === "session.output_transcript.delta") addDelta("teacher", ev.delta);
+      else if (ev.type === "session.input_transcript.delta") addDelta("learner", ev.delta);
+      else if (ev.type === "session.usage.updated") usage = ev.usage;
+      else if (ev.type === "session.closed") { usage = ev.usage ?? usage; finish(); }
+      else if (ev.type === "error") { mark("app", "(오류: " + (ev.error?.message || ev.error?.code) + ")"); }
+    };
+    dc.onopen = () => {
+      $("status").textContent = "연결됐어요. 말씀하세요.";
+      if ($("mode").value === "lesson") goStep(0);
+    };
+    const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+    await new Promise((ok) => { if (pc.iceGatheringState === "complete") ok(); else { pc.onicegatheringstatechange = () => pc.iceGatheringState === "complete" && ok(); setTimeout(ok, 3000); } });
+    const body = { action: "start", mode: $("mode").value, teacher: $("teacher").value, voice: $("voice").value, sdp: pc.localDescription.sdp };
+    if (body.mode === "lesson") Object.assign(body, { book: $("book").value, lesson: $("lesson").value, session: Number($("session").value) });
+    const r = await call(body);
+    trialId = r.id; t0 = Date.now();
+    if (body.mode === "lesson") {
+      const L = bookData.lessons.find((l) => l.id === body.lesson);
+      steps = (L.sessions.find((s) => s.n === body.session) ?? L.sessions[0]).steps;
+    }
+    await pc.setRemoteDescription({ type: "answer", sdp: r.sdp });
+    $("setup").classList.add("hidden"); $("logCard").classList.remove("hidden"); $("screenCard").classList.remove("hidden");
+    if (body.mode !== "lesson") { $("nextBtn").classList.add("hidden"); $("stepLabel").textContent = "대화하기"; $("screen").innerHTML = ""; }
+    setInterval(() => trialId && call({ action: "save", id: trialId, transcript: lines, usage, ms: Date.now() - t0 }).catch(() => {}), 30000);
+  } catch (e) {
+    $("status").textContent = "연결하지 못했어요: " + e.message; $("startBtn").disabled = false;
+    try { pc?.close(); stream?.getTracks().forEach((t) => t.stop()); } catch {}
+  }
+};
+$("nextBtn").onclick = () => goStep(stepIdx + 1);
+let finished = false;
+$("endBtn").onclick = () => { $("endBtn").disabled = true; $("nextBtn").disabled = true; send({ type: "session.close" }); setTimeout(finish, 8000); };
+async function finish() {
+  if (finished) return; finished = true;
+  try { pc?.close(); stream?.getTracks().forEach((t) => t.stop()); } catch {}
+  $("screenCard").classList.add("hidden"); $("doneCard").classList.remove("hidden");
+  $("doneMsg").textContent = "저장 중…";
+  try { const r = await call({ action: "save", id: trialId, transcript: lines, usage, ms: Date.now() - t0, final: true }); $("doneMsg").textContent = `저장했어요. 목소리 비용 약 ${Math.round((r.voice_usd ?? 0) * 1400)}원${r.status === "grading" ? " · 채점 중" : ""}`; }
+  catch (e) { $("doneMsg").textContent = "저장하지 못했어요: " + e.message; }
+}
+$("saveFb").onclick = async () => {
+  try { await call({ action: "save", id: trialId, transcript: lines, usage, ms: Date.now() - t0, feedback: $("feedback").value, final: true }); $("doneMsg").textContent = "느낀 점까지 저장했어요."; }
+  catch (e) { $("doneMsg").textContent = "저장하지 못했어요: " + e.message; }
+};
+</script>
+</body>
+</html>
