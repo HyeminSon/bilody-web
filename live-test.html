@@ -35,6 +35,14 @@
   <h1>GPT-Live 시험</h1>
   <p class="sub">운영자 전용 시험 페이지예요. 실제 bilody 앱과는 별개이고, 기록은 시험용으로만 저장돼요.</p>
 
+  <section class="card" id="voices">
+    <b>GPT-Live 목소리 고르기</b>
+    <p class="sub" style="margin:4px 0 8px">듣기를 누르면 고른 선생님 이름으로 견본 문장을 읽어요(한 번에 약 20원). 한 번 들은 목소리는 다시 들어도 돈이 들지 않아요. ‘이 목소리로’를 누르면 <a href="live.html">GPT-Live 시험판</a> 수업에서 그 선생님이 이 목소리를 써요. 목소리마다 값은 같아요.</p>
+    <div class="row"><div><label>선생님</label><select id="vTeacher"><option value="grace">Grace (시애틀, 여)</option><option value="daniel">Daniel (시카고, 남)</option><option value="chloe">Chloe (토론토, 여)</option><option value="ben">Ben (보스턴, 남)</option><option value="maya">Maya (애틀랜타, 여)</option></select></div>
+      <div><label>지금 쓰는 목소리</label><div id="vNow" style="padding:8px 2px;font-weight:600"></div></div></div>
+    <div id="vList" style="margin-top:8px"></div>
+    <div id="vMsg" class="sub" style="margin-top:6px"></div>
+  </section>
   <section class="card" id="setup">
     <div class="row">
       <div><label>방식</label><select id="mode"><option value="lesson">1:1 수업</option><option value="chat">대화하기</option></select></div>
@@ -221,6 +229,57 @@ $("saveFb").onclick = async () => {
   try { await call({ action: "save", id: trialId, transcript: lines, usage, ms: Date.now() - t0, feedback: $("feedback").value, final: true }); $("doneMsg").textContent = "느낀 점까지 저장했어요."; }
   catch (e) { $("doneMsg").textContent = "저장하지 못했어요: " + e.message; }
 };
+// ---- 목소리 고르기(11/21): 견본을 한 번 듣고 녹음해 두면 다시 들을 때는 무료 ----
+const VOICES = [["marin","기본 목소리(지난 시험에서 쓴 것)"],["gleam","북미, 여, 자연"],["meridian","북미, 남, 자연"],["delta","미국 남부, 여, 합성"],["cinder","미국 남부, 남, 합성"],["willow","아일랜드, 여, 자연"],["stone","아일랜드, 남, 자연"],["vesper","영국, 남, 자연"],["quartz","호주, 여, 합성"],["ripple","호주, 남, 자연"],["beacon","필리핀, 남, 합성"],["noeul","한국어, 여, 자연"],["cedar","목록에 없음(되는지 확인용)"]];
+const DEF = { grace: "marin", daniel: "meridian", chloe: "gleam", ben: "cinder", maya: "delta" };
+const NAMES = { grace: "Grace", daniel: "Daniel", chloe: "Chloe", ben: "Ben", maya: "Maya" };
+const clips = {};
+const getV = (t) => { try { return localStorage.getItem("bilody_live_voice_" + t) || DEF[t]; } catch { return DEF[t]; } };
+const sampleFor = (t) => `Hi, I'm ${NAMES[t]}. Nice to meet you! Today we'll learn how to ask someone's name. 오늘은 이름을 묻고 답하는 표현을 배워 볼 거예요. Say it with me: "What's your name?"`;
+function renderVoices() {
+  const t = $("vTeacher").value, cur = getV(t);
+  $("vNow").textContent = cur + (cur === DEF[t] ? " (기본)" : "");
+  $("vList").innerHTML = VOICES.map(([v, d]) => `<div class="bar" style="justify-content:space-between;border-top:1px solid var(--line);padding:6px 0"><span><b>${v}</b> <span class="sub" style="font-size:12px">${d}</span>${clips[t + v] ? ' <span class="sub" style="font-size:12px">· 녹음됨</span>' : ""}</span><span class="bar"><button class="ghost" data-play="${v}">${clips[t + v] ? "다시 듣기" : "듣기"}</button><button ${v === cur ? "disabled" : ""} data-use="${v}">${v === cur ? "쓰는 중" : "이 목소리로"}</button></span></div>`).join("");
+}
+$("vTeacher").onchange = renderVoices;
+$("vList").onclick = async (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  const t = $("vTeacher").value;
+  if (b.dataset.use) { try { localStorage.setItem("bilody_live_voice_" + t, b.dataset.use); } catch {} $("vMsg").textContent = `${NAMES[t]} 선생님 목소리를 ${b.dataset.use}(으)로 바꿨어요. GPT-Live 시험판에서 다음 수업부터 써요.`; renderVoices(); return; }
+  const v = b.dataset.play, key = t + v;
+  if (clips[key]) { new Audio(clips[key]).play(); return; }
+  document.querySelectorAll("#vList button").forEach((x) => x.disabled = true);
+  $("vMsg").textContent = `${v} 목소리를 불러오는 중…`;
+  try { clips[key] = await audition(v, sampleFor(t)); $("vMsg").textContent = `${v} 견본을 들었어요.`; }
+  catch (err) { $("vMsg").textContent = `${v}: 들려주지 못했어요 (${err.message})`; }
+  renderVoices();
+};
+async function audition(voice, sample) {
+  const ac = new AudioContext(); const dst = ac.createMediaStreamDestination(); const g = ac.createGain(); g.gain.value = 0; const o = ac.createOscillator(); o.connect(g); g.connect(dst); o.start();
+  const pc = new RTCPeerConnection(); pc.addTrack(dst.stream.getAudioTracks()[0], dst.stream);
+  const dc = pc.createDataChannel("oai-events");
+  const el = new Audio(); el.autoplay = true;
+  let rec = null; const parts = []; let got = 0, last = 0;
+  pc.ontrack = (e) => { el.srcObject = e.streams[0]; el.play().catch(() => {}); try { rec = new MediaRecorder(e.streams[0]); rec.ondataavailable = (x) => x.data.size && parts.push(x.data); rec.start(250); } catch {} };
+  dc.onopen = () => dc.send(JSON.stringify({ type: "session.instructions.append", content: "Start now: read the sample out loud once, exactly as written.", delegation_id: null }));
+  dc.onmessage = (m) => { try { const ev = JSON.parse(m.data); if (ev.type === "session.output_transcript.delta") { got++; last = Date.now(); } } catch {} };
+  const offer = await pc.createOffer(); await pc.setLocalDescription(offer);
+  await new Promise((ok) => { if (pc.iceGatheringState === "complete") ok(); else { pc.onicegatheringstatechange = () => pc.iceGatheringState === "complete" && ok(); setTimeout(ok, 3000); } });
+  const r = await fetch(SUPABASE_URL + "/functions/v1/gpt-live-voice", { method: "POST", headers: { Authorization: "Bearer " + await token(), apikey: ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ voice, sample, sdp: pc.localDescription.sdp }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.sdp) { pc.close(); ac.close(); throw new Error(j.error || r.status); }
+  await pc.setRemoteDescription({ type: "answer", sdp: j.sdp });
+  const t0 = Date.now();
+  await new Promise((ok) => { const iv = setInterval(() => { const n = Date.now(); if ((got && n - last > 2500) || n - t0 > 30000) { clearInterval(iv); ok(); } }, 200); });
+  await new Promise((ok) => setTimeout(ok, 600));
+  try { dc.send(JSON.stringify({ type: "session.close" })); } catch {}
+  if (rec && rec.state !== "inactive") { await new Promise((ok) => { rec.onstop = ok; rec.stop(); }); }
+  pc.close(); ac.close();
+  if (!got) throw new Error("소리가 오지 않음");
+  return parts.length ? URL.createObjectURL(new Blob(parts, { type: parts[0].type || "audio/webm" })) : null;
+}
+renderVoices();
+if (location.hash === "#voices") $("voices").scrollIntoView();
 </script>
 </body>
 </html>
