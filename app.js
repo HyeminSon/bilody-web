@@ -1237,7 +1237,15 @@ app.addEventListener("click", async (e) => {
       player.unlock(); const c = byId(v || p?.character);
       if (S.previewing) break;
       S.previewing = c.id; render();
-      try { const s = await api.say(c.selfIntro ?? "Hi! I'm so happy to see you.", c.voice, pref.get("speed", 1), null, true); player.setVolume(pref.get("volume", 1)); await player.play(s.pcm, s.rate); }
+      try {
+        // 0.8.13: 그레이스·대니얼은 대화 목소리(GPT-Live)로 미리 녹음해 둔 자기소개를 들려준다(대화할 때와 같은 목소리)
+        if (LIVE_CHAT.has(c.id)) {
+          const b = await fetch(`voice/intro_${c.id}.mp3?v=1`).then((r) => { if (!r.ok) throw new api.ApiError("network", r.status); return r.arrayBuffer(); });
+          const ab = await new Promise((ok, no) => player.ctx.decodeAudioData(b, ok, no)); const f = ab.getChannelData(0);
+          const pcm = new Int16Array(f.length); for (let i = 0; i < f.length; i++) pcm[i] = Math.max(-1, Math.min(1, f[i])) * 32767;
+          player.setVolume(pref.get("volume", 1)); await player.play(pcm, ab.sampleRate);
+        } else { const s = await api.say(c.selfIntro ?? "Hi! I'm so happy to see you.", c.voice, pref.get("speed", 1), null, true); player.setVolume(pref.get("volume", 1)); await player.play(s.pcm, s.rate); }
+      }
       catch (err) { toast(api.errText(err)); }
       S.previewing = null; render();
       break;
