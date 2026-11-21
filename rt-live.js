@@ -175,9 +175,15 @@ export class LiveChat extends Chat {
       const text = (it.content ?? []).map((c) => c.text ?? "").join(" ").trim();
       if (it.type === "message" && it.role === "system" && text) { this.notesBuf.push(text); this.queueFlush(); }
       else if (it.type === "message" && it.role === "user" && text) { this.notesBuf.push(`(The learner typed this instead of speaking: ${text})`); this.queueFlush(); }
-      return true;   // function_call_output·assistant 고치기는 GPT-Live에 없음
+      // 도구 결과(사진·글 카드·찾아보기·단어 표시)는 위임받은 도우미 모델에게 돌려주고 이어서 하게 한다(도우미가 선생님에게 결과를 알림)
+      if (it.type === "function_call_output") {
+        this.raw({ type: "response.item.create", item: { type: "function_call_output", call_id: it.call_id, output: String(it.output ?? "{}") } });
+        this.raw({ type: "response.create" });
+        this.swallowCreate = true; queueMicrotask(() => { this.swallowCreate = false; });
+      }
+      return true;   // assistant 고치기는 GPT-Live에 없음
     }
-    if (t === "response.create") { this.speakWanted = true; this.queueFlush(); return true; }
+    if (t === "response.create") { if (this.swallowCreate) return true; this.speakWanted = true; this.queueFlush(); return true; }
     if (t === "response.cancel" || t === "conversation.item.delete" || t === "session.update") return true;
     return this.raw(obj);
   }
@@ -204,11 +210,23 @@ export class LiveChat extends Chat {
     switch (ev.type) {
       case "session.input_transcript.delta": this.learnerDelta(String(ev.delta ?? "")); break;
       case "session.output_transcript.delta": this.teacherDelta(String(ev.delta ?? "")); break;
+      case "response.event": this.delegated(ev); break;
       case "session.usage.updated": this.liveUsage = ev.usage ?? this.liveUsage; break;
       case "session.closed": this.liveUsage = ev.usage ?? this.liveUsage; if (this.pc && !this.closed) this.lost(); break;
       case "error": this.log("rt_error", { code: ev.error?.code ?? "error", msg: String(ev.error?.message ?? "").slice(0, 160), live: true }); break;
       default: break;
     }
+  }
+
+  /** 11/21: 선생님이 도우미에게 맡긴 일(사진·글 카드·찾아보기·단어 표시). 도우미가 도구를 부르면 지금 앱과 같은 코드(runTool·runLessonTool)로 실행한다. */
+  delegated(ev) {
+    const e = ev.event ?? {};
+    if (e.type === "response.output_item.done" && e.item?.type === "function_call") {
+      const c = { callId: e.item.call_id, name: e.item.name, args: e.item.arguments ?? "{}", at: Date.now(), r: this.resp, withText: true };
+      this.log("live_tool", { name: c.name, args: String(c.args).slice(0, 120) });
+      if (this.lesson && ["highlight_word", "highlight_line", "change_study_way"].includes(c.name)) this.runLessonTool(c);
+      else this.runTool(c);
+    } else if (e.type === "error" || e.type === "response.failed") this.log("live_tool_error", { type: e.type, msg: String(e.error?.message ?? e.response?.error?.message ?? "").slice(0, 160) });
   }
 
   learnerDelta(d) {
