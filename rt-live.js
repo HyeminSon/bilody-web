@@ -7,7 +7,7 @@
 //  - 차례 판단: GPT-Live는 ‘말 끝’ 신호가 없다. 선생님 말은 받아쓰기가 0.9초 멈추고 소리가 0.7초 조용하면 끝, 학습자 말은 받아쓰기가 1.2초 멈추면 끝으로 본다.
 //  - 선생님 목소리는 GPT-Live 소리를 그대로 튼다(문장별 안전검사·한국어 거르기·군말 지우기는 할 수 없음: 이미 소리로 나간 뒤라서).
 //  - 장면 재생 중에는 선생님 소리를 끄고 그동안 받아쓰기는 버린다.
-import { Chat } from "./rt.js?v=0.8.15";
+import { Chat } from "./rt.js?v=0.8.19";
 import * as api from "./api.js?v=0.8.11";
 import { SUPABASE_URL, ANON_KEY } from "./config.js?v=0.8.11";
 import { takeSentences, lastQuote, wantsText } from "./text.js?v=0.8.11";
@@ -293,6 +293,16 @@ export class LiveChat extends Chat {
     r.played.push(s);
     this.recentFriend = (this.recentFriend + " " + s).slice(-400);
     if (this.lesson && this.appLed && this.rp?.step === this.lessonStep) this.rpSpeakHi(s, r);
+    // 11/22 20:07 실장님(앱 LiveController와 같음): 대화하기는 영어로만 — 한국어가 나오면 바로 영어로만 말하라고 알린다(대답마다 한 번)
+    if (!this.lesson && r.koNoted !== true && /[가-힣]/.test(s)) { r.koNoted = true; this.noteKorean(s); }
+  }
+  /** 대화하기는 영어로만. 선생님 말에 한글이 나오면 다음 문장부터 영어로만 말하라고 조용히 알린다(두 번째부터 더 세게). */
+  noteKorean(s) {
+    this.koreanCount = (this.koreanCount ?? 0) + 1;
+    this.log("live_korean", { n: this.koreanCount, text: String(s).slice(0, 60) });
+    this.raw({ type: "session.thinking.append", delegation_id: null, content: this.koreanCount === 1
+      ? "Note from the app: you just spoke Korean. In this free conversation you speak English only, even if the learner speaks Korean or asks for Korean. From your next sentence on, use simple English only. If the learner needs a meaning, use easier English words or a word card; the card shows the Korean."
+      : "IMPORTANT note from the app: you spoke Korean again. Never say any Korean words or sentences in this conversation, not even to translate or explain. Speak only simple English from now on." });
   }
   endTeacher() {
     const r = this.resp; if (!r?.live || r.done) return;

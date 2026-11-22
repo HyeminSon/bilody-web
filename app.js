@@ -5,8 +5,8 @@ import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartn
 import * as L9 from "./lesson09.js?v=0.8.14";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
-import { Chat } from "./rt.js?v=0.8.18";
-import { LiveChat } from "./rt-live.js?v=0.8.17";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
+import { Chat } from "./rt.js?v=0.8.19";
+import { LiveChat } from "./rt-live.js?v=0.8.19";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";

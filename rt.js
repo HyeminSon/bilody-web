@@ -522,13 +522,19 @@ export class Chat {
     }
   }
   afterReplyNotes() {
-    if (this.story || this.lesson || this.quiet) return;   // 0.8.4 처음 이야기·0.8.18 질문하기에서는 고쳐 주지 않는다
+    if (this.story || this.lesson) return;
+    // 0.8.19: 질문하기(벤)·수준 확인에서도 사진·글 카드를 띄운 뒤 나머지 대답은 이어서 하게 한다(전에는 여기서 빠져나가 대답이 끊겼음)
+    if (this.quiet) { this.announceLater(); return; }   // 0.8.4 처음 이야기·0.8.18 질문하기에서는 고쳐 주지 않는다
     if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
       this.correctionNoted = true;
       this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",
         text: "Note from the app: there has been no correction for a few turns. In your next reply, if the learner made a clear mistake recently, give one practice correction (for a question or request: answer first, then the By the way tip). Choose a mistake they have made more than once first. If there is no clear mistake, just continue naturally: never correct a sentence that is already correct, and never offer a sentence that only moves a comma or a word like Recently." }] } });
       this.log("correction_nudge", {});
     }
+    this.announceLater();
+  }
+  /** 도구 결과(검색·사진·글 카드)가 대답하는 동안 들어왔으면, 지금 대답이 끝난 뒤 이어서 대답하게 한다. */
+  announceLater() {
     if (this.announceAt) setTimeout(() => {
       if (this.closed || !this.pc || !this.announceAt || !this.idleForAnnounce()) return;
       this.send({ type: "response.create" });
