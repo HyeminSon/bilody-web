@@ -6,7 +6,7 @@ import * as L9 from "./lesson09.js?v=0.8.14";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
 import { Chat } from "./rt.js?v=0.8.15";
-import { LiveChat } from "./rt-live.js?v=0.8.15";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
+import { LiveChat } from "./rt-live.js?v=0.8.17";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";
@@ -346,7 +346,7 @@ function showHelpCard(box, card, who) {
   const pics = card && !card.practice ? cardPics(card.text) : [];
   const fn = esc(who);
   box.innerHTML = card ? `<div class="card help enter" data-act="dismissCard">
-    <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.rephrased ? `${iGa(fn)} 쉽게 다시 말했어요` : `${iGa(fn)} 다시 말했어요`}</div>
+    <div class="accent tiny b">${card.chunk ? "한 부분씩 따라 말해 보세요" : card.practice ? "따라 말해 보세요" : card.said ? `${iGa(fn)} 방금 한 말` : card.rephrased ? `${iGa(fn)} 쉽게 다시 말했어요` : `${iGa(fn)} 다시 말했어요`}</div>
     <div class="help-text ${card.practice ? "big" : ""}">${highlight(card)}</div>
     ${pics.length ? `<div class="help-pics">${pics.map((x) => `<img src="${story.picUrl(x)}" alt="${esc(x)}">`).join("")}</div>` : ""}</div>` : "";
 }

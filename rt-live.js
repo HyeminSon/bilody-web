@@ -10,7 +10,7 @@
 import { Chat } from "./rt.js?v=0.8.15";
 import * as api from "./api.js?v=0.8.11";
 import { SUPABASE_URL, ANON_KEY } from "./config.js?v=0.8.11";
-import { takeSentences } from "./text.js?v=0.8.11";
+import { takeSentences, lastQuote, wantsText } from "./text.js?v=0.8.11";
 
 const FN = SUPABASE_URL + "/functions/v1/gpt-live-session";
 const TEACHER_END_MS = 900, AUDIO_QUIET_MS = 700, LEARNER_END_MS = 1200, LEVEL = 0.012;
@@ -252,7 +252,8 @@ export class LiveChat extends Chat {
     this.set({ speech: false, ...(this.resp ? {} : { state: "thinking" }) });
     if (!t) return;
     // 11/22(앱 LiveController와 같음): 선생님 목소리가 스피커에서 마이크로 되돌아와 받아쓰기된 것은 학습자 말로 남기지 않는다
-    if (this.startedWhileTeacher && this.looksLikeEcho(t)) { this.log("rt_echo", { words: t.split(" ").length, live: true }); return; }
+    // 11/22 17:31 실장님 대화: “Your turn.” 직후 따라 말한 것까지 반향으로 지웠음 → 따라 하라고 한 문장과 같으면 학습자 말로 남긴다
+    if (this.startedWhileTeacher && this.looksLikeEcho(t) && !this.isPracticeTry(t)) { this.log("rt_echo", { words: t.split(" ").length, live: true }); return; }
     // rt.js가 받아쓰기 완료를 처리하는 길을 그대로 탄다(기록·자막·단계 확인·역할 읽기 판정)
     super.onEvent({ type: "conversation.item.input_audio_transcription.completed", transcript: t });
     // 11/21 실장님 시험: 학습자가 말을 마쳤는데 선생님이 27초 넘게 아무 말도 안 함 → 7초 동안 조용하면 대답하라고 알린다(한 번)
@@ -304,8 +305,41 @@ export class LiveChat extends Chat {
       if (k !== -1) { lines.splice(k, 1); this.set({ lines }); }   // 화면 자막에서도 맞장구는 뺀다
       return;
     }
+    // 글 카드를 띄운 뒤의 짧은 대답(Here it is.)은 ‘방금 한 말’로 바꾸지 않는다
+    { const said = r.played.join(" ").trim(); if (!this.lesson && !this.keepSaid && said.split(/\s+/).length >= 4) this.lastSaid = said; }
     this.lessonPrecheck(r);
     this.onReplyPlayed(r);
+  }
+
+  /** 따라 하라고 한 문장(연습 중인 문장이나 방금 따옴표 문장)을 학습자가 말한 것인가 */
+  isPracticeTry(t) {
+    const words = (x) => String(x ?? "").toLowerCase().split(/[^a-z']+/).filter((w) => w.length > 1);
+    const h = words(t); if (h.length < 1) return false;
+    return [this.practiceTarget, lastQuote(this.recentFriend)].some((q) => {
+      const f = new Set(words(q)); return f.size >= 2 && h.filter((w) => f.has(w)).length >= h.length * 0.8;
+    });
+  }
+  /** 11/22 실장님: 대화하기(Live)에서는 앱이 ‘교정할 때 됐다’ 메모를 보내지 않는다 — 메모 직후 맞는 문장까지 고쳤음(교정은 메모 없이도 충분) */
+  afterReplyNotes() {
+    if (!this.lesson) this.correctionNoted = true;
+    super.afterReplyNotes();
+  }
+  /** 11/22 실장님: “글로 보여 줘” → 연습 중인 문장이 없으면 선생님이 방금 한 말을 앱이 바로 카드로(선생님에게 맡기면 학습자 말을 띄운 적 있음). 250자까지, 넘으면 뒤 문장 위주. */
+  noteTextAsk(t) {
+    if (!this.lesson && !this.story && wantsText(t) && !this.practiceTarget && this.lastSaid) {
+      if (this.ui.webPicture && (this.pictureTurns = (this.pictureTurns ?? 0) + 1) >= 3) this.set({ webPicture: null });
+      const ss = this.lastSaid.split(/(?<=[.!?])\s+/); let text = "";
+      for (let i = ss.length - 1; i >= 0; i--) { const n = ss[i] + (text ? " " + text : ""); if (n.length > 250 && text) break; text = n; }
+      this.keepSaid = true; this.showTextWanted = false;
+      this.set({ card: { said: true, text: text.slice(0, 250) } }); this.log("help_card", { kind: "said" });
+      return;
+    }
+    super.noteTextAsk(t);
+  }
+  updateCard(reply) {
+    // 방금 띄운 ‘선생님이 한 말’ 카드는 다음 대답(Here it is.)에 닫히지 않게 한 번 둔다
+    if (this.keepSaid) { this.keepSaid = false; if (!/["“]/.test(reply)) return; }
+    super.updateCard(reply);
   }
 
   /** 끼어들기·넘기기: GPT-Live 말을 앱이 멈출 수는 없다. 지금까지 나온 말만 기록하고 다음 말은 새 대답으로 받는다. */
