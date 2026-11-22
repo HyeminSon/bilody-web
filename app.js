@@ -5,7 +5,7 @@ import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartn
 import * as L9 from "./lesson09.js?v=0.8.14";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
-import { Chat } from "./rt.js?v=0.8.15";
+import { Chat } from "./rt.js?v=0.8.18";
 import { LiveChat } from "./rt-live.js?v=0.8.17";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
@@ -245,8 +245,9 @@ function renderChat() {
   if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
   if (S.lh) return S.lh.my ? L9.renderMyPick(S.lh.my, S.lh, esc, I) : L9.renderHome(S.lh, esc, I);
   if (S.vid) return L9.renderVideos(S.vid, esc, I);
-  const p = S.profile; const c = byId(S.chat?.placement ? S.chat.character : p?.character); const pr = S.progress;
-  const chat = S.chat; const fname = esc(S.chat?.placement ? c.ko : p?.friend_name ?? c.en);
+  const p = S.profile; const c = byId(S.chat?.placement || S.chat?.videoQa ? S.chat.character : p?.character); const pr = S.progress;
+  const chat = S.chat; const fname = esc(S.chat?.placement || S.chat?.videoQa ? c.ko : p?.friend_name ?? c.en);
+  const vq = chat?.videoQa;   // 0.8.18 동영상 강의 ‘선생님께 질문하기’
   const r = S.reminder;
   const home = !chat ? `
     <div class="streak card">
@@ -261,7 +262,8 @@ function renderChat() {
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
       <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
       ${chat?.placement ? `<p class="accent small b pl-banner">${esc(c.ko)} 선생님과 처음 이야기 · 약 5분 · 편하게 이야기해 주세요</p>` : ""}
-      <p class="ai-note">${chat?.placement ? `${eunNeun(fname)} AI 선생님이에요` : `${eunNeun(fname)} AI 친구예요`}. 대답과 목소리는 AI가 만들어요.</p>
+      ${vq ? `<p class="accent small b pl-banner">${esc(c.ko)} 선생님께 질문 · ${esc(vq.title)} ${mmss(vq.t)}</p><p class="muted small vq-tip">한국어로 편하게 물어보세요. 생각해 보면 찾을 수 있는 건 선생님이 되물어 볼 거예요. 답이 바로 필요하면 “그냥 알려 주세요”라고 하세요.</p>` : ""}
+      <p class="ai-note">${chat?.placement || vq ? `${eunNeun(fname)} AI 선생님이에요` : `${eunNeun(fname)} AI 친구예요`}. 대답과 목소리는 AI가 만들어요.</p>
       <p id="remain" class="accent tiny b"></p><p id="latency" class="ai-note"></p>
       <div id="photo"></div>
     </div>
@@ -275,7 +277,7 @@ function renderChat() {
       <button class="pill tint grow" data-act="lhOpen">${I("school")}1:1 수업</button>`}</div>
     ${chat ? "" : `<div class="controls home-content"><button class="pill media grow" data-act="vOpen">${I("smart_display")}동영상 강의</button>${S.kidsAvailable ? `<button class="pill media grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}</div>`}
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
-      ${LIVE_CHAT.has(c.id) ? "" : `<button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>`}
+      ${LIVE_CHAT.has(c.id) || vq ? "" : `<button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>`}
       <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send" autocomplete="off">
       <button class="round send" data-act="send" aria-label="보내기" disabled>${I("send")}</button>
     </div>
@@ -285,6 +287,7 @@ function renderChat() {
 }
 
 const hhmm = (h, m) => `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+const mmss = (s) => `${Math.floor((s ?? 0) / 60)}:${String(Math.floor((s ?? 0) % 60)).padStart(2, "0")}`;
 
 /** 대화 중 자주 바뀌는 부분만 고친다(글 입력칸 포커스를 지키려고 전체를 다시 그리지 않음). */
 function updateChat() {
@@ -292,7 +295,7 @@ function updateChat() {
   if (S.story) return updateStory();
   if (S.kids || S.lh) return;
   if (S.chat?.lesson) return updateStage();
-  const chat = S.chat; const u = chat?.ui; const c = byId(chat?.placement ? chat.character : S.profile?.character);
+  const chat = S.chat; const u = chat?.ui; const c = byId(chat?.placement || chat?.videoQa ? chat.character : S.profile?.character);
   const img = $("#friendImg"); if (!img) return;
   const src = animSrc(c.id, u?.state ?? "idle"); if (!img.src.endsWith(src)) img.src = src;
   $("#stLabel").textContent = u?.searching ? "찾아보는 중" : STATE_LABEL[u?.state ?? "idle"];
@@ -317,7 +320,7 @@ function updateChat() {
       $("#controls").innerHTML = `
       <button class="pill dark compact" data-act="pause" ${running ? "" : "disabled"}>${I("pause")}일시정지</button>
       <button class="pill primary compact" data-act="restart" ${u.canRestart && !running ? "" : "disabled"}>${I("refresh")}다시 시작</button>
-      <button class="pill secondary compact narrow" data-act="exit">나가기</button>
+      <button class="pill secondary compact narrow" data-act="exit">${chat.videoQa ? "영상으로" : "나가기"}</button>
       ${lessonBtn ? `<button class="pill lesson-open" data-act="lessonOpen">${I("menu_book")}${S.lesson?.paused ? "표현 익히기 이어 하기" : "표현 익히기"}</button>` : ""}`;
     }
     renderLesson();
@@ -454,13 +457,19 @@ async function openVideos() {
   if (S.vid === V) render();
 }
 /** 재생 화면은 화면 다시 그리기(render)와 따로 둔다: 영상이 다른 일로 처음부터 다시 시작하지 않게. */
-function playVideo(v) {
+// 0.8.18(11/22 실장님): 영상을 보다 ‘선생님께 질문하기’ → 영상을 멈추고 벤 선생님과 이야기. 시험 기간에는 운영자 계정만 보인다.
+const canAskVideo = (v) => S.profile?.is_staff === true && /^g/.test(String(v?.id ?? ""));
+function playVideo(v, startAt = 0) {
   closeVideo();
   if (S.chat || S.story) return;
   const box = document.createElement("div"); box.id = "vidOverlay"; box.className = "vid-overlay";
   box.innerHTML = `<div class="vid-bar"><b class="grow">${esc(v.title)}</b><button class="link vid-land" data-vland>${I("screen_rotation")}가로로 보기</button><button class="round" data-vclose aria-label="닫기">${I("close")}</button></div>
-    <video controls playsinline autoplay preload="metadata" ${v.poster ? `poster="${esc(v.poster)}"` : ""} src="${esc(v.url)}"></video>`;
+    <video controls playsinline autoplay preload="metadata" ${v.poster ? `poster="${esc(v.poster)}"` : ""} src="${esc(v.url)}"></video>
+    ${canAskVideo(v) ? `<div class="vid-ask"><button class="pill primary" data-vask>${I("record_voice_over")}선생님께 질문하기</button></div>` : ""}`;
   box.querySelector("[data-vclose]").onclick = closeVideo;
+  if (startAt > 0) box.querySelector("video").addEventListener("loadedmetadata", (e) => { try { e.target.currentTime = Math.max(0, startAt - 2); } catch { /* */ } }, { once: true });
+  const ask = box.querySelector("[data-vask]");
+  if (ask) ask.onclick = () => { const vid = box.querySelector("video"); const t = vid?.currentTime ?? 0; vid?.pause(); startVideoQa(v, t); };
   // 0.8.7(11/20 실장님): 동영상 강의는 가로로 볼 수 있게 — 전체 화면으로 키우고, 휴대폰이면 가로로 돌린다(앱과 같음)
   box.querySelector("[data-vland]").onclick = async () => {
     const vid = box.querySelector("video");
@@ -470,6 +479,21 @@ function playVideo(v) {
   document.body.appendChild(box);
 }
 function closeVideo() { const b = document.getElementById("vidOverlay"); if (b) { b.querySelector("video")?.pause(); b.remove(); try { screen.orientation?.unlock?.(); } catch { /* */ } } }
+
+async function startVideoQa(v, t) {
+  if (S.chat || chatOpening) return;
+  chatOpening = true;
+  try {
+    try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { /* */ }
+    closeVideo(); S.vid = null; S.lh = null; S.dialog = null;
+    player.unlock(); player.setVolume(pref.get("volume", 1));
+    const p = S.profile; const ben = byId("ben");
+    const chat = new Chat({ voiceId: ben.voice, speed: pref.get("speed", 1), saveTranscripts: (p?.transcript_days ?? 30) > 0, player, onChange: () => updateChat(), character: "ben",
+      videoQa: { id: v.id, t, title: v.title, v } });
+    S.chat = chat; S.lesson = null; render();
+    await chat.start();
+  } finally { chatOpening = false; }
+}
 
 async function startLesson(lessonId, session) {
   const H = S.lh; if (!H?.index || H.busy) return;   // 두 번 눌러도 한 번만
@@ -724,8 +748,10 @@ async function endChat() {
   if (c) await c.close();
   S.progress = await api.myProgress();
   // 그날 첫 대화를 마칠 때 짧은 설문(내가 한 말이 있는 대화만, 답할 때까지 하루 두 번까지)
-  if (c && !c.lesson && !c.placement && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
+  if (c && !c.lesson && !c.placement && !c.videoQa && said > 0 && checkin.day() !== today() && checkin.asks() < 2) { checkin.ask(); S.dialog = { kind: "checkin", sid, rating: 0 }; }
   render();
+  // 0.8.18: 질문하기를 마치면 멈췄던 영상으로 돌아간다(멈춘 곳부터)
+  if (c?.videoQa?.v) { await openVideos(); playVideo(c.videoQa.v, c.videoQa.t); }
 }
 
 // ---------- 마지막 설문(11/13 실장님: 1차 시험 11/17 오전 10시 종료) ----------
@@ -803,7 +829,7 @@ function renderHistory() {
   }
   // 0.8.5: 내가 한 말이 없는 기록(연결만 하고 나간 것)은 숨기고, 무엇을 누구와 했는지 보이게. ‘전부 지우기’는 맨 아래로.
   const list = S.sessions.filter((s) => S.previews[s.id]);
-  const kind = (s) => /\+placement/.test(s.app_version ?? "") ? "처음 이야기" : /\+lesson/.test(s.app_version ?? "") ? "1:1 수업" : "대화";
+  const kind = (s) => /\+placement/.test(s.app_version ?? "") ? "처음 이야기" : /\+lesson/.test(s.app_version ?? "") ? "1:1 수업" : /\+video/.test(s.app_version ?? "") ? "영상 질문" : "대화";
   const face = (id) => isTeacher(id) ? teacherImg(id) : `img/char_${byId(id).id}.webp`;
   const who = (s) => { const id = s.character ?? S.profile?.character; return isTeacher(id) ? `${byId(id).ko} 선생님` : (S.profile?.friend_name ?? byId(id).en); };
   return `<div class="list">

@@ -1,5 +1,5 @@
 // Supabase 서버와 이야기하는 부분(안드로이드 앱 Backend.kt와 같은 요청).
-import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.10";
+import { SUPABASE_URL, ANON_KEY, VERSION } from "./config.js?v=0.8.11";
 
 export class ApiError extends Error {
   constructor(code, status) { super(code); this.code = code; this.status = status; }
@@ -162,6 +162,16 @@ export async function finishSession(sessionId) { try { await fn("end-session", {
 // 0.8.4: mode "placement" = 처음 이야기(레벨 확인). 선생님이 짧게 이야기하고 앱이 시작할 Book을 추천한다.
 export const realtimeKey = (presetId, speed, character = null, lesson = null, sessionId = null, mode = null) => fn("realtime-session", {
   presetId, speed, features: ["picture", "word", ...(lesson && !/^K\d/.test(String(lesson.id ?? "")) ? ["lesson_app_led", "lesson_role_app", ...(/^MY-/.test(String(lesson.id ?? "")) ? ["study_way"] : [])] : [])], ...(character ? { character } : {}), ...(lesson ? { mode: "lesson", lesson } : mode ? { mode } : {}), ...(sessionId ? { sessionId } : {}) });
+/** 0.8.18(11/22 실장님) 동영상 강의 ‘선생님께 질문하기’: 멈춘 영상(편 id·초)으로 벤 선생님 접속 키를 받는다.
+ *  함수에 CORS가 있어 바로 부른다(web-proxy를 고치지 않으려고). 시험 기간에는 운영자 계정만(서버가 확인). */
+export async function videoQaKey(presetId, speed, sessionId, video) {
+  const res = await call(`${SUPABASE_URL}/functions/v1/video-qa-session`, {
+    method: "POST", headers: { apikey: ANON_KEY, Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ presetId, speed, sessionId, video: { id: video.id, t: Math.round((video.t ?? 0) * 10) / 10 } }),
+  });
+  if (!res.ok) throw new ApiError(await errorCode(res), res.status);
+  return res.json();
+}
 /** 0.8.4 처음 이야기 판정: { book, quote, good_ko, confidence } 또는 { failed: true } */
 export async function placementCheck(lines, sessionId) {
   try { return await fn("lesson-check", { mode: "placement", lines, session_id: sessionId ?? null }, false, 35000); }

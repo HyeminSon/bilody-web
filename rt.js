@@ -15,12 +15,14 @@ export class Chat {
    * story: 동화 듣기 중 대화(앱과 같음, 11/13). { onSpeechStart, onReplyDone, onNoise, onCue(pic), isNarrating(), pictureFor(word) }
    * 동화 모드에서는 인사·도움 카드·기록 저장·쉬는 시간 멈춤이 없고, 이용 시간은 동화 쪽이 잰다.
    */
-  constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null, character = null, lesson = null, placement = false }) {
+  constructor({ voiceId, speed, saveTranscripts, player, onChange, presetId = PRESET, sessionId = null, story = null, character = null, lesson = null, placement = false, videoQa = null }) {
     this.voiceId = voiceId; this.speed = speed; this.saveTranscripts = saveTranscripts;
     // 0.9 1:1 수업: lesson = lesson09.js의 run(교재 한 회차). character = 대화 상대(선생님이면 선생님 말투)
     this.character = character; this.lesson = lesson; this.lessonStep = -1; this.lessonSaid = 0;
     // 0.8.4 처음 이야기(레벨 확인): 선생님과 짧게 이야기하고, 끝내는 때는 앱이 정한다(placementDone). 끝나면 onPlacementDone(오간 말)
     this.placement = !!placement; this.plLog = []; this.plStart = 0; this.plWrap = null; this.plWrapRid = null;
+    // 0.8.18 동영상 강의 ‘선생님께 질문하기’: videoQa = { id, t, title }. 벤 선생님이 한국어로 답하므로 한국어를 거르지 않고, 친구 대화의 고쳐 주기·연습 유도는 하지 않는다.
+    this.videoQa = videoQa; this.quiet = this.placement || !!videoQa;
     // 0.9.12: 어른 수업은 앱이 넘기기를 맡는다(선생님에게 next_step을 주지 않음, 서버에 lesson_app_led로 알림). 어린이 수업은 그대로.
     this.appLed = false;   // 서버가 받아들였을 때(key.appLed)만 켠다
 
@@ -57,9 +59,10 @@ export class Chat {
     let stream = null, pc = null;
     const abandon = () => { stream?.getTracks().forEach((t) => t.stop()); try { pc?.close(); } catch { /* */ } };
     try {
-      if (!this.sessionId) this.sessionId = await api.startSession(this.presetId, this.lesson ? "+lesson" : this.placement ? "+placement" : "");
+      if (!this.sessionId) this.sessionId = await api.startSession(this.presetId, this.lesson ? "+lesson" : this.placement ? "+placement" : this.videoQa ? "+video" : "");
       if (stale()) return abandon();
-      const key = await api.realtimeKey(this.presetId, this.speed, this.character, this.lesson?.info ?? null, this.sessionId, this.placement ? "placement" : null);
+      const key = this.videoQa ? await api.videoQaKey(this.presetId, this.speed, this.sessionId, this.videoQa)
+        : await api.realtimeKey(this.presetId, this.speed, this.character, this.lesson?.info ?? null, this.sessionId, this.placement ? "placement" : null);
       if (this.placement && !this.plStart) this.plStart = Date.now();
       if (stale()) return abandon();
       if (key.voice) this.voiceId = key.voice;
@@ -292,7 +295,7 @@ export class Chat {
   enqueue(r, sentence) {
     if (r.epoch !== this.epoch) return;
     // 11/15 실장님: 친구가 한국어로 말하는 일은 절대 없어야 함 → 한글이 든 문장은 소리로 내지 않는다(대답 전체가 버려지면 영어로 다시 청함)
-    if (!this.story && !this.placement && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; r.lost = true; this.log("ko_blocked", { len: sentence.length }); return; }
+    if (!this.story && !this.quiet && !this.lesson?.koreanOk && /[\u3131-\u318E\uAC00-\uD7A3]/.test(sentence)) { r.koDropped = (r.koDropped ?? 0) + 1; r.lost = true; this.log("ko_blocked", { len: sentence.length }); return; }
     // 0.8.2: 앱이 넘기는 방식에서는 예고 문장을 지우지 않고 기록만 한다(도구가 없어 건너뛸 일이 없고, 질문·지시가 든 문장까지 지워졌음)
     // 수업 자체를 말하는 문장(“Let me think…”, “keep us moving”)은 앱 방식에서도 지운다.
     const meta = this.lesson && !this.story && isMetaTalk(sentence, this.lesson.steps?.[this.lessonStep]?.teach);   // 교재에 있는 문장(“I’ll think about it.”)은 지우지 않는다
@@ -301,7 +304,7 @@ export class Chat {
       this.log("preamble_cut", { text: sentence.slice(0, 120), kept: !cut }); if (cut) return;
     }
     // 0.8.12(11/20 실장님 시험): 이미 맞게 한 말을 ‘고쳐’ 주는 문장은 짧은 확인으로 바꾸고, 뒤따르는 따라 하기 요청은 내지 않는다
-    if (!this.story && !this.placement) {
+    if (!this.story && !this.quiet) {
       if (r.sameFix && PRACTICE_ASK.test(sentence) && !/["“”]/.test(sentence)) { this.log("same_fix_cut", { ask: true }); return; }
       if (sameFix(sentence, (this.heard ?? []).filter((h) => Date.now() - h.at < 90000).map((h) => h.t))) { r.sameFix = true; this.log("same_fix_cut", {}); sentence = "Yes, that's right."; }
     }
@@ -371,7 +374,7 @@ export class Chat {
       return;
     }
     // 0.8.5(11/19 실장님): 1:1 수업에서도 따라 말할 문장 카드를 띄운다
-    if (!this.story && !this.placement) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
+    if (!this.story && !this.quiet) { if (r.blocked) this.set({ card: null }); else this.updateCard(r.played.join(" ")); }
     this.resp = null;
     if (!this.greeted) this.openMic();
     if (this.pc) this.set({ state: "listening" });
@@ -389,7 +392,7 @@ export class Chat {
     if (!complete || played !== r.text.trim()) this.fixServerContext(r, played);
     if (played) this.persist("assistant", played);
     if (played && this.lesson && !this.story) this.stepLog.push({ who: "teacher", text: played + (complete ? "" : " …") });
-    if (played && !this.story && !this.lesson && !this.placement) { this.trackPractice(played); this.noteCorrection(played); this.noteQuestion(played); }
+    if (played && !this.story && !this.lesson && !this.quiet) { this.trackPractice(played); this.noteCorrection(played); this.noteQuestion(played); }
     if (this.placement) this.placementReplied(r, played, complete);
     this.closeAssistantLine(!complete);
   }
@@ -519,7 +522,7 @@ export class Chat {
     }
   }
   afterReplyNotes() {
-    if (this.story || this.lesson || this.placement) return;   // 0.8.4 처음 이야기에서는 고쳐 주지 않는다
+    if (this.story || this.lesson || this.quiet) return;   // 0.8.4 처음 이야기·0.8.18 질문하기에서는 고쳐 주지 않는다
     if ((this.learnerTurns ?? 0) >= 3 && !this.correctionNoted) {
       this.correctionNoted = true;
       this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text",

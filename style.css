@@ -579,3 +579,7 @@ button.pl-line:active { transform: scale(.98); }
 .way-chip:active { transform: scale(0.96); }
 .my-way input { width: 100%; box-sizing: border-box; min-height: 44px; border: 1.5px solid #D9CCF3; border-radius: 12px; padding: 10px 12px; font-size: 15px; font-family: inherit; color: var(--plum); background: #FBF9FF; }
 .my-way input:focus { outline: none; border-color: var(--purple); background: #fff; }
+/* 0.8.18 동영상 강의 ‘선생님께 질문하기’ */
+.vid-ask { display: flex; justify-content: center; padding: 10px 12px calc(12px + env(safe-area-inset-bottom)); }
+.vid-ask .pill { min-width: 220px; }
+.vq-tip { text-align: center; margin: 4px 12px 0; }
