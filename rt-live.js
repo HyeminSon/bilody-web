@@ -7,7 +7,7 @@
 //  - 차례 판단: GPT-Live는 ‘말 끝’ 신호가 없다. 선생님 말은 받아쓰기가 0.9초 멈추고 소리가 0.7초 조용하면 끝, 학습자 말은 받아쓰기가 1.2초 멈추면 끝으로 본다.
 //  - 선생님 목소리는 GPT-Live 소리를 그대로 튼다(문장별 안전검사·한국어 거르기·군말 지우기는 할 수 없음: 이미 소리로 나간 뒤라서).
 //  - 장면 재생 중에는 선생님 소리를 끄고 그동안 받아쓰기는 버린다.
-import { Chat } from "./rt.js?v=0.8.11";
+import { Chat } from "./rt.js?v=0.8.15";
 import * as api from "./api.js?v=0.8.11";
 import { SUPABASE_URL, ANON_KEY } from "./config.js?v=0.8.11";
 import { takeSentences } from "./text.js?v=0.8.11";
@@ -238,6 +238,7 @@ export class LiveChat extends Chat {
     if (this.ui.lessonScene) return;   // 장면 중(마이크 꺼짐)에 들어온 것은 버린다
     const now = Date.now();
     if (!this.lAcc) {
+      this.startedWhileTeacher = !!this.resp || now - this.lastAudioAt < 400;   // 11/22: 앱과 같게 반향 거르기
       this.lastSpeechStart = now; clearTimeout(this.idleTimer); clearTimeout(this.quietTimer); this.onSpeechStart?.();
       const ko = this.lesson ? KO_NOW(Number(this.lesson.info?.book ?? 9)) : "";
       if (ko && this.lessonStep >= 0) this.raw({ type: "session.thinking.append", content: "Reminder for your next reply. " + ko, delegation_id: null });
@@ -250,6 +251,8 @@ export class LiveChat extends Chat {
     this.tSpeechStopped = Date.now();
     this.set({ speech: false, ...(this.resp ? {} : { state: "thinking" }) });
     if (!t) return;
+    // 11/22(앱 LiveController와 같음): 선생님 목소리가 스피커에서 마이크로 되돌아와 받아쓰기된 것은 학습자 말로 남기지 않는다
+    if (this.startedWhileTeacher && this.looksLikeEcho(t)) { this.log("rt_echo", { words: t.split(" ").length, live: true }); return; }
     // rt.js가 받아쓰기 완료를 처리하는 길을 그대로 탄다(기록·자막·단계 확인·역할 읽기 판정)
     super.onEvent({ type: "conversation.item.input_audio_transcription.completed", transcript: t });
     // 11/21 실장님 시험: 학습자가 말을 마쳤는데 선생님이 27초 넘게 아무 말도 안 함 → 7초 동안 조용하면 대답하라고 알린다(한 번)

@@ -480,12 +480,12 @@ export class Chat {
     } else if (c.name === "show_word") {
       // 11/15 실장님: 형용사·동사처럼 그림이 안 맞는 말은 뜻을 글 카드로(한국어 뜻은 화면에만, 친구 목소리는 영어만)
       const clip = (x, n) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, n);
-      const word = clip(args.word, 40);
+      const word = clip(args.word, 120);   // 11/22: 문장도 띄운다(글로 보여 달라고 하거나 못 알아들을 때)
       if (word && !this.closed) {
         const seq = (this.ui.webPicture?.seq ?? 0) + 1;
-        this.set({ webPicture: { kind: "word", word, meaning: clip(args.meaning_ko, 60), example: clip(args.example_en, 90), exampleKo: clip(args.example_ko, 90), seq } });
+        this.set({ webPicture: { kind: "word", word, meaning: clip(args.meaning_ko, 120), example: clip(args.example_en, 90), exampleKo: clip(args.example_ko, 90), seq } });
         this.pictureTurns = 0; this.closePictureLater(seq);
-        this.addLine("assistant", `[${word}] ${clip(args.meaning_ko, 60)}`, false);
+        this.addLine("assistant", `[${word}] ${clip(args.meaning_ko, 120)}`, false);
         output = { shown: true, kind: "word_card", note: "A word card (not a picture) is now on the screen. Do not call it a picture." };
       } else output = { shown: false };
       this.log("word_card", { word });

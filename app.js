@@ -5,8 +5,8 @@ import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartn
 import * as L9 from "./lesson09.js?v=0.8.14";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
-import { Chat } from "./rt.js?v=0.8.11";
-import { LiveChat } from "./rt-live.js?v=0.8.12d";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
+import { Chat } from "./rt.js?v=0.8.15";
+import { LiveChat } from "./rt-live.js?v=0.8.15";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";
@@ -275,7 +275,7 @@ function renderChat() {
       <button class="pill tint grow" data-act="lhOpen">${I("school")}1:1 수업</button>`}</div>
     ${chat ? "" : `<div class="controls home-content"><button class="pill media grow" data-act="vOpen">${I("smart_display")}동영상 강의</button>${S.kidsAvailable ? `<button class="pill media grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}</div>`}
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
-      <button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>
+      ${LIVE_CHAT.has(c.id) ? "" : `<button class="round lilac" data-act="photo" aria-label="사진 보여 주기">${I("add_a_photo")}</button>`}
       <input id="say" placeholder="글로 말하기" maxlength="300" enterkeyhint="send" autocomplete="off">
       <button class="round send" data-act="send" aria-label="보내기" disabled>${I("send")}</button>
     </div>
@@ -360,7 +360,7 @@ function showWebPic(box, wp) {
   if (!wp && old) {   // 닫힐 때: 살짝 위로 사라진 뒤 지운다
     old.classList.add("leave"); setTimeout(() => { if (box.dataset.key === "") box.innerHTML = ""; }, 220);
   } else if (wp?.kind === "word") box.innerHTML = `<div class="card wordcard enter" data-act="dismissWebPicture">
-    <div class="accent tiny b">단어 뜻</div><div class="wc-word">${esc(wp.word)}</div>${wp.meaning ? `<div class="wc-mean">${esc(wp.meaning)}</div>` : ""}
+    <div class="accent tiny b">${wp.word.split(" ").length >= 4 ? "문장" : "단어 뜻"}</div><div class="wc-word"${wp.word.length > 24 ? ' style="font-size:20px"' : ""}>${esc(wp.word)}</div>${wp.meaning ? `<div class="wc-mean">${esc(wp.meaning)}</div>` : ""}
     ${wp.example ? `<div class="wc-ex">${esc(wp.example)}${wp.exampleKo ? `<span>${esc(wp.exampleKo)}</span>` : ""}</div>` : ""}</div>`;
   else box.innerHTML = wp ? `<div class="card webpic enter"><img src="${esc(wp.url)}" alt="${esc(wp.word)}" data-act="dismissWebPicture">
     <div class="webpic-row"><b>${esc(wp.word)}</b><a href="${esc(wp.pageUrl)}" target="_blank" rel="noopener">${esc(wp.photographer ? `Photo: ${wp.photographer} · ${wp.source}` : wp.source)}</a></div></div>` : "";
