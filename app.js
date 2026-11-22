@@ -1,8 +1,8 @@
 // bilody 웹 시험판(아이폰 Safari용). 안드로이드 앱과 같은 서버·계정·친구·기억을 쓴다.
 import * as api from "./api.js?v=0.8.11";
 import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.11";
-import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartner, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.13";
-import * as L9 from "./lesson09.js?v=0.8.13";
+import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartner, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.14";
+import * as L9 from "./lesson09.js?v=0.8.14";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
 import { Chat } from "./rt.js?v=0.8.11";
@@ -852,7 +852,7 @@ function renderSettings() {
   const fname = p.friend_name ?? c.en;
   return `<div class="list">
     ${section("friend", "대화 상대", `${c.teacher ? `${c.ko} 선생님` : `${c.ko} · 이름 ${fname}`} · 속도 ${speed.toFixed(1)}배`, "face", `
-      <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있어요. 상대마다 나와 나눈 이야기만 따로 기억하고, 바꿔도 지금까지의 기억과 기록은 지워지지 않아요. 1:1 수업 선생님은 수업 화면에서 따로 골라요.</p>
+      <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있어요. 상대마다 나와 나눈 이야기만 따로 기억하고, 바꿔도 지금까지의 기억과 기록은 지워지지 않아요. 1:1 수업 선생님은 아래 ‘1:1 수업 선생님’에서 따로 골라요.</p>
       ${charPicker(c.id)}
       <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview" data-v="${c.id}" ${S.previewing ? "disabled" : ""}>${S.previewing === c.id ? "자기소개 하는 중…" : "▶ 자기소개 듣기"}</button></div>
       ${c.teacher ? "" : `<div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
@@ -862,6 +862,7 @@ function renderSettings() {
       <p class="muted small">1.0배가 보통 원어민 대화 속도예요. 바꾸면 다음 문장부터 적용돼요.</p>
       <input type="range" id="speed" min="0.7" max="1.5" step="0.1" value="${speed}">
       <b class="h">목소리 크기</b><input type="range" id="volume" min="0.2" max="1" step="0.05" value="${vol}">`)}
+    ${section("lteacher", "1:1 수업 선생님", byId(L9.progress.teacher(pref)).ko, "school", L9.renderTeacherPick(L9.progress.teacher(pref), esc))}
     ${section("subs", "자막", subs ? "켜짐" : "꺼짐", "subtitles", `
       <div class="row top"><span class="grow"><b class="h">대화·수업 중 자막</b><br><span class="muted small">켜면 친구·선생님의 말이 화면에 글자로 나와요(대화에서는 내 말도). 꺼도 기록에는 남고, 교재와 따라 말하기·쉽게 다시 말하기 카드는 그대로 보여요.</span></span>
       ${toggle("subs", subs)}</div>`)}

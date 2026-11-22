@@ -16,11 +16,12 @@ export const TEACHERS = [
 ];
 // 0.8.13(11/21 실장님): 대화하기 선생님은 그레이스·대니얼(GPT-Live), 1:1 수업은 클로이·벤(지금 목소리), bilody 친구와의 대화는 지금처럼.
 // 마야·누비는 고르지 못하게 뺀다(교재 장면 속 인물 목소리·옛 기록 표시는 그대로 쓰므로 목록에서는 지우지 않는다).
-export const CHAT_TEACHERS = TEACHERS.filter((t) => t.id === "grace" || t.id === "daniel");
+// 0.8.14(11/22 실장님): 마야도 대화 상대로(GPT-Live marin)
+export const CHAT_TEACHERS = TEACHERS.filter((t) => t.id === "grace" || t.id === "daniel" || t.id === "maya");
 export const LESSON_TEACHERS = TEACHERS.filter((t) => t.id === "chloe" || t.id === "ben");
 export const PICK_FRIENDS = CHARACTERS.filter((c) => c.id !== "nubi");
 /** GPT-Live로 이야기하는 대화 상대. */
-export const LIVE_CHAT = new Set(["grace", "daniel"]);
+export const LIVE_CHAT = new Set(["grace", "daniel", "maya"]);
 const ALL = [...CHARACTERS, ...TEACHERS];
 export const byId = (id) => ALL.find((c) => c.id === id) ?? CHARACTERS[0];
 export const isTeacher = (id) => TEACHERS.some((t) => t.id === id);
