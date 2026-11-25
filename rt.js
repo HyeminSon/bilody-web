@@ -1244,7 +1244,20 @@ export class Chat {
   placementHeard(t) {
     this.plLog.push({ who: "learner", text: t });
     if (this.plWrap) return;
-    if (placementDone(placementAnswers(this.plLog), Date.now() - this.plStart)) this.placementWrap();
+    const ans = placementAnswers(this.plLog), ms = Date.now() - this.plStart;
+    // 0.8.20(11/24 실장님): 이어 가는 중이면 이유·가정 질문까지 답했거나, 대답 4번 더·7분이면 끝낸다
+    if (this.plMoreAt != null) { if (placementCovered(this.plLog) || ans.length >= this.plMoreAt + 4 || ms >= 420000) this.placementWrap(); return; }
+    if (!placementDone(ans, ms)) return;
+    if (ms < 360000 && placementNeedsMore(this.plLog)) { this.placementMore("auto"); return; }
+    this.placementWrap();
+  }
+  /** 0.8.20(11/24 실장님): 지난 일·이유·가정 질문까지 가기 전에 끝나면 바로 판정하지 않고 조금 더 이야기한다(선생님에게 그 질문을 청함). */
+  placementMore(why) {
+    if (this.plWrap || this.closed || this.plMoreAt != null) return;
+    this.plMoreAt = placementAnswers(this.plLog).length;
+    this.send({ type: "conversation.item.create", item: { type: "message", role: "system", content: [{ type: "input_text", text: PLACEMENT_MORE }] } });
+    if (why === "exit" && !this.resp && !this.player.isPlaying) { this.send({ type: "response.create" }); this.set({ state: "thinking" }); }
+    this.log("placement_more", { why, turns: this.plMoreAt, ms: Date.now() - this.plStart });
   }
   /** 마무리: 학습자 말에 막 시작한 대답은 멈추고, 선생님에게 짧은 마무리 인사만 청한다. 그동안 마이크는 끈다. */
   placementWrap() {
@@ -1263,7 +1276,7 @@ export class Chat {
     if (played) this.plLog.push({ who: "teacher", text: played });
     if (this.plWrap === "speaking" && r.id === this.plWrapRid) { this.plWrap = "done"; setTimeout(() => this.placementFinish(), 600); return; }
     // 6분이 넘으면 다음 대답 뒤에 끝낸다(학습자가 말을 안 해도)
-    if (!this.plWrap && complete && Date.now() - this.plStart > 360000) this.placementWrap();
+    if (!this.plWrap && complete && Date.now() - this.plStart > (this.plMoreAt != null ? 420000 : 360000)) this.placementWrap();
   }
   placementFinish() {
     clearTimeout(this.plWrapTimer);
@@ -1293,6 +1306,24 @@ export function placementAnswers(log) {
   if (g) groups.push(g);
   return groups.filter((x) => x.asked || !isAck(x.text)).map((x) => x.text);
 }
+/** 0.8.20(11/24 실장님): 선생님이 ‘이유·경험’ 질문과 ‘의견·가정’ 질문을 하고 학습자가 영어로(네 낱말 이상) 답했는지(안드로이드 LessonGuard와 같음) */
+const PL_REASON_Q = /\bwhy\b|what makes|how come|\breasons?\b|have you ever|tell me (more )?about|what was (it|that|the \w+) like|how was (it|your|the)|what happened/i;
+const PL_OPINION_Q = /\bif you (could|were|had|won|lived)\b|\bwould you\b|\bimagine\b|what do you think|do you think|in your opinion|which (one )?(is|would be) better|\bshould\b|do you agree|what if\b/i;
+const enWords = (x) => x.match(/[A-Za-z']{2,}/g)?.length ?? 0;
+export function placementCovered(log) {
+  let reason = false, opinion = false, q = null, said = "";
+  const close = () => { if (q && enWords(said) >= 4) { if (PL_REASON_Q.test(q)) reason = true; if (PL_OPINION_Q.test(q)) opinion = true; } said = ""; };
+  for (const l of log) { if (l.who === "teacher") { close(); q = /\?/.test(l.text) ? l.text : null; } else said += " " + l.text; }
+  close();
+  return reason && opinion;
+}
+/** 더 이야기할 만한지: 아직 그 질문들을 못 했고, 대답이 짧지 않을 때(한 번에 평균 영어 6낱말 이상). 짧게 답하는 학습자는 그 문턱이 판정에 상관없다. */
+export function placementNeedsMore(log) {
+  if (placementCovered(log)) return false;
+  const ans = placementAnswers(log); if (!ans.length) return false;
+  return enWords(ans.join(" ")) / ans.length >= 6;
+}
+export const PLACEMENT_MORE = "(App: the chat is not over yet. React to what the learner said, then, one question per turn, ask a question about a reason or a past experience and later one simple opinion or what-if question (for example: If you could ..., what would you ...?), in words that fit the learner. Do not say goodbye yet and do not mention the app.)";
 export function placementDone(learnerTexts, elapsedMs) {
   const n = learnerTexts.length;
   if (n >= 10 || elapsedMs >= 300000) return true;

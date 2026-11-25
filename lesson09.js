@@ -81,16 +81,8 @@ export function renderHome(H, esc, I) {
   const t = byId(H.teacher);
   return `<div class="lh">
     <div class="lh-top"><h2>1:1 수업</h2><button class="link lh-home" data-act="lhClose">${I("home")}처음 화면</button></div>
-    ${H.rec ? `<div class="pl-line">${I("auto_awesome")}<span class="grow"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()}</span><button class="link" data-act="plIntro">다시 받기</button></div>`
-      : `<button class="pl-line" data-act="plIntro">${I("auto_awesome")}<span class="grow">어느 Book부터 할지 추천 받기</span>${I("chevron_right")}</button>`}
-    ${(() => { const chip = (b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`;
-      const kb = books.filter((b) => b.kind === "kids");
-      // 0.8.6(11/20 실장님): 어른 Book은 한 줄에 세 개, Kids Book은 따로 한 줄, 그 아래 ‘내 교재로 수업하기’
-      return `<div class="lh-grid">${books.filter((b) => b.kind !== "kids").map(chip).join("")}</div>
-        ${kb.length ? `<div class="lh-kids"><span class="muted tiny b">어린이</span>${kb.map(chip).join("")}</div>` : ""}
-        <button class="card my-tb-btn" data-act="myOpen">${I("photo_camera")}<span class="grow"><b>내 교재로 수업하기</b><span class="muted small">교재 사진(최대 5장)으로 선생님과 수업해요</span></span>${I("chevron_right")}</button>`; })()}
     <p class="muted small">${esc(kids ? `${book.title_ko} · 초등 저학년 · 그림과 노래로` : `${book.title_ko} · ${book.cefr ?? ""} ${book.level_ko ?? ""}`)}</p>
-    ${kids ? `<p class="error small">⚠ 시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
+    ${kids ? `<p class="error small">${I("warning_amber", "inl")}시험 기간에는 어른 목소리로만 시험해 주세요. 아이 목소리는 아직 보내면 안 돼요.</p>` : ""}
     ${done ? `<div class="card today"><div class="today-title">${T.book(book.no, kids)}을 모두 마쳤어요!</div><p class="muted small">아래 ‘다른 Lesson 고르기’에서 복습할 Lesson을 고르거나 다음 Book으로 넘어가요.</p>
       ${nextBook && nextBook.kind === book.kind ? `<button class="pill primary" data-act="lhBook" data-v="${nextBook.id}">${T.book(nextBook.no, kids)}로 넘어가기</button>` : `<button class="pill secondary" data-act="lhAll">Lesson 목록 펼치기</button>`}</div>` : `<div class="card today">
       <div class="row"><b class="accent small grow">오늘 할 분량</b><span class="muted small">약 10분</span></div>
@@ -101,6 +93,14 @@ export function renderHome(H, esc, I) {
         ${book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download aria-label="${T.book(book.no, kids)} PDF 받기">${I("download")}PDF</a>` : ""}</div>
     </div>`}
     ${done && book.pdf ? `<a class="pill secondary pdf" href="${esc(pdfUrl(book.pdf))}" target="_blank" rel="noopener" download>${I("download")}${T.book(book.no, kids)} PDF 받기</a>` : ""}
+    ${H.rec ? `<div class="pl-line">${I("auto_awesome")}<span class="grow"><b class="accent">${esc(byId(H.rec.teacher).ko)} 선생님 추천</b> Book ${H.rec.book}${(() => { const rb = H.index.books.find((x) => x.kind !== "kids" && x.no === H.rec.book); return rb ? ` ‘${esc(rb.title_ko)}’` : ""; })()}</span><button class="link" data-act="plIntro">다시 받기</button></div>`
+      : `<button class="pl-line" data-act="plIntro">${I("auto_awesome")}<span class="grow">어느 Book부터 할지 추천 받기</span>${I("chevron_right")}</button>`}
+    ${(() => { const chip = (b) => `<button class="lh-chip ${b.id === book.id ? "on" : ""}" data-act="lhBook" data-v="${b.id}">${T.book(b.no, b.kind === "kids")}</button>`;
+      const kb = books.filter((b) => b.kind === "kids");
+      // 0.8.6(11/20 실장님): 어른 Book은 한 줄에 세 개, Kids Book은 따로 한 줄, 그 아래 ‘내 교재로 수업하기’
+      return `<div class="row lh-sub"><b class="grow">다른 Book 고르기</b></div><div class="lh-grid">${books.filter((b) => b.kind !== "kids").map(chip).join("")}</div>
+        ${kb.length ? `<div class="lh-kids"><span class="muted tiny b">어린이</span>${kb.map(chip).join("")}</div>` : ""}
+        <button class="card my-tb-btn" data-act="myOpen">${I("photo_camera")}<span class="grow"><b>내 교재로 수업하기</b><span class="muted small">교재 사진(최대 5장)으로 선생님과 수업해요</span></span>${I("chevron_right")}</button>`; })()}
     <div class="row"><b class="grow">다른 Lesson 고르기</b><button class="link" data-act="lhAll">${H.all ? "접기" : "펼치기"}</button></div>
     ${H.all ? `<div class="lh-list">${book.lessons.map((x, i) => `${x.unit != null && (i === 0 || book.lessons[i - 1].unit !== x.unit) ? `<div class="lh-unit">${T.unit(x.unit)} · ${esc((book.units ?? []).find((u) => u.no === x.unit)?.title ?? "")}</div>` : ""}<button class="lh-item" data-act="lhStart" data-v="${x.id}" data-s="1"><b>${T.lesson(x.no)}</b><span class="grow">${esc(x.title)}</span>${x.no < nn ? I("check", "ok") : ""}</button>`).join("")}</div>` : ""}
   </div>`;
@@ -116,13 +116,13 @@ export function renderStageShell(run, I, esc) {
   return `<div class="ls">
     <div class="ls-nav"><button class="nav-pill" data-act="lsExit">${I("arrow_back")}교재 목록</button><span class="grow"></span>
       <a class="ls-pg" id="lsPage" target="_blank" rel="noopener" href="${run.my ? "#" : `lessons/pdf/bilody_${run.kids ? "kids_" : ""}${run.bookNo}.pdf`}"></a>
-      <button class="nav-pill" data-act="lsHome">${I("home")}처음 화면</button></div>
+      <button class="cc-chip" id="lsCc" data-act="subsToggle" aria-pressed="false">${I("subtitles")}자막</button></div>
     <div class="ls-top"><div class="grow"><b class="ls-title" id="lsTitle">${lsTitle(run, esc)}</b><div class="muted tiny" id="lsSub"></div></div></div>
     <div class="ls-bar"><i id="lsBar"></i></div>
     <div class="ls-body" id="lsBody"></div>
     <div id="lsWord" class="ls-word"></div><div id="lsCard" class="ls-word"></div>
-    <p id="lsNotice" class="error small"></p>
-    <div class="ls-teacher"><div class="ls-bubble grow"><b id="lsTurn" class="small"></b><div id="lsSay"></div></div>
+    <p id="lsNotice" class="error small" role="alert"></p>
+    <div class="ls-teacher"><div class="ls-bubble grow"><b id="lsTurn" class="small" aria-live="polite"></b><div id="lsSay"></div></div>
       <div class="ls-face"><img id="lsFace" alt=""><span id="lsState" class="tiny b"></span></div></div>
     <div class="inputbar" style="margin:2px 16px 8px"><input id="say" placeholder="글로 말하기 (말이 잘 안 통할 때)" maxlength="300" enterkeyhint="send" autocomplete="off">
       <button class="round send" data-act="send" aria-label="보내기" disabled>${I("send")}</button></div>
@@ -180,7 +180,7 @@ export function stepHtml(s, u, run, esc, I) {
         return `<button class="k-cell ${on && hit ? "hit" : ""}" data-act="lkHunt" data-v="${key}">${esc(ch)}</button>`; }).join("")).join("")}</div>${found.length >= all && all ? `<p class="ok b center-text">다 찾았어요! ${esc(s.answer ?? "")}</p>` : ""}`;
     }
     case "k_say": return card(`<div class="accent small b">${esc(s.say)}</div><div class="k-model">${esc(s.model)}</div>${s.hint ? `<div class="muted small">${esc(s.hint)}</div>` : ""}`);
-    case "k_stars": return card(`<h2>오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>⭐ ${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`);
+    case "k_stars": return card(`<h2>오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>${I("star", "star inl")}${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`);
     default: return card(`<div class="accent small b">마무리</div>${run.expressions.map((x) => `<div class="ls-q b">${esc(x)}</div>`).join("")}`);
   }
 }
@@ -195,9 +195,9 @@ export function renderDone(run, d, esc, I) {
     <button class="link" data-act="lsExit">끝내기</button>
   </div>`;
   return `<div class="ls-done">
-    <div class="done-ic">${I("check")}</div><h2>오늘 할 일 끝!</h2>
+    <img class="done-face" src="${teacherImg(d.teacher ?? run.teacher ?? "chloe", "speak")}" alt=""><h2>오늘 할 일 끝!</h2>
     <p class="muted">${run.my ? `내 교재 · ${esc(run.title)} 수업을 마쳤어요` : `${run.bookLabel} · ${T.lesson(run.no)} · ${T.part(run.session)}을 마쳤어요`}</p>
-    <div class="done-stats">${[[d.practiced.length, "익힌 표현"], [d.said, "말한 문장"], [`${d.minutes}분`, "수업 시간"]].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("")}</div>
+    <p class="done-line">${[[d.practiced.length, "익힌 표현"], [d.said, "말한 문장"], [`${d.minutes}분`, "수업"]].map(([v, l]) => `${l} <b>${v}</b>`).join('<i></i>')}</p>
     <div class="card"><b>오늘 익힌 표현</b>${d.practiced.map((x) => `<div class="b">${esc(x)}</div>`).join("")}
       ${d.fixed.length ? `<hr><div class="muted small">고친 문장</div>${d.fixed.map((x) => `<div>${esc(String(x).replace("->", "→"))}</div>`).join("")}` : ""}</div>
     <button class="pill primary" data-act="lsTalk">대화하며 써 보기</button>
@@ -275,12 +275,12 @@ export function renderKids(k, esc, I) {
     case "k_hunt": body = `<p class="center-text small">${m(s.say)}</p><div class="k-hunt">${(s.grid ?? []).map((row, r) => row.map((ch, c) => { const key = `${r}:${c}`; const on = k.found.includes(key); const hit = ch.toLowerCase() === String(s.target).toLowerCase();
       return `<button class="k-cell ${on ? (hit ? "hit" : "miss") : ""}" data-act="kHunt" data-v="${key}" data-ch="${esc(ch)}">${esc(ch)}</button>`; }).join("")).join("")}</div>${huntDone(s, k) && s.answer ? `<p class="ok small b center-text">다 찾았어요! ${esc(s.answer)}</p>` : ""}`; break;
     case "k_say": body = `<p class="center-text small">${m(s.say)}</p><div class="k-model">${esc(s.model)}</div>${s.hint ? `<p class="muted small center-text">${esc(s.hint)}</p>` : ""}<p class="ok small b center-text">소리 내어 따라 말해 보세요. (마이크는 쓰지 않아요)</p>`; break;
-    case "k_stars": body = `<h2 class="center-text">오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>⭐ ${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`; break;
+    case "k_stars": body = `<h2 class="center-text">오늘 할 일 끝!</h2>${(s.items ?? []).map((x) => `<div>${I("star", "star inl")}${esc(x)}</div>`).join("")}<hr><b class="accent small">보호자께</b>${(s.home ?? []).map((x) => `<div class="muted small">· ${esc(x)}</div>`).join("")}`; break;
   }
   const last = k.i >= run.steps.length - 1;
   return `<div class="ls kids">
     <div class="ls-top"><button class="round lilac" data-act="kExit" aria-label="교재 목록으로">${I("arrow_back")}</button><b class="grow">Kids Book ${run.bookNo} · ${esc(run.title)}</b>
-      <span class="k-stars">${[0, 1, 2].map((x) => `<span class="${x < k.stars ? "on" : ""}">★</span>`).join("")}</span>
+      <span class="k-stars">${[0, 1, 2].map((x) => `<span class="${x < k.stars ? "on" : ""}">${I("star")}</span>`).join("")}</span>
       <button class="round lilac" data-act="kHome" aria-label="처음 화면으로">${I("home")}</button></div>
     <div class="ls-bar"><i style="width:${((k.i + 1) / run.steps.length) * 100}%"></i></div>
     <div class="ls-body">${body}</div>

@@ -2,11 +2,11 @@
 import * as api from "./api.js?v=0.8.11";
 import { CONSENT_VERSION, VERSION } from "./config.js?v=0.8.11";
 import { CHARACTERS, TEACHERS, CHAT_TEACHERS, PICK_FRIENDS, LIVE_CHAT, chatPartner, byId, isTeacher, teacherImg, dotColor, validFriendName, validMyName, animSrc, eunNeun, iGa, gwaWa } from "./characters.js?v=0.8.14";
-import * as L9 from "./lesson09.js?v=0.8.14";
+import * as L9 from "./lesson09.js?v=0.8.21";
 import { GUIDE } from "./guide.js?v=0.8.11";
 import { Player } from "./audio.js?v=0.8.11";
-import { Chat } from "./rt.js?v=0.8.19";
-import { LiveChat } from "./rt-live.js?v=0.8.19";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
+import { Chat, placementNeedsMore } from "./rt.js?v=0.8.20";
+import { LiveChat } from "./rt-live.js?v=0.8.20";   // 0.8.13: 그레이스·대니얼과의 대화는 GPT-Live
 import * as story from "./story.js?v=0.8.11";
 import * as push from "./push.js?v=0.8.11";
 import { LessonManager, loadLib as loadLessons, loadUpper, lessonShell, lessonImage, lessonBody, resumeId as lessonResume } from "./lesson.js?v=0.8.11";
@@ -74,6 +74,12 @@ const CONSENT_ITEMS = [
 
 const STATE_LABEL = { idle: "대기", connecting: "연결 중", listening: "듣는 중", thinking: "생각 중", speaking: "말하는 중", stopped: "멈춤", disconnected: "연결 끊김" };
 
+/** 0.8.21: 알림 글 끝의 (오류 코드)는 본문과 떼어 작은 글씨로 보인다(문의할 때 알려 줄 수 있게 남겨 둠). */
+function setNotice(el, text) {
+  if (!el) return; const t = text ?? ""; if (el.dataset.t === t) return; el.dataset.t = t;
+  const m = /^([\s\S]*?)\s*\(([A-Za-z0-9_.:-]{3,40})\)\s*$/.exec(t);
+  if (m && /[a-z]/i.test(m[2])) el.innerHTML = `${esc(m[1])}<small class="err-code">오류 코드 ${esc(m[2])}</small>`; else el.textContent = t;
+}
 function toast(msg) {
   S.toast = msg; const t = $("#toast"); if (!t) return;
   t.textContent = msg; t.classList.add("show");
@@ -132,7 +138,7 @@ function render() {
     auth: renderAuth, consent: renderConsent, names: renderNames, main: renderMain,
   }[S.stage]();
   const view = S.stage === "main" ? `main:${S.tab}` : S.stage;
-  app.innerHTML = html + `<div id="toast" class="toast"></div>` + renderDialog();
+  app.innerHTML = html + `<div id="toast" class="toast" role="status"></div>` + renderDialog();
   if (view !== lastView) { window.scrollTo(0, 0); lastView = view; }  // 화면이 바뀌면 맨 위부터
   if (S.stage === "main" && S.tab === "chat") updateChat();
   if (S.stage === "main" && wantsPostSurvey() && !S.postOpened) { S.postOpened = true; openPostSurvey(); }
@@ -166,9 +172,10 @@ function renderConsent() {
   return `<div class="page">
     <h1>시작하기 전에 확인해 주세요</h1>
     <p class="muted small">시험판 안내문(임시본)입니다. 정식 문구는 법률 검토 후 바뀝니다.</p>
+    <label class="consent all"><input type="checkbox" id="consentAll"><span><b>아래 내용을 모두 확인했어요</b></span></label>
     ${CONSENT_ITEMS.map(([id, t]) => `<label class="consent"><input type="checkbox" data-consent="${id}"><span>${esc(t)}</span></label>`).join("")}
     ${S.error ? `<p class="error">${esc(S.error)}</p>` : ""}
-    <button class="pill primary" data-act="agree" disabled>모두 확인하고 동의합니다</button>
+    <button class="pill primary wide" data-act="agree" disabled>모두 확인하고 동의합니다</button>
   </div>`;
 }
 
@@ -198,13 +205,17 @@ function renderNames() {
   </div>`;
 }
 
+/** 0.8.21: 대화·수업·질문하기·그림책을 하는 동안에는 위 로고 줄과 아래 탭을 숨긴다(안드로이드 AppFrame의 inSession과 같음). 나가기는 각 화면의 단추 하나로. */
+const inSession = () => S.tab === "chat" && !!(S.chat || S.story || S.kids);
 function renderMain() {
+  const session = inSession();
   const title = { history: "기록", settings: "설정" }[S.tab] ?? "";
   const body = { chat: renderChat, history: renderHistory, settings: renderSettings }[S.tab]();
+  if (session) return `<div class="frame in-session"><main class="content">${body}</main></div>`;
   return `<div class="frame">
     <header class="top"><img src="img/logo_horizontal.png" alt="bilody"><span class="title">${title}</span></header>
     <main class="content">${body}</main>
-    <nav class="tabs">
+    <nav class="tabs" aria-label="화면 이동">
       ${[["chat", "홈", "home", "home", true], ["history", "기록", "history", "history", false], ["settings", "설정", "settings", "settings", true]].map(([k, l, on, off, outlined]) =>
         `<button data-act="tab" data-v="${k}" class="${S.tab === k ? "on" : ""}"><span class="ti">${S.tab === k ? I(on) : I(off, "", outlined)}</span>${l}</button>`).join("")}
     </nav>
@@ -242,7 +253,7 @@ async function goLesson(bookId, start) {
 function renderChat() {
   if (S.story) return renderStory();
   if (S.kids) return L9.renderKids(S.kids, esc, I);
-  if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, S.chat.ui.lessonDone, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
+  if (S.chat?.lesson) return S.chat.ui.lessonDone ? L9.renderDone(S.chat.lesson, { ...S.chat.ui.lessonDone, teacher: S.chat.character }, esc, I) : L9.renderStageShell(S.chat.lesson, I, esc);
   if (S.lh) return S.lh.my ? L9.renderMyPick(S.lh.my, S.lh, esc, I) : L9.renderHome(S.lh, esc, I);
   if (S.vid) return L9.renderVideos(S.vid, esc, I);
   const p = S.profile; const c = byId(S.chat?.placement || S.chat?.videoQa ? S.chat.character : p?.character); const pr = S.progress;
@@ -251,16 +262,17 @@ function renderChat() {
   const r = S.reminder;
   const home = !chat ? `
     <div class="streak card">
-      <div class="ring" style="--p:${Math.min(1, (pr?.today_seconds ?? 0) / 300)}"><span>${(pr?.streak ?? 0) > 0 ? "🔥" : "🌱"}</span></div>
+      <div class="ring" style="--p:${Math.min(1, (pr?.today_seconds ?? 0) / 300)}"><span>${(pr?.streak ?? 0) > 0 ? I("local_fire_department", "fire") : I("spa", "sprout")}</span></div>
       <div class="grow"><b>bilody${(pr?.streak ?? 0) > 0 ? `와 ${pr.streak}일째` : " 첫날"}</b>
-        <div class="muted small">${pr?.done_today ? "오늘 5분 완료! ✨" : `오늘 ${Math.floor((pr?.today_seconds ?? 0) / 60)}분 · 목표 5분`}</div></div>
-      <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>이번 주 🏆</span></button>
+        <div class="muted small">${pr?.done_today ? "오늘 5분 완료!" : `오늘 ${Math.floor((pr?.today_seconds ?? 0) / 60)}분 · 목표 5분`}</div></div>
+      <button class="points" data-act="board"><b>${pr?.week_points ?? 0}</b><span>${I("emoji_events")}이번 주</span></button>
     </div>
     <button class="alarm-line" data-act="notifyTime">${I("alarm")}${r?.on ? `매일 ${hhmm(r.hour, r.minute)}에 알림` : "알림 시간 정하기"}</button>${renderTodayLesson()}` : "";
   return `<div class="chat">
     <div class="chat-top">${home}
       <div class="stage ${chat ? "" : "small"}"><img id="friendImg" class="friend" src="${animSrc(c.id, "idle")}" alt=""></div>
-      <div class="status"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
+      ${chat ? `<button class="cc-chip corner ${pref.get("subtitles", false) ? "on" : ""}" data-act="subsToggle" aria-pressed="${pref.get("subtitles", false)}">${I("subtitles")}자막</button>` : ""}
+      <div class="status ${chat ? "" : "hidden"}" role="status" aria-live="polite"><i></i><span id="stLabel">대기</span><em></em><span id="micLabel" class="mic">${I("mic_off")}마이크 꺼짐</span></div>
       ${chat?.placement ? `<p class="accent small b pl-banner">${esc(c.ko)} 선생님과 처음 이야기 · 약 5분 · 편하게 이야기해 주세요</p>` : ""}
       ${vq ? `<p class="accent small b pl-banner">${esc(c.ko)} 선생님께 질문 · ${esc(vq.title)} ${mmss(vq.t)}</p><p class="muted small vq-tip">한국어로 편하게 물어보세요. 생각해 보면 찾을 수 있는 건 선생님이 되물어 볼 거예요. 답이 바로 필요하면 “그냥 알려 주세요”라고 하세요.</p>` : ""}
       <p class="ai-note">${chat?.placement || vq ? `${eunNeun(fname)} AI 선생님이에요` : `${eunNeun(fname)} AI 친구예요`}. 대답과 목소리는 AI가 만들어요.</p>
@@ -271,9 +283,9 @@ function renderChat() {
     <div id="lesson"></div>
     <div id="card"></div>
     <div id="lines" class="lines"></div>
-    <p id="notice" class="error"></p>
+    <p id="notice" class="error" role="alert"></p>
     <div class="controls ${chat ? "" : "home-ai"}" id="controls">${chat ? "" : `
-      <button class="pill primary grow" data-act="start">${I("mic")}대화 시작</button>
+      <button class="pill ${todayLesson() ? "tint" : "primary"} grow" data-act="start">${I("mic")}대화 시작</button>
       <button class="pill tint grow" data-act="lhOpen">${I("school")}1:1 수업</button>`}</div>
     ${chat ? "" : `<div class="controls home-content"><button class="pill media grow" data-act="vOpen">${I("smart_display")}동영상 강의</button>${S.kidsAvailable ? `<button class="pill media grow" data-act="storyPick">${I("auto_stories")}그림책 보기</button>` : ""}</div>`}
     <div class="inputbar ${chat ? "" : "hidden"}" id="inputbar">
@@ -302,8 +314,9 @@ function updateChat() {
   const mic = $("#micLabel"); const micKey = u?.micOn ? "on" : "off";
   if (mic.dataset.k !== micKey) { mic.dataset.k = micKey; mic.innerHTML = u?.micOn ? `${I("mic")}마이크 켜짐` : `${I("mic_off")}마이크 꺼짐`; mic.classList.toggle("on", !!u?.micOn); }
   $("#remain").textContent = u?.remainingMinutes ? `오늘 남은 대화 시간 약 ${u.remainingMinutes}분` : "";
-  $("#latency").textContent = chat ? `지금 대화: ${S.presetLabel}${u?.lastLatencyMs ? ` · 마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : ""}` : "";
-  $("#notice").textContent = u?.notice ?? "";
+  // 0.8.21: 모델 이름·대답 시간은 운영자 계정에만 보인다
+  $("#latency").textContent = chat && S.profile?.is_staff === true ? `지금 대화: ${S.presetLabel}${u?.lastLatencyMs ? ` · 마지막 대답 ${(u.lastLatencyMs / 1000).toFixed(1)}초` : ""}` : "";
+  setNotice($("#notice"), u?.notice);
   $("#photo").innerHTML = u?.photo ? `<div class="photo-card" data-act="clearPhoto"><img src="${u.photo}" alt="보여 준 사진"></div>` : "";
   // 친구가 띄운 단어 사진(11/13). 사진을 누르면 닫히고, 출처를 누르면 사진 사이트의 사진 페이지가 열린다(사이트 조건).
   showWebPic($("#webPic"), u?.webPicture);
@@ -384,7 +397,7 @@ function updateStage() {
   if (run.my) { const tt = $("#lsTitle"); if (tt) { const h = L9.lsTitle(run, esc); if (tt.innerHTML !== h) tt.innerHTML = h; } }
   const body = $("#lsBody");
   if (body.dataset.key !== key) { const newStep = body.dataset.step !== String(i); body.dataset.key = key; body.dataset.step = String(i); body.innerHTML = L9.stepHtml(step, u, run, esc, I); if (newStep) body.scrollTop = 0; }
-  $("#lsNotice").textContent = u.notice ?? "";
+  setNotice($("#lsNotice"), u.notice);
   const myTurn = u.micOn && u.state === "listening" && !u.lessonScene;
   const tl = [...u.lines].reverse().find((l) => l.role === "assistant")?.text;
   const t = byId(chat.character);
@@ -393,6 +406,7 @@ function updateStage() {
   // 0.9.3(11/17 실장님): 선생님 말은 기본으로 숨긴다(귀로 듣기). 설정 ‘자막’을 켜면 보인다
   // 0.8.5(11/19 실장님): 자막을 켜면 선생님 말과 내 말을 함께. 0.8.6(11/20): 최근 두 줄만
   const subs = pref.get("subtitles", false);
+  const cc = $("#lsCc"); if (cc) { cc.classList.toggle("on", subs); cc.setAttribute("aria-pressed", String(subs)); }
   if (tl != null && subs) $("#lsSay").innerHTML = u.lines.slice(-2).map((l) => `<div class="ls-sub ${l.role === "user" ? "me" : ""}"><b>${l.role === "user" ? "나" : esc(t.ko)}</b> ${esc(l.text)}</div>`).join("");
   else $("#lsSay").textContent = tl == null ? `${t.ko} 선생님이 준비하고 있어요…` : (u.lessonScene || myTurn ? "" : `${t.ko} 선생님 말을 잘 들어 보세요`);
   $("#lsSay").classList.toggle("muted", tl != null && !pref.get("subtitles", false));
@@ -836,7 +850,7 @@ function renderHistory() {
     ${list.length ? "" : `<div class="empty"><img src="img/char_${byId(S.profile?.character).id}.webp" alt=""><b>아직 저장된 대화가 없어요</b><span class="muted">대화하거나 수업하면 여기에 남아요</span></div>`}
     ${list.map((s) => `<div class="card row hist">
       <button class="grow left hist-open" data-act="openSession" data-v="${s.id}"><img class="hist-face" src="${face(s.character ?? S.profile?.character)}" alt="">
-        <span class="hist-text"><b>${esc(S.previews[s.id])}</b><span class="muted small"><span class="hist-tag">${kind(s)}</span> ${esc(who(s))} · ${niceDate(s.started_at)}</span></span></button>
+        <span class="hist-text"><b>${esc(S.previews[s.id])}</b><span class="muted small"><span class="hist-tag">${kind(s)}</span> ${esc(who(s))} · <span class="nw">${niceDate(s.started_at)}</span></span></span></button>
       <button class="iconbtn" data-act="deleteSession" data-v="${s.id}" aria-label="지우기">${I("delete_outline")}</button></div>`).join("")}
     ${list.length ? `<div class="center-row"><button class="link danger small" data-act="deleteAll">기록 전부 지우기</button></div>` : ""}
   </div>`;
@@ -852,7 +866,7 @@ function section(key, title, summary, icon, body) {
   const open = S.open === key;
   return `<div class="card section ${open ? "open" : ""}">
     <button class="sec-head" data-act="section" data-v="${key}"><span class="badge">${I(icon)}</span>
-      <span class="sec-t"><b>${title}</b>${summary ? `<span class="muted small">${esc(summary)}</span>` : ""}</span>${I("chevron_right", "chev")}</button>
+      <span class="sec-t"><b>${title}</b>${summary ? `<span class="muted small">${esc(summary)}</span>` : ""}</span>${I("expand_more", "chev")}</button>
     ${open ? `<div class="sec-body">${body}</div>` : ""}</div>`;
 }
 const toggle = (id, on) => `<label class="switch"><input type="checkbox" id="${id}" ${on ? "checked" : ""}><i></i></label>`;
@@ -876,11 +890,11 @@ function renderSettings() {
   const days = p.transcript_days ?? 30; const memOn = p.memory_enabled !== false;
   const r = S.reminder;
   const fname = p.friend_name ?? c.en;
-  return `<div class="list">
+  return `<div class="list settings"><div class="group">
     ${section("friend", "대화 상대", `${c.teacher ? `${c.ko} 선생님` : `${c.ko} · 이름 ${fname}`} · 속도 ${speed.toFixed(1)}배`, "face", `
       <p class="muted small">대화하기에서 이야기할 상대를 골라요. 선생님이나 bilody 친구 중에서 고를 수 있어요. 상대마다 나와 나눈 이야기만 따로 기억하고, 바꿔도 지금까지의 기억과 기록은 지워지지 않아요. 1:1 수업 선생님은 아래 ‘1:1 수업 선생님’에서 따로 골라요.</p>
       ${charPicker(c.id)}
-      <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview" data-v="${c.id}" ${S.previewing ? "disabled" : ""}>${S.previewing === c.id ? "자기소개 하는 중…" : "▶ 자기소개 듣기"}</button></div>
+      <div class="row"><span class="grow">${esc(c.intro)}</span><button class="link" data-act="preview" data-v="${c.id}" ${S.previewing ? "disabled" : ""}>${S.previewing === c.id ? "자기소개 하는 중…" : `${I("play_arrow", "inl")}자기소개 듣기`}</button></div>
       ${c.teacher ? "" : `<div class="row">${field("fname", "친구 이름", `maxlength="8"`, fname)}<button class="link" data-act="renameFriend">저장</button></div>
       <p class="muted tiny">한글이나 영어로 1~8자. 이름을 바꿔도 성격과 목소리는 그대로예요.</p>
       ${fname !== c.en ? `<button class="link" data-act="resetFriend">원래 이름(${esc(c.en)})으로</button>` : ""}`}
@@ -915,7 +929,7 @@ function renderSettings() {
       <button class="link" data-act="openCheckin">오늘 대화 의견 남기기</button>${TALK_GUIDE ? `<br>
       <button class="link" data-act="showGuideCard">첫 화면 안내 다시 보기</button>` : ""}
       <p class="muted tiny">앱을 쓸 수 없을 때는 초대해 준 운영자에게 연락해 주세요(삭제 요청 포함).</p>`)}
-    <p class="version">bilody ${VERSION} · 비공개 시험판</p>
+    </div><p class="version">bilody ${VERSION} · 비공개 시험판</p>
   </div>`;
 }
 
@@ -952,7 +966,7 @@ function renderDialog() {
     <textarea id="inq" rows="5" placeholder="내용을 적어 주세요. 대화 기록은 자동으로 붙지 않아요."></textarea>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link" data-act="sendInquiry">보내기</button></div>`);
   if (d.kind === "checkin") return box(`<h2>오늘 대화는 어땠어요?</h2><p class="muted small">30초면 끝나요. 남겨 주신 의견은 방금 대화와 함께 보고 고칠게요.</p>
-    <div class="faces">${["😣", "😕", "😐", "🙂", "😄"].map((f, i) => `<button class="face ${d.rating === i + 1 ? "on" : ""}" data-act="ckRate" data-v="${i + 1}" aria-label="${i + 1}점">${f}</button>`).join("")}</div>
+    <div class="faces">${["sentiment_very_dissatisfied", "sentiment_dissatisfied", "sentiment_neutral", "sentiment_satisfied", "sentiment_very_satisfied"].map((f, i) => `<button class="face ${d.rating === i + 1 ? "on" : ""}" data-act="ckRate" data-v="${i + 1}" aria-label="${i + 1}점">${I(f)}</button>`).join("")}</div>
     <b class="small">불편한 게 있었나요? (여러 개 골라도 돼요)</b>
     ${CHECKIN_ISSUES.map(([v, l]) => `<label class="radio"><input type="checkbox" data-ck="${v}"> ${l}</label>`).join("")}
     <textarea id="cknote" rows="2" maxlength="500" placeholder="무슨 일이 있었는지 한 줄로 (선택) 예: 여행 얘기를 했는데 계속 다른 질문만 했어요"></textarea>
@@ -960,25 +974,27 @@ function renderDialog() {
   if (d.kind === "talkGuide") return `<div class="overlay" data-act="guideSeen"><div class="dialog guide" data-stop>${talkGuideHtml()}</div></div>`;
   if (d.kind === "plIntro") return box(L9.renderPlIntro(byId(L9.progress.teacher(pref)), esc));
   if (d.kind === "plJudging") return `<div class="overlay"><div class="dialog"><div class="pl-head"><img src="${teacherImg(d.t)}" alt=""><h2>${esc(byId(d.t).ko)} 선생님이 시작할 Book을 고르고 있어요</h2></div><div class="spinner"></div></div></div>`;
+  if (d.kind === "plMore") return box(`<h2>조금 더 이야기해 볼까요?</h2><p>몇 가지만 더 이야기하면 나에게 맞는 Book을 더 잘 골라 드릴 수 있어요.</p>
+    <button class="pill primary" data-act="plMoreGo">조금 더 이야기하기</button><button class="pill secondary" data-act="plMoreDone">지금 결과 보기</button>`);
   if (d.kind === "plFail") return box(`<h2>추천을 만들지 못했어요</h2><p>인터넷 연결을 확인하고 다시 해 주세요. 1:1 수업에서 직접 Book을 골라도 돼요.</p>
     <button class="pill primary" data-act="plStart">다시 이야기하기</button><button class="pill secondary" data-act="plBrowse" data-v="1">직접 고르기</button>
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "plResult") return box(L9.renderPlResult(d, byId(d.t), S.plBooks, esc));
   if (d.kind === "teacherPick") return box(`<h2>선생님 고르기</h2>${L9.renderTeacherPick(L9.progress.teacher(pref), esc)}<div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
-  if (d.kind === "postDone") return box(`<h2>마지막 설문</h2><p>이미 답해 주셨어요. 정말 고마워요! 🙏</p><div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
+  if (d.kind === "postDone") return box(`<h2>마지막 설문</h2><p>이미 답해 주셨어요. 정말 고마워요!</p><div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "post") return `<div class="overlay full"><div class="guide-page survey">
     <div class="subhead"><button class="iconbtn" data-act="closeDialog" aria-label="닫기">${I("arrow_back")}</button><b>bilody 1차 시험 마지막 설문</b></div>
     <p class="muted small">3분이면 끝나요. 답은 bilody를 고치는 데만 쓰고, 이름 없이 모아서 봐요.</p>
     ${POST_Q.map((q, n) => `<div class="card q"><b>${n + 1}. ${esc(q.t)}</b>
-      ${q.type === "face" ? `<div class="faces">${["😣", "😕", "😐", "🙂", "😄"].map((f, i) => `<button class="face ${d.face === i + 1 ? "on" : ""}" data-act="pqFace" data-v="${i + 1}" aria-label="${i + 1}점">${f}</button>`).join("")}</div>`
+      ${q.type === "face" ? `<div class="faces">${["sentiment_very_dissatisfied", "sentiment_dissatisfied", "sentiment_neutral", "sentiment_satisfied", "sentiment_very_satisfied"].map((f, i) => `<button class="face ${d.face === i + 1 ? "on" : ""}" data-act="pqFace" data-v="${i + 1}" aria-label="${i + 1}점">${I(f)}</button>`).join("")}</div>`
         : q.type === "text" ? `<textarea data-pq="${q.id}" rows="3" maxlength="1000" placeholder="${esc(q.ph)}"></textarea>`
         : q.o.map(([v, l]) => `<label class="radio"><input type="${q.type === "many" ? "checkbox" : "radio"}" name="pq_${q.id}" value="${v}"> ${esc(l)}</label>`).join("")}
       ${q.note ? `<textarea data-pq="${q.note}" rows="2" maxlength="500" placeholder="${esc(q.ph)}"></textarea>` : ""}</div>`).join("")}
     <button class="pill primary" data-act="sendPost">보내기</button></div></div>`;
   if (d.kind === "editMem") return box(`<h2>기억 고치기</h2><textarea id="memText" rows="3">${esc(d.text)}</textarea>
     <div class="row end"><button class="link" data-act="closeDialog">취소</button><button class="link" data-act="saveMem">저장</button></div>`);
-  if (d.kind === "board") return box(`<h2>이번 주 순위 🏆</h2><p class="muted small">5분 이상 이야기한 날 10점 + 1분마다 1점(하루 최대 30점). 매주 월요일에 새로 시작해요. 다른 사람 이름은 첫 글자만 보여요.</p>
-    ${d.rows.length ? d.rows.map((r) => `<div class="row board ${r.me ? "me" : ""}"><span class="rank">${["🥇", "🥈", "🥉"][r.rank - 1] ?? r.rank}</span><i class="dot" style="background:${dotColor(r.color)}"></i><span class="grow">${esc(r.name)}${r.me ? " (나)" : ""}</span><b>${r.points}점</b></div>`).join("") : `<p>아직 이번 주 기록이 없어요. 오늘 5분이면 바로 올라가요!</p>`}
+  if (d.kind === "board") return box(`<h2>이번 주 순위</h2><p class="muted small">5분 이상 이야기한 날 10점 + 1분마다 1점(하루 최대 30점). 매주 월요일에 새로 시작해요. 다른 사람 이름은 첫 글자만 보여요.</p>
+    ${d.rows.length ? d.rows.map((r) => `<div class="row board ${r.me ? "me" : ""}"><span class="rank ${r.rank <= 3 ? "top" : ""}">${r.rank}</span><i class="dot" style="background:${dotColor(r.color)}"></i><span class="grow">${esc(r.name)}${r.me ? " (나)" : ""}</span><b>${r.points}점</b></div>`).join("") : `<p>아직 이번 주 기록이 없어요. 오늘 5분이면 바로 올라가요!</p>`}
     <div class="row end"><button class="link" data-act="closeDialog">닫기</button></div>`);
   if (d.kind === "photoPick") return box(`<h2>사진 보여 주기</h2><p class="muted small">보여 준 사진은 저장하지 않아요. 사람 얼굴보다 물건이 잘 맞아요.</p>
     <button class="pill primary" data-act="camera">${I("photo_camera")}사진 찍기</button><button class="pill secondary" data-act="gallery">${I("photo_library")}앨범에서 고르기</button>
@@ -996,8 +1012,8 @@ function renderDialog() {
   if (d.kind === "storyPick") {
     const lib = d.lib; const pos = story.loadPosition(); const rb = pos && lib.stories.find((b) => b.id === pos.id);
     return box(`<h2>그림책 보기 · ${lib.stories.length}권</h2>
-      <p class="warn small">⚠ 어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 그림책으로 이어집니다.</p>
-      <button class="pill dark" data-act="storyStart" data-v="resume">${rb ? `▶ 이어 듣기: ${esc(rb.titleKo)} (처음부터)` : "▶ 처음부터 듣기"}</button>
+      <p class="warn small">${I("warning_amber", "inl")}어른 목소리로만 시험해 주세요. 실제 아이 목소리는 승인 절차 전까지 외부로 보내면 안 돼요. 이 화면의 대화는 기록에 남기지 않아요. 한 권이 끝나면 다음 그림책으로 이어집니다.</p>
+      <button class="pill dark" data-act="storyStart" data-v="resume">${I("play_arrow")}${rb ? `이어 듣기: ${esc(rb.titleKo)} (처음부터)` : "처음부터 듣기"}</button>
       <div class="book-list">${lib.stories.map((b) => `<div class="book-row"><button class="book" data-act="storyStart" data-v="${b.id}" data-longpress="${b.id}">
         ${story.thumbUrl(b.id) ? `<img src="${story.thumbUrl(b.id)}" alt="">` : ""}
         <span><b>${esc(b.titleKo)}</b><span class="muted tiny">${esc(b.title)} · ${b.pages.length}쪽</span><span class="credit">${esc(b.credit)}</span></span></button>
@@ -1163,7 +1179,17 @@ app.addEventListener("click", async (e) => {
     case "lhTeacher": S.dialog = { kind: "teacherPick" }; render(); break;
     case "lhPickTeacher": pref.set("lp_teacher", v); if (S.lh) S.lh.teacher = v; S.dialog = null; render(); break;
     case "lhStart": player.unlock(); await startLesson(v, Number(el.dataset.s) || 1); break;   // 아이폰: 누른 순간에 소리를 열어 둔다
-    case "lsExit": await endLesson(true); break;
+    case "lsExit": {
+      // 0.8.21: 수업 중 나가기는 이 단추 하나로 모으고 한 번 묻는다(끝난 화면·연결이 끊긴 화면에서는 바로 나감)
+      const c = S.chat;
+      if (c?.lesson && !c.ui.lessonDone && !["stopped", "disconnected", "idle"].includes(c.ui.state)) {
+        confirm("수업을 끝낼까요?", c.lesson.my ? "나가면 지금 하던 수업이 끝나요." : "여기까지 한 곳은 저장돼요. 다음에 이어서 할 수 있어요.", "수업 끝내기", () => endLesson(true));
+        break;
+      }
+      await endLesson(true); break;
+    }
+    // 0.8.21: 대화·수업 화면 안에서 자막을 켜고 끈다(아래 탭이 없어 설정으로 못 가므로)
+    case "subsToggle": pref.set("subtitles", !pref.get("subtitles", false)); render(); break;
     case "lsHome": await endLesson(false); break;
     case "myOpen": {
       if (S.chat) await endLesson(true); else if (!S.lh) await openLessonHome();
@@ -1221,11 +1247,17 @@ app.addEventListener("click", async (e) => {
       await work(async () => { await api.saveProfile({ friendName: c.en, myName: p.my_name, presetId: p.preset_id, color: p.color, character: p.character }); S.profile = await api.loadProfile(); });
       toast("저장했어요."); break;
     }
+    case "plMoreGo": { S.dialog = null; render(); S.chat?.placementMore("exit"); break; }
+    case "plMoreDone": { const c = S.chat; S.dialog = null; if (c?.placement && !c.plFinished) { c.plFinished = true; await finishPlacement(c, c.plLog.slice()); } else render(); break; }
     case "pause": S.chat?.stop(); break;
     case "restart": player.unlock(); await S.chat?.restart(); break;
     case "exit": {
       const c = S.chat;
-      if (c?.placement && c.plLog.filter((l) => l.who === "learner").length >= 3) { c.plFinished = true; await finishPlacement(c, c.plLog.slice()); break; }
+      if (c?.placement && c.plLog.filter((l) => l.who === "learner").length >= 3) {
+        // 0.8.20(11/24 실장님): 이유·가정 질문까지 가기 전이면 바로 판정하지 않고 한 번 묻는다
+        if (!c.plWrap && c.plMoreAt == null && placementNeedsMore(c.plLog)) { S.dialog = { kind: "plMore" }; render(); break; }
+        c.plFinished = true; await finishPlacement(c, c.plLog.slice()); break;
+      }
       await endChat(); break;
     }
     case "lessonOpen": { if (S.lesson?.paused) { S.lesson.resume(); break; } const lib = await loadLessons(); const rid = lessonResume(pref); S.dialog = { kind: "lessons", lib, resume: rid, level: lib.byId[rid]?.level ?? "L1", list: false }; render(); break; }
@@ -1347,7 +1379,10 @@ app.addEventListener("contextmenu", (e) => { if (e.target.closest("[data-longpre
 
 app.addEventListener("change", async (e) => {
   const t = e.target; const p = S.profile;
-  if (t.dataset.consent !== undefined) { const all = [...document.querySelectorAll("[data-consent]")].every((x) => x.checked); $("[data-act=agree]").disabled = !all; t.closest("label").classList.toggle("on", t.checked); }
+  // 0.8.21: ‘모두 확인’을 누르면 아래 항목이 함께 켜지고 꺼진다(항목마다 따로도 누를 수 있음)
+  if (t.id === "consentAll") { document.querySelectorAll("[data-consent]").forEach((x) => { x.checked = t.checked; x.closest("label").classList.toggle("on", t.checked); }); t.closest("label").classList.toggle("on", t.checked); $("[data-act=agree]").disabled = !t.checked; }
+  if (t.dataset.consent !== undefined) { const all = [...document.querySelectorAll("[data-consent]")].every((x) => x.checked); $("[data-act=agree]").disabled = !all; t.closest("label").classList.toggle("on", t.checked);
+    const ca = $("#consentAll"); if (ca) { ca.checked = all; ca.closest("label").classList.toggle("on", all); } }
   if (t.id === "speed") { pref.set("speed", Number(t.value)); if (S.chat) S.chat.speed = Number(t.value); render(); }
   if (t.id === "volume") { pref.set("volume", Number(t.value)); player.setVolume(Number(t.value)); }
   if (t.id === "subs") { pref.set("subtitles", t.checked); render(); }
