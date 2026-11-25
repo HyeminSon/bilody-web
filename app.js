@@ -1174,7 +1174,8 @@ app.addEventListener("click", async (e) => {
       break;
     }
     case "lhClose": S.lh = null; render(); break;
-    case "lhBook": S.lh.bookId = v; S.lh.next = L9.progress.next(pref, v); S.lh.all = false; render(); break;
+    // 0.8.21(11/25 검토): Book 고르기가 아래에 있으니, 고르면 맨 위의 ‘오늘 할 분량’으로 올라가 바뀐 것을 보여 준다
+    case "lhBook": S.lh.bookId = v; S.lh.next = L9.progress.next(pref, v); S.lh.all = false; render(); window.scrollTo(0, 0); break;
     case "lhAll": S.lh.all = !S.lh.all; render(); break;
     case "lhTeacher": S.dialog = { kind: "teacherPick" }; render(); break;
     case "lhPickTeacher": pref.set("lp_teacher", v); if (S.lh) S.lh.teacher = v; S.dialog = null; render(); break;

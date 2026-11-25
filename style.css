@@ -419,7 +419,7 @@ a.pill { text-decoration: none; } .pill.pdf { min-height: 50px; font-size: 15px;
 .tpick.on { border: 2px solid var(--purple); background: var(--lilac); }
 .tpick img { width: 52px; height: 52px; border-radius: 50%; object-fit: cover; flex: none; }
 
-.ls { display: flex; flex-direction: column; height: 100dvh; background: var(--lilac-soft); }
+.ls { display: flex; flex-direction: column; height: 100vh; height: 100dvh; background: var(--lilac-soft); }   /* 100vh: dvh를 모르는 오래된 브라우저용(11/25 검토) */
 .ls-top { display: flex; align-items: center; gap: 10px; padding: 8px 12px 6px; }
 .ls-title { font-size: 15px; font-weight: 800; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ls-pg { flex: none; font-size: 12px; padding: 6px 10px; border-radius: 10px; border: 1px solid #C9B8EC; color: var(--plum); text-decoration: none; }
@@ -601,10 +601,10 @@ input, textarea { caret-color: var(--purple); }
 button { font-family: inherit; }
 
 /* 1. 대화·수업 중: 로고 줄·아래 탭 없이 화면을 꽉 쓴다 */
-.frame.in-session .content { min-height: 100dvh; }
+.frame.in-session .content { min-height: 100vh; min-height: 100dvh; }
 .frame.in-session .chat { padding-top: calc(12px + env(safe-area-inset-top)); padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
 .frame.in-session .ls-done { padding-top: calc(32px + env(safe-area-inset-top)); }
-.frame.in-session .story { min-height: 100dvh; }
+.frame.in-session .story { min-height: 100vh; min-height: 100dvh; }
 /* 자막 단추(대화·수업 화면에서 바로 켜고 끔) */
 .cc-chip { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; padding: 0 12px 0 10px; border-radius: 22px; background: #fff; box-shadow: var(--shadow); color: var(--muted); font-size: 13px; font-weight: 700; flex: none; }
 .cc-chip .mi { font-size: 18px; }
